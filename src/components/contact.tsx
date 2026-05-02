@@ -3,37 +3,26 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
+import { oosuProfile } from '@/lib/oosu-profile';
 
 export function Contact() {
   // Contact information
   const contactInfo = {
-    name: 'Raphael Giraud',
-    email: 'raphaelgiraud12@gmail.com',
-    handle: '@Raphael.Giraud',
+    name: oosuProfile.name,
+    email: oosuProfile.email,
+    handle: oosuProfile.handle,
     socials: [
       {
         name: 'LinkedIn',
-        url: 'https://www.linkedin.com/in/raphael-giraud-60939519a/',
-      },
-      {
-        name: 'Youtube',
-        url: 'https://www.youtube.com/@toukoum',
+        url: oosuProfile.linkedin,
       },
       {
         name: 'Instagram',
-        url: 'https://www.instagram.com/raphael.giraud/',
-      },
-      {
-        name: 'Discord',
-        url: 'https://discord.com/users/toukoum',
+        url: oosuProfile.instagram,
       },
       {
         name: 'Github',
-        url: 'https://github.com/toukoum',
-      },
-      {
-        name: 'X',
-        url: 'https://x.com/toukoumcode',
+        url: oosuProfile.github,
       },
     ],
   };
