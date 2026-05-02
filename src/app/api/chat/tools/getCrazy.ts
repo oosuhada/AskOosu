@@ -1,13 +1,20 @@
-
-import { tool } from "ai";
-import { z } from "zod";
-
+import { tool } from 'ai';
+import { z } from 'zod';
 
 export const getCrazy = tool({
   description:
-    "This tool will the craziest thing I've ever done. use it when the user ask someting like : 'What the craziest thing you've ever done?'",
+    "Shows Oosu Jang's learning style, strengths, and growth edges from the latest Notion profile source.",
   parameters: z.object({}),
   execute: async () => {
-    return "Above is a photo of Me On top of Mont Blanc, the highest mountain in the Alps and the highest in Europe. I made it with a friends of mine without guide, it was a great experience! You can see the 80km/h of wind on the photo! I made a youtube video of this adventure here: https://www.youtube.com/watch?v=rufGMSgzUOk&ab_channel=Toukoum";
+    return `Oosu's pattern is to learn new tools quickly, test them hands-on, and connect them to service ideas.
+
+Strengths:
+- Fast learning across new domains and tools.
+- Turns ideas into concrete service structures.
+- Connects UX, business context, and implementation.
+
+Growth edges:
+- Planning can become deep enough that final execution needs explicit completion criteria.
+- Broad interests need clear priorities, so AskOosu and the Notion wiki are being used as a structure for focus.`;
   },
 });
