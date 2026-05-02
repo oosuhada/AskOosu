@@ -1,6 +1,10 @@
 import { convertToModelMessages, streamText, stepCountIs } from 'ai';
 import type { UIMessage } from 'ai';
-import { getChatModel } from './model-provider';
+import {
+  getChatModel,
+  recordChatModelFailure,
+  recordChatModelSuccess,
+} from './model-provider';
 import { SYSTEM_PROMPT_TEXT } from './prompt';
 import { getCrazy } from './tools/getCrazy';
 import { getContact } from './tools/getContact';
@@ -32,7 +36,7 @@ export async function POST(req: Request) {
     const { messages } = (await req.json()) as {
       messages: UIMessage[];
     };
-    const model = getChatModel();
+    const chatModel = getChatModel();
 
     const tools = {
       getProjects,
@@ -53,11 +57,20 @@ export async function POST(req: Request) {
     });
 
     const result = streamText({
-      model,
-      system: [SYSTEM_PROMPT_TEXT, retrievedContext].filter(Boolean).join('\n\n'),
+      model: chatModel.model,
+      system: [SYSTEM_PROMPT_TEXT, retrievedContext]
+        .filter(Boolean)
+        .join('\n\n'),
       messages: promptMessages,
       tools,
       stopWhen: stepCountIs(2),
+      maxRetries: chatModel.provider === 'groq' ? 0 : undefined,
+      onError: ({ error }) => {
+        recordChatModelFailure(chatModel, error);
+      },
+      onFinish: () => {
+        recordChatModelSuccess(chatModel);
+      },
     });
 
     return result.toUIMessageStreamResponse({
