@@ -3,9 +3,8 @@
 
 import { ChatRequestOptions } from 'ai';
 import { motion } from 'framer-motion';
-import { ArrowRight, ArrowUp } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
-import { FastfolioTracking } from '@/lib/fastfolio-tracking';
+import { ArrowUp } from 'lucide-react';
+import React, { useEffect } from 'react';
 
 interface ChatBottombarProps {
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
@@ -30,12 +29,6 @@ export default function ChatBottombar({
   disabled = false,
 }: ChatBottombarProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
-  const [remainingMessages, setRemainingMessages] = useState(0);
-  
-  useEffect(() => {
-    // Update remaining messages count
-    setRemainingMessages(FastfolioTracking.getRemainingMessages());
-  }, [input]); // Update when input changes (user is typing)
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (
@@ -70,7 +63,7 @@ export default function ChatBottombar({
             onChange={handleInputChange}
             onKeyDown={handleKeyPress}
             placeholder={
-              disabled ? '' : isToolInProgress ? 'Tool is in progress...' : 'Ask me anything'
+              disabled ? '' : isToolInProgress ? 'Thinking...' : 'Ask Oosu anything'
             }
             className={`text-md w-full border-none bg-transparent placeholder:text-gray-500 focus:outline-none ${
               disabled ? 'text-muted-foreground font-medium' : 'text-black'
