@@ -129,6 +129,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: preferenceInitScript }} />
       </head>
       <body
+        suppressHydrationWarning
         className={cn(
           'bg-background min-h-screen font-sans antialiased',
           inter.variable

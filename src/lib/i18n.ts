@@ -26,6 +26,8 @@ export const uiText = {
     showQuickQuestions: '빠른 질문 보기',
     moreQuestions: '질문 더보기',
     chatLoading: '채팅을 불러오는 중...',
+    aiResponseUnavailable:
+      '지금은 AI 응답 설정이 연결되지 않았어요. API 키 또는 Grok 연결이 준비되면 이 자리에서 바로 답변이 이어집니다.',
     close: '닫기',
     startChatting: '대화 시작하기',
     feedback: '좋게 보셨다면 공유해 주세요. 피드백도 언제든 환영합니다.',
@@ -102,6 +104,8 @@ export const uiText = {
     showQuickQuestions: 'Show quick questions',
     moreQuestions: 'More questions',
     chatLoading: 'Loading chat...',
+    aiResponseUnavailable:
+      'The AI response is not connected right now. Once the API key or Grok setup is ready, the answer will continue here.',
     close: 'Close',
     startChatting: 'Start chatting',
     feedback: 'If this was useful, sharing and feedback are always welcome.',

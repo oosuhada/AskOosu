@@ -1,6 +1,7 @@
-import { streamText } from 'ai';
+import { convertToModelMessages, streamText, stepCountIs } from 'ai';
+import type { UIMessage } from 'ai';
 import { getChatModel } from './model-provider';
-import { SYSTEM_PROMPT } from './prompt';
+import { SYSTEM_PROMPT_TEXT } from './prompt';
 import { getCrazy } from './tools/getCrazy';
 import { getContact } from './tools/getContact';
 import { getInternship } from './tools/getIntership';
@@ -9,6 +10,7 @@ import { getProjects } from './tools/getProjects';
 import { getResume } from './tools/getResume';
 import { getSkills } from './tools/getSkills';
 import { getSports } from './tools/getSport';
+import { retrievePortfolioContext } from '@/lib/rag/notion-rag';
 
 export const maxDuration = 30;
 
@@ -27,9 +29,10 @@ function errorHandler(error: unknown) {
 
 export async function POST(req: Request) {
   try {
-    const { messages } = await req.json();
+    const { messages } = (await req.json()) as {
+      messages: UIMessage[];
+    };
     const model = getChatModel();
-    const promptMessages = [SYSTEM_PROMPT, ...messages];
 
     const tools = {
       getProjects,
@@ -42,20 +45,40 @@ export async function POST(req: Request) {
       getSports,
     };
 
-    const result = streamText({
-      model,
-      messages: promptMessages,
-      toolCallStreaming: true,
+    const latestUserText = getLatestUserText(messages);
+    const retrievedContext = await retrievePortfolioContext(latestUserText);
+    const promptMessages = await convertToModelMessages(messages, {
       tools,
-      maxSteps: 2,
+      ignoreIncompleteToolCalls: true,
     });
 
-    return result.toDataStreamResponse({
-      getErrorMessage: errorHandler,
+    const result = streamText({
+      model,
+      system: [SYSTEM_PROMPT_TEXT, retrievedContext].filter(Boolean).join('\n\n'),
+      messages: promptMessages,
+      tools,
+      stopWhen: stepCountIs(2),
+    });
+
+    return result.toUIMessageStreamResponse({
+      onError: errorHandler,
     });
   } catch (err) {
     console.error('Global error:', err);
     const errorMessage = errorHandler(err);
     return new Response(errorMessage, { status: 500 });
   }
+}
+
+function getLatestUserText(messages: UIMessage[]) {
+  const latestUserMessage = [...messages]
+    .reverse()
+    .find((message) => message.role === 'user');
+
+  return (
+    latestUserMessage?.parts
+      .filter((part) => part.type === 'text')
+      .map((part) => part.text)
+      .join('\n') ?? ''
+  );
 }

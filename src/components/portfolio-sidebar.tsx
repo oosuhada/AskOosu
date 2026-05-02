@@ -7,12 +7,6 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from '@/components/ui/drawer';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { getUiText } from '@/lib/i18n';
@@ -26,6 +20,7 @@ import { cn } from '@/lib/utils';
 import { useDisplayPreferences } from '@/lib/use-display-preferences';
 import {
   Check,
+  ChevronRight,
   Code2,
   ExternalLink,
   FileText,
@@ -52,6 +47,8 @@ type PortfolioSidebarProps = {
   onSelectConversation?: (conversation: StoredChatConversation) => void;
   className?: string;
 };
+
+type UiText = ReturnType<typeof getUiText>;
 
 export function PortfolioSidebar({
   conversations,
@@ -133,7 +130,7 @@ export function PortfolioSidebar({
             type="button"
             onClick={handleNewChat}
             aria-label={text.newChat}
-            className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground mt-20 inline-flex h-11 w-11 items-center justify-center rounded-lg transition-colors"
+            className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground mt-7 inline-flex h-11 w-11 items-center justify-center rounded-lg transition-colors"
           >
             <SquarePen className="h-6 w-6" />
           </button>
@@ -224,86 +221,26 @@ export function PortfolioSidebar({
         </DrawerContent>
       </Drawer>
 
-      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <DialogContent className="bg-background max-h-[86vh] overflow-y-auto border p-0 sm:max-w-[520px]">
-          <DialogHeader className="border-b px-6 py-5">
-            <DialogTitle className="flex items-center gap-2 text-xl">
-              <Settings className="h-5 w-5" />
-              {text.settings} & {text.help}
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-6 px-6 py-6">
-            <section className="space-y-4">
-              <SectionLabel icon={Settings} label={text.settings} />
-              <PreferenceGroup
-                icon={Languages}
-                label={text.languageSetting}
-                options={[
-                  { label: text.korean, value: 'ko' },
-                  { label: text.english, value: 'en' },
-                ]}
-                value={language}
-                onChange={(value) =>
-                  setLanguagePreference(value as DisplayLanguage)
-                }
-              />
-              <PreferenceGroup
-                icon={theme === 'dark' ? Moon : Sun}
-                label={text.themeSetting}
-                options={[
-                  { label: text.lightMode, value: 'light' },
-                  { label: text.darkMode, value: 'dark' },
-                ]}
-                value={theme}
-                onChange={(value) => setThemePreference(value as DisplayTheme)}
-              />
-            </section>
-
-            <Separator />
-
-            <section className="space-y-3">
-              <SectionLabel icon={ExternalLink} label={text.links} />
-              <a
-                href={oosuProfile.github}
-                target="_blank"
-                rel="noreferrer"
-                className="hover:bg-accent flex items-center justify-between rounded-lg border px-3 py-3 text-sm transition-colors"
-              >
-                <span className="flex items-center gap-3">
-                  <Github className="h-4 w-4" />
-                  {text.github}
-                </span>
-                <ExternalLink className="text-muted-foreground h-4 w-4" />
-              </a>
-              <div className="bg-muted/50 text-muted-foreground flex items-center justify-between rounded-lg border px-3 py-3 text-sm">
-                <span className="flex items-center gap-3">
-                  <FileText className="h-4 w-4" />
-                  {text.resume}
-                </span>
-                <span className="rounded-full border px-2 py-0.5 text-xs">
-                  {text.resumeComingSoon}
-                </span>
-              </div>
-            </section>
-
-            <Separator />
-
-            <section className="space-y-3">
-              <SectionLabel icon={HelpCircle} label={text.help} />
-              <div className="rounded-lg border px-4 py-4">
-                <div className="flex items-center gap-3 text-sm font-medium">
-                  <Code2 className="h-4 w-4" />
-                  {text.siteStackTitle}
-                </div>
-                <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-                  {text.siteStackBody}
-                </p>
-              </div>
-            </section>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {settingsOpen && (
+        <>
+          <button
+            type="button"
+            aria-label={text.close}
+            className="fixed inset-0 z-[70] cursor-default bg-transparent"
+            onClick={() => setSettingsOpen(false)}
+          />
+          <aside className="bg-popover text-popover-foreground fixed bottom-4 left-[84px] z-[80] max-h-[calc(100vh-2rem)] w-[min(420px,calc(100vw-104px))] overflow-y-auto rounded-2xl border p-3 shadow-2xl">
+            <SettingsPanel
+              text={text}
+              language={language}
+              theme={theme}
+              onClose={() => setSettingsOpen(false)}
+              onLanguageChange={setLanguagePreference}
+              onThemeChange={setThemePreference}
+            />
+          </aside>
+        </>
+      )}
     </>
   );
 }
@@ -323,7 +260,116 @@ function SectionLabel({
   );
 }
 
-function PreferenceGroup({
+function SettingsPanel({
+  text,
+  language,
+  theme,
+  onClose,
+  onLanguageChange,
+  onThemeChange,
+}: {
+  text: UiText;
+  language: DisplayLanguage;
+  theme: DisplayTheme;
+  onClose: () => void;
+  onLanguageChange: (value: DisplayLanguage) => void;
+  onThemeChange: (value: DisplayTheme) => void;
+}) {
+  const ThemeIcon = theme === 'dark' ? Moon : Sun;
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between px-3 py-2">
+        <div className="flex items-center gap-3 text-sm font-semibold">
+          <Settings className="h-4 w-4" />
+          {text.settings} & {text.help}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={text.close}
+          className="hover:bg-accent inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <InlinePreferenceRow
+        icon={Languages}
+        label={text.languageSetting}
+        options={[
+          { label: text.korean, value: 'ko' },
+          { label: text.english, value: 'en' },
+        ]}
+        value={language}
+        onChange={(value) => onLanguageChange(value as DisplayLanguage)}
+      />
+
+      <InlinePreferenceRow
+        icon={ThemeIcon}
+        label={text.themeSetting}
+        options={[
+          { label: text.lightMode, value: 'light' },
+          { label: text.darkMode, value: 'dark' },
+        ]}
+        value={theme}
+        onChange={(value) => onThemeChange(value as DisplayTheme)}
+      />
+
+      <Separator className="my-2" />
+
+      <a
+        href={oosuProfile.github}
+        target="_blank"
+        rel="noreferrer"
+        className="hover:bg-accent flex items-center justify-between rounded-lg px-3 py-3 text-sm transition-colors"
+      >
+        <span className="flex items-center gap-3">
+          <Github className="text-muted-foreground h-5 w-5" />
+          {text.github}
+        </span>
+        <ExternalLink className="text-muted-foreground h-4 w-4" />
+      </a>
+
+      <div
+        aria-disabled="true"
+        className="text-muted-foreground flex items-center justify-between gap-3 rounded-lg px-3 py-3 text-sm"
+      >
+        <span className="flex min-w-0 items-center gap-3">
+          <FileText className="h-5 w-5 shrink-0" />
+          <span className="min-w-0">
+            <span className="block">{text.resume}</span>
+            <span className="block truncate text-xs">
+              {text.resumeKorean} · {text.resumeEnglish}
+            </span>
+          </span>
+        </span>
+        <span className="shrink-0 rounded-full border px-2 py-0.5 text-xs">
+          {text.resumeComingSoon}
+        </span>
+      </div>
+
+      <details className="group">
+        <summary className="hover:bg-accent flex cursor-pointer list-none items-center justify-between rounded-lg px-3 py-3 text-sm transition-colors [&::-webkit-details-marker]:hidden">
+          <span className="flex items-center gap-3">
+            <HelpCircle className="text-muted-foreground h-5 w-5" />
+            {text.help}
+          </span>
+          <ChevronRight className="text-muted-foreground h-4 w-4 transition-transform group-open:rotate-90" />
+        </summary>
+        <div className="text-muted-foreground px-3 pt-1 pb-3 text-sm leading-relaxed">
+          <div className="text-foreground mb-2 flex items-center gap-2 font-medium">
+            <Code2 className="h-4 w-4" />
+            {text.siteStackTitle}
+          </div>
+          {text.siteStackBody}
+        </div>
+      </details>
+    </div>
+  );
+}
+
+function InlinePreferenceRow({
   icon: Icon,
   label,
   options,
@@ -337,20 +383,20 @@ function PreferenceGroup({
   onChange: (value: string) => void;
 }) {
   return (
-    <div className="space-y-2">
-      <div className="text-foreground flex items-center gap-2 text-sm font-medium">
-        <Icon className="h-4 w-4" />
+    <div className="flex items-center justify-between gap-3 rounded-lg px-3 py-3">
+      <div className="flex items-center gap-3 text-sm">
+        <Icon className="text-muted-foreground h-5 w-5" />
         {label}
       </div>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="flex shrink-0 rounded-lg border p-0.5">
         {options.map((option) => (
           <button
             type="button"
             key={option.value}
             onClick={() => onChange(option.value)}
             className={cn(
-              'hover:bg-accent flex items-center justify-between rounded-lg border px-3 py-2 text-sm transition-colors',
-              value === option.value && 'border-primary bg-accent'
+              'hover:bg-accent inline-flex h-8 items-center gap-1 rounded-md px-2.5 text-xs transition-colors',
+              value === option.value && 'bg-accent text-accent-foreground'
             )}
           >
             {option.label}

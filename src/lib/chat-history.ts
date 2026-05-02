@@ -1,9 +1,9 @@
-import type { Message } from 'ai/react';
+import type { UIMessage } from 'ai';
 
 export type StoredChatConversation = {
   id: string;
   title: string;
-  messages: Message[];
+  messages: UIMessage[];
   createdAt: string;
   updatedAt: string;
 };
@@ -21,9 +21,11 @@ export function createConversationId() {
   return `chat-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export function getConversationTitle(messages: Message[]) {
+export function getConversationTitle(messages: UIMessage[]) {
   const firstUserMessage = messages.find((message) => message.role === 'user');
-  const rawTitle = firstUserMessage?.content?.trim() || 'New chat';
+  const rawTitle = firstUserMessage
+    ? getMessageText(firstUserMessage) || 'New chat'
+    : 'New chat';
 
   if (rawTitle.length <= TITLE_MAX_LENGTH) return rawTitle;
   return `${rawTitle.slice(0, TITLE_MAX_LENGTH - 1)}…`;
@@ -39,7 +41,9 @@ export function readStoredConversations(): StoredChatConversation[] {
     const parsedValue = JSON.parse(rawValue);
     if (!Array.isArray(parsedValue)) return [];
 
-    return parsedValue.filter(isStoredConversation);
+    return parsedValue
+      .filter(isStoredConversation)
+      .map(normalizeStoredConversation);
   } catch {
     return [];
   }
@@ -70,7 +74,7 @@ export function upsertStoredConversation({
 }: {
   conversations: StoredChatConversation[];
   id: string;
-  messages: Message[];
+  messages: UIMessage[];
 }) {
   const now = new Date().toISOString();
   const existingConversation = conversations.find(
@@ -90,6 +94,14 @@ export function upsertStoredConversation({
   ];
 }
 
+function getMessageText(message: UIMessage) {
+  return message.parts
+    .filter((part) => part.type === 'text')
+    .map((part) => part.text)
+    .join('\n')
+    .trim();
+}
+
 function isStoredConversation(value: unknown): value is StoredChatConversation {
   if (!value || typeof value !== 'object') return false;
 
@@ -102,4 +114,31 @@ function isStoredConversation(value: unknown): value is StoredChatConversation {
     typeof conversation.createdAt === 'string' &&
     typeof conversation.updatedAt === 'string'
   );
+}
+
+function normalizeStoredConversation(
+  conversation: StoredChatConversation
+): StoredChatConversation {
+  return {
+    ...conversation,
+    messages: conversation.messages.map(normalizeMessage),
+  };
+}
+
+function normalizeMessage(message: UIMessage) {
+  if (Array.isArray(message.parts)) return message;
+
+  const legacyMessage = message as UIMessage & { content?: string };
+
+  return {
+    ...message,
+    parts: legacyMessage.content
+      ? [
+          {
+            type: 'text' as const,
+            text: legacyMessage.content,
+          },
+        ]
+      : [],
+  };
 }

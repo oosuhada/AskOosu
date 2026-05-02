@@ -13,7 +13,7 @@ AskOosu is intentionally chat-first. The first screen should feel like a usable 
 
 ## Stage B: Grok API and Streaming
 
-The chat API continues to use the Vercel AI SDK `streamText` flow, so the client receives streamed responses through the existing data stream protocol.
+The chat API uses AI SDK 6 `streamText` and returns `toUIMessageStreamResponse()`, so the client receives streamed UI message parts that match the current `useChat` transport API.
 
 Model selection is isolated in `src/app/api/chat/model-provider.ts`:
 
@@ -21,21 +21,24 @@ Model selection is isolated in `src/app/api/chat/model-provider.ts`:
 - Grok provider: set `ASKOOSU_AI_PROVIDER=xai`
 - Required for Grok: `XAI_API_KEY`
 - Optional for Grok: `XAI_MODEL`, `XAI_BASE_URL`
+- API mode: `XAI_API_MODE=responses` by default, or `chat` for the older Chat Completions-style xAI path
 - For reliability, prefer provider fallback, caching, rate limiting, and graceful UI error states over rotating keys across accounts.
 
-The xAI-compatible path uses the OpenAI-compatible base URL `https://api.x.ai/v1`. xAI's current docs also recommend the newer Responses API for future features, so the provider wrapper is the right place to migrate later without touching the UI.
+The xAI path uses `@ai-sdk/xai`. `xai.responses(model)` is the default because it is the forward-looking path for agentic/tool-capable Responses features. `xai.chat(model)` is still available through `XAI_API_MODE=chat` when a model or account behaves better on the chat endpoint.
 
 ## Stage C: Notion and RAG
 
-Notion should become the source of truth before adding vector search.
+Notion is now treated as the source candidate for portfolio facts. The app can fetch shared Notion pages and databases, chunk their text, rank the chunks against the visitor's question, and inject the retrieved context into the system prompt.
 
-Recommended order:
+Current behavior:
 
-1. Create structured Notion pages for profile, projects, resume, stack, and decisions.
-2. Add a sync route or scheduled job that reads Notion and writes a compact JSON cache.
-3. Feed the cached profile/project facts into the system prompt for low-latency answers.
-4. Add embeddings/RAG only after the wiki grows beyond what a curated prompt can reliably hold.
-5. Keep a fallback flow: when AskOosu lacks enough information, it should suggest contacting Oosu directly instead of pretending.
+1. If `NOTION_API_KEY` is absent, AskOosu falls back to static profile/project chunks.
+2. If `NOTION_API_KEY` is present, it reads `ASKOOSU_NOTION_PAGE_IDS` and `ASKOOSU_NOTION_DATABASE_IDS`.
+3. If page ids are not configured, it attempts the current source page from `oosuProfile.notionSourceUrl`.
+4. Retrieval defaults to lexical ranking for speed and no extra cost.
+5. `ASKOOSU_RAG_RETRIEVAL=embedding` enables OpenAI embedding ranking with `text-embedding-3-small`, falling back to lexical ranking if embeddings fail.
+
+The next Mac mini/home-server step is to move chunk and embedding storage out of process memory into a persistent store such as Postgres + pgvector, then sync Notion on a schedule.
 
 ## Suggested Notion Shape
 
@@ -54,6 +57,14 @@ OPENAI_MODEL=gpt-4o-mini
 # Optional Grok mode
 ASKOOSU_AI_PROVIDER=xai
 XAI_API_KEY=your_xai_api_key_here
-XAI_MODEL=grok-4.3
+XAI_MODEL=grok-4
+XAI_API_MODE=responses
 XAI_BASE_URL=https://api.x.ai/v1
+
+# Optional Notion RAG
+NOTION_API_KEY=your_notion_integration_secret
+ASKOOSU_NOTION_PAGE_IDS=401a342869018248a3f881a3e5fbef07
+ASKOOSU_NOTION_DATABASE_IDS=
+ASKOOSU_RAG_RETRIEVAL=lexical
+ASKOOSU_RAG_TOP_K=5
 ```
