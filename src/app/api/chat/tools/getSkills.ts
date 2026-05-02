@@ -3,9 +3,9 @@ import { z } from 'zod';
 
 export const getSkills = tool({
   description:
-    'This tool show a list of my skills.',
+    'Show Oosu Jang skills and stack.',
   parameters: z.object({}),
   execute: async () => {
-    return "You can see all my skills above.";
+    return "You can see Oosu's frontend, fullstack, AI-connected interface, design, and documentation skills above.";
   },
 });
