@@ -18,7 +18,7 @@ export const oosuProfile = {
   notionSourceUrl: 'https://www.notion.so/401a342869018248a3f881a3e5fbef07',
   resumeKoUrl: '',
   resumeEnUrl: '',
-  wikiSource: 'Notion API planned',
+  wikiSource: 'Notion RAG source',
   sourceSummary:
     '2026 KOSA x BISTelligence 생성형 AI 응용개발자 과정 자기분석/포트폴리오 Notion page',
 } as const;
@@ -46,7 +46,8 @@ export const oosuProjects = [
       'Vercel AI SDK',
       'OpenAI',
       'Tool Calling',
-      'Notion API planned',
+      'Notion API',
+      'RAG',
     ],
     links: [
       {
@@ -229,7 +230,7 @@ export const oosuProjects = [
     category: 'Planned Knowledge System',
     date: 'Planned',
     description:
-      'A planned knowledge layer where Oosu can store study notes, GitHub learning logs, project decisions, Korean and English resume pages, and portfolio wiki entries in Notion. AskOosu will later retrieve and summarize that information through the Notion API.',
+      'A knowledge layer where Oosu can store study notes, GitHub learning logs, project decisions, Korean and English resume pages, and portfolio wiki entries in Notion. AskOosu can sync, retrieve, and summarize that information through the Notion API and RAG search.',
     techStack: [
       'Notion API',
       'GitHub API',

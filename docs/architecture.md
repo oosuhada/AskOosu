@@ -32,17 +32,19 @@ The Groq path uses `@ai-sdk/groq` with a local in-process key pool. `GROQ_API_KE
 
 ## Stage C: Notion and RAG
 
-Notion is now treated as the source candidate for portfolio facts. The app can fetch shared Notion pages and databases, chunk their text, rank the chunks against the visitor's question, and inject the retrieved context into the system prompt.
+Notion is now treated as the source candidate for portfolio facts. The app can fetch Notion pages, legacy databases, and current data sources, chunk their text, rank the chunks against the visitor's question, and inject the retrieved context into the system prompt.
 
 Current behavior:
 
 1. If `NOTION_API_KEY` is absent, AskOosu falls back to static profile/project chunks.
-2. If `NOTION_API_KEY` is present, it reads `ASKOOSU_NOTION_PAGE_IDS` and `ASKOOSU_NOTION_DATABASE_IDS`.
+2. If `NOTION_API_KEY` is present, it reads `ASKOOSU_NOTION_PAGE_IDS`, `ASKOOSU_NOTION_DATABASE_IDS`, and `ASKOOSU_NOTION_DATA_SOURCE_IDS`.
 3. If page ids are not configured, it attempts the current source page from `oosuProfile.notionSourceUrl`.
 4. Retrieval defaults to lexical ranking for speed and no extra cost.
-5. `ASKOOSU_RAG_RETRIEVAL=embedding` enables OpenAI embedding ranking with `text-embedding-3-small`, falling back to lexical ranking if embeddings fail.
+5. `ASKOOSU_RAG_RETRIEVAL=embedding` or `hybrid` enables OpenAI embedding ranking with `text-embedding-3-small`, falling back to lexical ranking if embeddings fail.
+6. `ASKOOSU_RAG_STORE=memory` keeps chunks in the running Node process. `ASKOOSU_RAG_STORE=postgres` stores chunks and vectors in Postgres using pgvector.
+7. `/api/rag/sync` refreshes the index, and `/api/rag/search` exposes an admin-protected search/debug API.
 
-The next Mac mini/home-server step is to move chunk and embedding storage out of process memory into a persistent store such as Postgres + pgvector, then sync Notion on a schedule.
+The next Mac mini/home-server step is to run `/api/rag/sync` on a schedule, keep the Postgres + pgvector index warm, and eventually add incremental sync based on Notion edit timestamps.
 
 ## Suggested Notion Shape
 
@@ -79,8 +81,19 @@ GROQ_KEY_QUOTA_COOLDOWN_MS=3600000
 
 # Optional Notion RAG
 NOTION_API_KEY=your_notion_integration_secret
+NOTION_VERSION=2026-03-11
 ASKOOSU_NOTION_PAGE_IDS=401a342869018248a3f881a3e5fbef07
 ASKOOSU_NOTION_DATABASE_IDS=
+ASKOOSU_NOTION_DATA_SOURCE_IDS=
+ASKOOSU_RAG_STORE=memory
+ASKOOSU_RAG_AUTO_SYNC=true
 ASKOOSU_RAG_RETRIEVAL=lexical
 ASKOOSU_RAG_TOP_K=5
+ASKOOSU_RAG_ADMIN_TOKEN=local_or_server_secret
+ASKOOSU_EMBEDDING_MODEL=text-embedding-3-small
+ASKOOSU_EMBEDDING_DIMENSIONS=1536
+# ASKOOSU_RAG_STORE=postgres
+# DATABASE_URL=postgres://user:password@host:5432/database
 ```
+
+For legacy Notion database query support, keep `NOTION_VERSION=2022-06-28` with `ASKOOSU_NOTION_DATABASE_IDS`. For the current Notion API shape, prefer `NOTION_VERSION=2026-03-11` with `ASKOOSU_NOTION_DATA_SOURCE_IDS`.

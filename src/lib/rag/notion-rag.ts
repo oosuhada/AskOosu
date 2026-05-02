@@ -1,42 +1,35 @@
-import { embed, embedMany, cosineSimilarity } from 'ai';
-import { openai } from '@ai-sdk/openai';
-import { oosuProfile, oosuProjects } from '@/lib/oosu-profile';
+import { cosineSimilarity } from 'ai';
+import {
+  getRagAutoSyncDefault,
+  getRagCacheTtlMs,
+  getRagTopK,
+  shouldUseEmbeddings,
+} from './config';
+import { embedRagChunks, embedRagQuery } from './embeddings';
+import { fetchNotionChunks } from './notion-source';
+import { getStaticChunks } from './static-source';
+import { getRagStore } from './stores';
+import { dedupeChunks, normalizeText, tokenize } from './text';
+import type {
+  RagChunk,
+  RagSearchResult,
+  RagStatus,
+  RagSyncSummary,
+} from './types';
 
-type RagChunk = {
-  id: string;
-  title: string;
-  source: 'notion' | 'static';
-  text: string;
-  url?: string;
+type SearchOptions = {
+  limit?: number;
 };
 
-type CachedChunks = {
-  expiresAt: number;
-  chunks: RagChunk[];
+type SyncOptions = {
+  force?: boolean;
 };
 
-type CachedEmbeddings = {
-  signature: string;
-  embeddings: number[][];
-};
-
-const NOTION_API_BASE_URL = 'https://api.notion.com/v1';
-const NOTION_VERSION = '2022-06-28';
-const DEFAULT_TOP_K = 5;
-const DEFAULT_CACHE_TTL_MS = 1000 * 60 * 10;
-const DEFAULT_EMBEDDING_MODEL = 'text-embedding-3-small';
-
-let chunkCache: CachedChunks | null = null;
-let embeddingCache: CachedEmbeddings | null = null;
+let syncInFlight: Promise<RagSyncSummary> | null = null;
 
 export async function retrievePortfolioContext(query: string) {
-  const chunks = await getPortfolioChunks();
-  const topK = getPositiveIntEnv('ASKOOSU_RAG_TOP_K', DEFAULT_TOP_K);
-  const rankedChunks = await rankChunks({ query, chunks });
-
-  const selectedChunks = rankedChunks
-    .filter((chunk) => chunk.score > 0)
-    .slice(0, topK);
+  const topK = getRagTopK();
+  const selectedChunks = await searchPortfolioKnowledge(query, { limit: topK });
 
   if (selectedChunks.length === 0) return '';
 
@@ -52,262 +45,146 @@ export async function retrievePortfolioContext(query: string) {
   return `## Retrieved Portfolio Context\nUse this retrieved context when it is relevant to the visitor's question. If it conflicts with older static prompt details, prefer this context.\n\n${body}`;
 }
 
-async function getPortfolioChunks() {
-  const now = Date.now();
-
-  if (chunkCache && chunkCache.expiresAt > now) {
-    return chunkCache.chunks;
-  }
-
-  const staticChunks = getStaticChunks();
-  const notionChunks = await fetchNotionChunks();
-  const chunks = dedupeChunks([...notionChunks, ...staticChunks]);
-
-  chunkCache = {
-    chunks,
-    expiresAt: now + getPositiveIntEnv('ASKOOSU_RAG_CACHE_TTL_MS', DEFAULT_CACHE_TTL_MS),
-  };
-  embeddingCache = null;
-
-  return chunks;
-}
-
-async function fetchNotionChunks() {
-  const apiKey = process.env.NOTION_API_KEY;
-
-  if (!apiKey) return [];
-
-  const pageInputs = getListEnv('ASKOOSU_NOTION_PAGE_IDS');
-  const databaseInputs = getListEnv('ASKOOSU_NOTION_DATABASE_IDS');
-  const pageIds =
-    pageInputs.length > 0
-      ? pageInputs.map(parseNotionId).filter(Boolean)
-      : [parseNotionId(oosuProfile.notionSourceUrl)].filter(Boolean);
-  const databaseIds = databaseInputs.map(parseNotionId).filter(Boolean);
+export async function searchPortfolioKnowledge(
+  query: string,
+  options: SearchOptions = {}
+) {
+  const limit = options.limit ?? getRagTopK();
+  const trimmedQuery = normalizeText(query);
+  if (!trimmedQuery) return [];
 
   try {
-    const [pageChunks, databaseChunks] = await Promise.all([
-      Promise.all(pageIds.map((pageId) => fetchPageChunks({ apiKey, pageId }))),
-      Promise.all(
-        databaseIds.map((databaseId) =>
-          fetchDatabaseChunks({ apiKey, databaseId })
-        )
-      ),
-    ]);
+    const store = await getRagStore();
+    await ensureRagIndexReady();
 
-    return [...pageChunks.flat(), ...databaseChunks.flat()];
-  } catch (error) {
-    console.warn('Notion RAG fetch failed. Falling back to static profile context.', error);
-    return [];
-  }
-}
-
-async function fetchPageChunks({
-  apiKey,
-  pageId,
-}: {
-  apiKey: string;
-  pageId: string;
-}) {
-  const page = await notionRequest<NotionPage>({
-    apiKey,
-    path: `/pages/${pageId}`,
-  });
-  const title = getPageTitle(page) || 'Notion page';
-  const blocks = await fetchBlockTexts({ apiKey, blockId: pageId });
-  const text = normalizeText([getPagePropertiesText(page), ...blocks].join('\n'));
-
-  return chunkLongText({
-    id: `notion-page-${pageId}`,
-    title,
-    source: 'notion',
-    text,
-    url: page.url,
-  });
-}
-
-async function fetchDatabaseChunks({
-  apiKey,
-  databaseId,
-}: {
-  apiKey: string;
-  databaseId: string;
-}) {
-  const pages = await fetchDatabasePages({ apiKey, databaseId });
-  const chunks = await Promise.all(
-    pages.map(async (page) => {
-      const title = getPageTitle(page) || 'Notion database item';
-      const blocks = await fetchBlockTexts({ apiKey, blockId: page.id });
-      const text = normalizeText([getPagePropertiesText(page), ...blocks].join('\n'));
-
-      return chunkLongText({
-        id: `notion-page-${page.id}`,
-        title,
-        source: 'notion',
-        text,
-        url: page.url,
+    if (shouldUseEmbeddings()) {
+      const vectorResults = await searchWithEmbeddings({
+        query: trimmedQuery,
+        limit,
       });
-    })
-  );
 
-  return chunks.flat();
-}
-
-async function fetchDatabasePages({
-  apiKey,
-  databaseId,
-}: {
-  apiKey: string;
-  databaseId: string;
-}) {
-  const pages: NotionPage[] = [];
-  let startCursor: string | undefined;
-
-  do {
-    const response = await notionRequest<{
-      results: NotionPage[];
-      has_more: boolean;
-      next_cursor?: string;
-    }>({
-      apiKey,
-      path: `/databases/${databaseId}/query`,
-      init: {
-        method: 'POST',
-        body: JSON.stringify(startCursor ? { start_cursor: startCursor } : {}),
-      },
-    });
-
-    pages.push(...response.results);
-    startCursor = response.has_more ? response.next_cursor : undefined;
-  } while (startCursor);
-
-  return pages;
-}
-
-async function fetchBlockTexts({
-  apiKey,
-  blockId,
-  depth = 0,
-}: {
-  apiKey: string;
-  blockId: string;
-  depth?: number;
-}) {
-  if (depth > 3) return [];
-
-  const texts: string[] = [];
-  let startCursor: string | undefined;
-
-  do {
-    const searchParams = new URLSearchParams({ page_size: '100' });
-    if (startCursor) searchParams.set('start_cursor', startCursor);
-
-    const response = await notionRequest<{
-      results: NotionBlock[];
-      has_more: boolean;
-      next_cursor?: string;
-    }>({
-      apiKey,
-      path: `/blocks/${blockId}/children?${searchParams.toString()}`,
-    });
-
-    for (const block of response.results) {
-      const blockText = getBlockText(block);
-      if (blockText) texts.push(blockText);
-
-      if (block.has_children) {
-        texts.push(
-          ...(await fetchBlockTexts({
-            apiKey,
-            blockId: block.id,
-            depth: depth + 1,
-          }))
-        );
-      }
+      if (vectorResults.length > 0) return vectorResults;
     }
 
-    startCursor = response.has_more ? response.next_cursor : undefined;
-  } while (startCursor);
-
-  return texts;
-}
-
-async function notionRequest<T>({
-  apiKey,
-  path,
-  init,
-}: {
-  apiKey: string;
-  path: string;
-  init?: RequestInit;
-}) {
-  const response = await fetch(`${NOTION_API_BASE_URL}${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      'Notion-Version': NOTION_VERSION,
-      'Content-Type': 'application/json',
-      ...init?.headers,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`Notion API request failed: ${response.status}`);
+    const chunks = await store.getAll();
+    if (chunks.length > 0) {
+      return rankChunksLexically({ query: trimmedQuery, chunks }).slice(
+        0,
+        limit
+      );
+    }
+  } catch (error) {
+    console.warn(
+      'RAG search failed. Falling back to static profile context.',
+      error
+    );
   }
 
-  return (await response.json()) as T;
+  return rankChunksLexically({
+    query: trimmedQuery,
+    chunks: getStaticChunks(),
+  }).slice(0, limit);
 }
 
-async function rankChunks({
-  query,
-  chunks,
-}: {
-  query: string;
-  chunks: RagChunk[];
-}) {
+export async function syncPortfolioKnowledgeBase(
+  options: SyncOptions = {}
+): Promise<RagSyncSummary> {
+  if (syncInFlight && !options.force) return syncInFlight;
+
+  syncInFlight = syncPortfolioKnowledgeBaseOnce().finally(() => {
+    syncInFlight = null;
+  });
+
+  return syncInFlight;
+}
+
+export async function getPortfolioKnowledgeStatus(): Promise<RagStatus> {
+  const store = await getRagStore();
+  return store.getStatus();
+}
+
+async function syncPortfolioKnowledgeBaseOnce(): Promise<RagSyncSummary> {
+  const startedAt = Date.now();
+  const warnings: string[] = [];
+  const store = await getRagStore();
+  const sourceChunks = dedupeChunks([
+    ...(await fetchNotionChunks()),
+    ...getStaticChunks(),
+  ]);
+  let chunks = sourceChunks;
+  let skippedEmbeddings = !shouldUseEmbeddings();
+
   if (shouldUseEmbeddings()) {
     try {
-      return await rankChunksWithEmbeddings({ query, chunks });
+      chunks = await embedRagChunks(sourceChunks);
+      skippedEmbeddings = false;
     } catch (error) {
-      console.warn('Embedding RAG ranking failed. Falling back to lexical ranking.', error);
+      skippedEmbeddings = true;
+      warnings.push(
+        'Embedding generation failed; stored chunks without vectors.'
+      );
+      console.warn('Embedding generation failed during RAG sync.', error);
     }
   }
 
-  return rankChunksLexically({ query, chunks });
+  await store.replaceAll(chunks);
+
+  return {
+    store: store.kind,
+    sourceChunkCount: sourceChunks.length,
+    storedChunkCount: chunks.length,
+    embeddedChunkCount: chunks.filter((chunk) => chunk.embedding).length,
+    skippedEmbeddings,
+    syncedAt: new Date().toISOString(),
+    durationMs: Date.now() - startedAt,
+    warnings,
+  };
 }
 
-async function rankChunksWithEmbeddings({
+async function ensureRagIndexReady() {
+  const store = await getRagStore();
+  const status = await store.getStatus();
+  const shouldAutoSync = getRagAutoSyncDefault(store.kind);
+
+  if (!shouldAutoSync) return;
+
+  const isEmpty = status.chunkCount === 0;
+  const isStale = status.lastSyncedAt
+    ? Date.now() - new Date(status.lastSyncedAt).getTime() > getRagCacheTtlMs()
+    : true;
+
+  if (isEmpty || isStale) {
+    await syncPortfolioKnowledgeBase();
+  }
+}
+
+async function searchWithEmbeddings({
   query,
-  chunks,
+  limit,
 }: {
   query: string;
-  chunks: RagChunk[];
+  limit: number;
 }) {
-  const signature = chunks.map((chunk) => `${chunk.id}:${chunk.text.length}`).join('|');
-  const model = openai.embedding(
-    process.env.ASKOOSU_EMBEDDING_MODEL ?? DEFAULT_EMBEDDING_MODEL
-  );
+  const store = await getRagStore();
+  const queryEmbedding = await embedRagQuery(query);
 
-  if (!embeddingCache || embeddingCache.signature !== signature) {
-    const { embeddings } = await embedMany({
-      model,
-      values: chunks.map((chunk) => `${chunk.title}\n${chunk.text}`),
-    });
-
-    embeddingCache = { signature, embeddings };
+  if (store.searchByEmbedding) {
+    return store.searchByEmbedding(queryEmbedding, limit);
   }
 
-  const { embedding: queryEmbedding } = await embed({
-    model,
-    value: query,
-  });
+  const chunks = await store.getAll();
+  const chunksWithEmbeddings = chunks.filter(
+    (chunk): chunk is RagChunk & { embedding: number[] } =>
+      Array.isArray(chunk.embedding)
+  );
 
-  return chunks
-    .map((chunk, index) => ({
+  return chunksWithEmbeddings
+    .map((chunk) => ({
       chunk,
-      score: cosineSimilarity(queryEmbedding, embeddingCache!.embeddings[index]),
+      score: cosineSimilarity(queryEmbedding, chunk.embedding),
     }))
-    .sort((a, b) => b.score - a.score);
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
 }
 
 function rankChunksLexically({
@@ -316,9 +193,9 @@ function rankChunksLexically({
 }: {
   query: string;
   chunks: RagChunk[];
-}) {
+}): RagSearchResult[] {
   const normalizedQuery = normalizeText(query).toLowerCase();
-  const queryTokens = tokenize(normalizedQuery);
+  const queryTokens = expandQueryTokens(tokenize(normalizedQuery));
 
   return chunks
     .map((chunk) => {
@@ -327,250 +204,36 @@ function rankChunksLexically({
         if (haystack.includes(token)) return score + 1;
         return score;
       }, 0);
-      const phraseScore = normalizedQuery && haystack.includes(normalizedQuery) ? 3 : 0;
+      const phraseScore =
+        normalizedQuery && haystack.includes(normalizedQuery) ? 3 : 0;
 
       return {
         chunk,
         score: tokenScore + phraseScore,
       };
     })
+    .filter((result) => result.score > 0)
     .sort((a, b) => b.score - a.score);
 }
 
-function shouldUseEmbeddings() {
-  return (
-    process.env.ASKOOSU_RAG_RETRIEVAL === 'embedding' &&
-    Boolean(process.env.OPENAI_API_KEY)
+function expandQueryTokens(tokens: string[]) {
+  const aliases: Record<string, string[]> = {
+    개발자: ['developer'],
+    경력: ['career', 'experience'],
+    노션: ['notion'],
+    대표: ['best', 'featured'],
+    연락: ['contact', 'email'],
+    위키: ['wiki'],
+    이력서: ['resume', 'cv'],
+    자기소개: ['profile', 'about'],
+    기술: ['tech', 'stack', 'skills'],
+    스택: ['tech', 'stack'],
+    포트폴리오: ['portfolio'],
+    프로젝트: ['project', 'projects'],
+    협업: ['collaboration', 'contact'],
+  };
+
+  return Array.from(
+    new Set(tokens.flatMap((token) => [token, ...(aliases[token] ?? [])]))
   );
 }
-
-function getStaticChunks(): RagChunk[] {
-  const profileText = normalizeText(`
-Name: ${oosuProfile.name}
-Title: ${oosuProfile.title}
-Location: ${oosuProfile.location}
-Residence: ${oosuProfile.residence}
-Education: ${oosuProfile.education}
-GitHub: ${oosuProfile.github}
-LinkedIn: ${oosuProfile.linkedin}
-Instagram: ${oosuProfile.instagram}
-AskOosu Wiki: ${oosuProfile.notionWikiUrl}
-Notion source: ${oosuProfile.notionSourceUrl}
-  `);
-
-  return [
-    {
-      id: 'static-profile',
-      title: 'Oosu profile',
-      source: 'static',
-      text: profileText,
-      url: oosuProfile.notionSourceUrl,
-    },
-    ...oosuProjects.map((project) => ({
-      id: `static-project-${project.title}`,
-      title: project.title,
-      source: 'static' as const,
-      text: normalizeText(
-        [
-          project.category,
-          project.date,
-          project.description,
-          project.techStack.join(', '),
-          project.links.map((link) => `${link.name}: ${link.url}`).join('\n'),
-        ].join('\n')
-      ),
-      url: project.links[0]?.url,
-    })),
-  ];
-}
-
-function chunkLongText(chunk: RagChunk) {
-  if (!chunk.text) return [];
-
-  const maxLength = getPositiveIntEnv('ASKOOSU_RAG_CHUNK_SIZE', 1200);
-  const overlap = 180;
-
-  if (chunk.text.length <= maxLength) return [chunk];
-
-  const chunks: RagChunk[] = [];
-  let start = 0;
-  let index = 1;
-
-  while (start < chunk.text.length) {
-    const end = Math.min(start + maxLength, chunk.text.length);
-    chunks.push({
-      ...chunk,
-      id: `${chunk.id}-${index}`,
-      title: `${chunk.title} ${index}`,
-      text: chunk.text.slice(start, end),
-    });
-
-    if (end === chunk.text.length) break;
-    start = Math.max(0, end - overlap);
-    index += 1;
-  }
-
-  return chunks;
-}
-
-function dedupeChunks(chunks: RagChunk[]) {
-  const seen = new Set<string>();
-
-  return chunks.filter((chunk) => {
-    const key = `${chunk.title}:${chunk.text.slice(0, 80)}`;
-    if (seen.has(key) || !chunk.text.trim()) return false;
-    seen.add(key);
-    return true;
-  });
-}
-
-function getBlockText(block: NotionBlock) {
-  const value = block[block.type];
-
-  if (!value || typeof value !== 'object') return '';
-
-  if ('rich_text' in value && Array.isArray(value.rich_text)) {
-    const text = richTextToPlainText(value.rich_text);
-    return block.type.startsWith('heading') ? `# ${text}` : text;
-  }
-
-  if (block.type === 'child_page' && 'title' in value) {
-    return `Page: ${String(value.title)}`;
-  }
-
-  return '';
-}
-
-function getPageTitle(page: NotionPage) {
-  for (const property of Object.values(page.properties ?? {})) {
-    if (property.type === 'title') {
-      return richTextToPlainText((property as { title: NotionRichText[] }).title);
-    }
-  }
-
-  return '';
-}
-
-function getPagePropertiesText(page: NotionPage) {
-  return Object.entries(page.properties ?? {})
-    .map(([name, property]) => {
-      const value = getPropertyText(property);
-      return value ? `${name}: ${value}` : '';
-    })
-    .filter(Boolean)
-    .join('\n');
-}
-
-function getPropertyText(property: NotionProperty) {
-  switch (property.type) {
-    case 'title':
-      return richTextToPlainText((property as { title: NotionRichText[] }).title);
-    case 'rich_text':
-      return richTextToPlainText(
-        (property as { rich_text: NotionRichText[] }).rich_text
-      );
-    case 'select':
-      return (property as { select?: { name: string } | null }).select?.name ?? '';
-    case 'multi_select':
-      return (property as { multi_select: Array<{ name: string }> }).multi_select
-        .map((item) => item.name)
-        .join(', ');
-    case 'status':
-      return (property as { status?: { name: string } | null }).status?.name ?? '';
-    case 'date':
-      return [
-        (property as { date?: { start?: string; end?: string } | null }).date
-          ?.start,
-        (property as { date?: { start?: string; end?: string } | null }).date
-          ?.end,
-      ]
-        .filter(Boolean)
-        .join(' - ');
-    case 'url':
-      return (property as { url?: string | null }).url ?? '';
-    case 'email':
-      return (property as { email?: string | null }).email ?? '';
-    case 'phone_number':
-      return (property as { phone_number?: string | null }).phone_number ?? '';
-    case 'number':
-      return (property as { number?: number | null }).number == null
-        ? ''
-        : String((property as { number?: number | null }).number);
-    case 'checkbox':
-      return (property as { checkbox: boolean }).checkbox ? 'true' : 'false';
-    default:
-      return '';
-  }
-}
-
-function richTextToPlainText(richText: NotionRichText[]) {
-  return richText.map((item) => item.plain_text).join('');
-}
-
-function parseNotionId(input: string) {
-  const normalizedInput = input.trim();
-  const matches = normalizedInput.match(/[0-9a-fA-F]{32}/g);
-  const id = matches?.at(-1) ?? normalizedInput.replaceAll('-', '');
-
-  if (!/^[0-9a-fA-F]{32}$/.test(id)) return '';
-
-  return id.replace(
-    /^(.{8})(.{4})(.{4})(.{4})(.{12})$/,
-    '$1-$2-$3-$4-$5'
-  );
-}
-
-function getListEnv(name: string) {
-  return (process.env[name] ?? '')
-    .split(',')
-    .map((value) => value.trim())
-    .filter(Boolean);
-}
-
-function getPositiveIntEnv(name: string, fallback: number) {
-  const rawValue = process.env[name];
-  const parsedValue = rawValue ? Number.parseInt(rawValue, 10) : Number.NaN;
-
-  return Number.isFinite(parsedValue) && parsedValue > 0
-    ? parsedValue
-    : fallback;
-}
-
-function normalizeText(value: string) {
-  return value.replace(/\s+/g, ' ').trim();
-}
-
-function tokenize(value: string) {
-  return Array.from(new Set(value.match(/[a-z0-9가-힣]{2,}/gi) ?? []));
-}
-
-type NotionRichText = {
-  plain_text: string;
-};
-
-type NotionPage = {
-  id: string;
-  url?: string;
-  properties?: Record<string, NotionProperty>;
-};
-
-type NotionBlock = {
-  id: string;
-  type: string;
-  has_children?: boolean;
-  [key: string]: unknown;
-};
-
-type NotionProperty =
-  | { type: 'title'; title: NotionRichText[] }
-  | { type: 'rich_text'; rich_text: NotionRichText[] }
-  | { type: 'select'; select?: { name: string } | null }
-  | { type: 'multi_select'; multi_select: Array<{ name: string }> }
-  | { type: 'status'; status?: { name: string } | null }
-  | { type: 'date'; date?: { start?: string; end?: string } | null }
-  | { type: 'url'; url?: string | null }
-  | { type: 'email'; email?: string | null }
-  | { type: 'phone_number'; phone_number?: string | null }
-  | { type: 'number'; number?: number | null }
-  | { type: 'checkbox'; checkbox: boolean }
-  | { type: string };

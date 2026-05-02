@@ -13,6 +13,7 @@ Instead of a static portfolio, this project uses a chat-first interface: visitor
 - Visitor-facing concept question: `포트폴리오를 왜 대화형으로 만들었어요?`
 - Project cards for AskOosu 2026, Instagram Clone, Sticks & Stones Homepage, Portfoli-Oh! 2025, Pylingo, Javalingo, Onjung, Nomad Market, and Notion Knowledge Wiki
 - Notion RAG retrieval path for Korean/English resume pages, study notes, GitHub activity summaries, and wiki-based answers
+- RAG sync/search API routes with memory storage by default and optional Postgres + pgvector storage
 - Optional Grok/xAI provider mode through AI SDK 6, using xAI Responses by default
 - Optional Groq provider mode with multiple API keys, lazy cooldown, and automatic reactivation after failures or quota/rate-limit errors
 
@@ -56,11 +57,33 @@ GROQ_KEY_QUOTA_COOLDOWN_MS=3600000
 
 # Optional Notion RAG
 NOTION_API_KEY=your_notion_integration_secret
+NOTION_VERSION=2026-03-11
 ASKOOSU_NOTION_PAGE_IDS=401a342869018248a3f881a3e5fbef07
 ASKOOSU_NOTION_DATABASE_IDS=
+ASKOOSU_NOTION_DATA_SOURCE_IDS=
+ASKOOSU_RAG_STORE=memory
+ASKOOSU_RAG_AUTO_SYNC=true
 ASKOOSU_RAG_RETRIEVAL=lexical
+ASKOOSU_RAG_TOP_K=5
+ASKOOSU_RAG_ADMIN_TOKEN=local_or_server_secret
+
+# Optional embedding/vector search
+# ASKOOSU_RAG_RETRIEVAL=embedding
+ASKOOSU_EMBEDDING_MODEL=text-embedding-3-small
+ASKOOSU_EMBEDDING_DIMENSIONS=1536
+
+# Optional pgvector storage
+# ASKOOSU_RAG_STORE=postgres
+# DATABASE_URL=postgres://user:password@host:5432/database
 ```
 
 Open http://localhost:3000.
+
+RAG admin routes:
+
+- `GET /api/rag/sync`: returns current RAG store status
+- `POST /api/rag/sync`: fetches Notion/static chunks, optionally embeds them, and stores the index
+- `GET /api/rag/search?query=...`: searches the synced knowledge base
+- `POST /api/rag/search`: searches with JSON body `{ "query": "...", "limit": 5 }`
 
 See [docs/architecture.md](docs/architecture.md) for the frontend, Grok streaming, and Notion/RAG upgrade plan.
