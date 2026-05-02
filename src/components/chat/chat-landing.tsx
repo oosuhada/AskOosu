@@ -1,8 +1,18 @@
 'use client';
 
+import { OosuAvatar } from '@/components/oosu-avatar';
+import {
+  oosuProfile,
+  suggestedQuestions as profileQuestions,
+} from '@/lib/oosu-profile';
 import { motion } from 'framer-motion';
-import { ArrowUpRight, Award, Code, Mail, MessageSquare } from 'lucide-react';
-import Link from 'next/link';
+import {
+  BriefcaseBusiness,
+  Layers,
+  LibraryBig,
+  Mail,
+  MessageSquareText,
+} from 'lucide-react';
 import React from 'react';
 
 interface ChatLandingProps {
@@ -15,22 +25,26 @@ const ChatLanding: React.FC<ChatLandingProps> = ({
   hasReachedLimit = false,
 }) => {
   // Suggested questions that the user can click on
-  const suggestedQuestions = [
+  const landingQuestions = [
     {
-      icon: <MessageSquare className="h-4 w-4" />,
-      text: 'Who are you?',
+      icon: <BriefcaseBusiness className="h-4 w-4" />,
+      text: profileQuestions.Portfolio,
     },
     {
-      icon: <Code className="h-4 w-4" />,
-      text: 'What projects have you worked on?',
+      icon: <MessageSquareText className="h-4 w-4" />,
+      text: profileQuestions.Me,
     },
     {
-      icon: <Award className="h-4 w-4" />,
-      text: 'What are your skills?',
+      icon: <Layers className="h-4 w-4" />,
+      text: profileQuestions.Skills,
     },
     {
       icon: <Mail className="h-4 w-4" />,
-      text: 'How can I contact you?',
+      text: profileQuestions.Contact,
+    },
+    {
+      icon: <LibraryBig className="h-4 w-4" />,
+      text: profileQuestions.Wiki,
     },
   ];
 
@@ -64,7 +78,40 @@ const ChatLanding: React.FC<ChatLandingProps> = ({
       animate="visible"
       variants={containerVariants}
     >
-     
+      <motion.div variants={itemVariants} className="mb-8 text-center">
+        <OosuAvatar
+          animate={!hasReachedLimit}
+          interval={180}
+          className="mx-auto mb-5 h-28 w-28"
+        />
+        <p className="text-sm font-medium text-neutral-500">
+          {oosuProfile.name}
+        </p>
+        <h2 className="mt-1 text-2xl font-semibold text-neutral-950 md:text-4xl">
+          AskOosu
+        </h2>
+        <p className="mt-2 text-sm text-neutral-500 md:text-base">
+          {oosuProfile.title}
+        </p>
+      </motion.div>
+
+      <motion.div
+        variants={containerVariants}
+        className="grid w-full max-w-2xl grid-cols-1 gap-2 sm:grid-cols-2"
+      >
+        {landingQuestions.map((question) => (
+          <motion.button
+            key={question.text}
+            variants={itemVariants}
+            onClick={() => !hasReachedLimit && submitQuery(question.text)}
+            disabled={hasReachedLimit}
+            className="flex min-h-14 items-center gap-3 rounded-lg border border-neutral-200 bg-white/70 px-4 py-3 text-left text-sm font-medium text-neutral-800 shadow-none backdrop-blur-lg transition-colors hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <span className="text-neutral-500">{question.icon}</span>
+            <span>{question.text}</span>
+          </motion.button>
+        ))}
+      </motion.div>
     </motion.div>
   );
 };
