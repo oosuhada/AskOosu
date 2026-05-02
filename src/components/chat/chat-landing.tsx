@@ -1,9 +1,9 @@
 'use client';
 
 import { OosuAvatar } from '@/components/oosu-avatar';
-import { getLocalizedQuestions } from '@/lib/i18n';
+import { useSuggestedQuestions } from '@/hooks/use-suggested-questions';
 import { oosuProfile } from '@/lib/oosu-profile';
-import { useDisplayPreferences } from '@/lib/use-display-preferences';
+import type { SuggestedQuestionId } from '@/lib/suggested-questions';
 import { motion } from 'framer-motion';
 import {
   BriefcaseBusiness,
@@ -11,7 +11,9 @@ import {
   LibraryBig,
   Mail,
   MessageSquareText,
+  Sparkles,
 } from 'lucide-react';
+import type { ReactNode } from 'react';
 
 interface ChatLandingProps {
   submitQuery: (query: string) => void;
@@ -22,31 +24,7 @@ const ChatLanding: React.FC<ChatLandingProps> = ({
   submitQuery,
   hasReachedLimit = false,
 }) => {
-  const { language } = useDisplayPreferences();
-  const questions = getLocalizedQuestions(language);
-
-  const landingQuestions = [
-    {
-      icon: <BriefcaseBusiness className="h-4 w-4" />,
-      text: questions.Portfolio,
-    },
-    {
-      icon: <MessageSquareText className="h-4 w-4" />,
-      text: questions.Me,
-    },
-    {
-      icon: <Layers className="h-4 w-4" />,
-      text: questions.Skills,
-    },
-    {
-      icon: <Mail className="h-4 w-4" />,
-      text: questions.Contact,
-    },
-    {
-      icon: <LibraryBig className="h-4 w-4" />,
-      text: questions.Process,
-    },
-  ];
+  const { visibleQuestions, markQuestionAsked } = useSuggestedQuestions(5);
 
   // Animation variants for staggered animation
   const containerVariants = {
@@ -87,7 +65,7 @@ const ChatLanding: React.FC<ChatLandingProps> = ({
         <p className="text-sm font-medium text-neutral-500">
           {oosuProfile.name}
         </p>
-        <h2 className="mt-1 text-2xl font-semibold text-neutral-950 md:text-4xl">
+        <h2 className="text-foreground mt-1 text-2xl font-semibold md:text-4xl">
           AskOosu
         </h2>
         <p className="mt-2 text-sm text-neutral-500 md:text-base">
@@ -99,15 +77,21 @@ const ChatLanding: React.FC<ChatLandingProps> = ({
         variants={containerVariants}
         className="grid w-full max-w-2xl grid-cols-1 gap-2 sm:grid-cols-2"
       >
-        {landingQuestions.map((question) => (
+        {visibleQuestions.map((question) => (
           <motion.button
-            key={question.text}
+            key={question.id}
             variants={itemVariants}
-            onClick={() => !hasReachedLimit && submitQuery(question.text)}
+            onClick={() => {
+              if (hasReachedLimit) return;
+              markQuestionAsked(question.id);
+              submitQuery(question.text);
+            }}
             disabled={hasReachedLimit}
             className="border-border bg-background/70 text-foreground hover:bg-accent flex min-h-14 items-center gap-3 rounded-lg border px-4 py-3 text-left text-sm font-medium shadow-none backdrop-blur-lg transition-colors disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <span className="text-muted-foreground">{question.icon}</span>
+            <span className="text-muted-foreground">
+              {questionIcons[question.id]}
+            </span>
             <span>{question.text}</span>
           </motion.button>
         ))}
@@ -117,3 +101,14 @@ const ChatLanding: React.FC<ChatLandingProps> = ({
 };
 
 export default ChatLanding;
+
+const questionIcons: Record<SuggestedQuestionId, ReactNode> = {
+  bestProjects: <BriefcaseBusiness className="h-4 w-4" />,
+  developerType: <MessageSquareText className="h-4 w-4" />,
+  nowBuilding: <Sparkles className="h-4 w-4" />,
+  techStack: <Layers className="h-4 w-4" />,
+  aiUsage: <LibraryBig className="h-4 w-4" />,
+  fullstackAiGrowth: <Layers className="h-4 w-4" />,
+  conversationalPortfolio: <LibraryBig className="h-4 w-4" />,
+  contactCollab: <Mail className="h-4 w-4" />,
+};

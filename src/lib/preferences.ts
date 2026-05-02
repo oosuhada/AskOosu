@@ -1,13 +1,14 @@
 export type DisplayTheme = 'light' | 'dark';
 export type DisplayLanguage = 'ko' | 'en';
 
-type PreferenceTokens = {
+export type PreferenceTokens = {
   theme?: DisplayTheme;
   lang?: DisplayLanguage;
 };
 
+export const DISPLAY_PREFERENCES_STORAGE_KEY = 'ask-oosu-display-preferences';
+
 const themeTokens = new Set(['dark', 'light']);
-const languageTokens = new Set(['ko', 'kr', 'korean', 'en', 'eng', 'english']);
 
 export function normalizeTheme(
   value?: string | null
@@ -84,4 +85,33 @@ export function detectSystemTheme(): DisplayTheme {
   return window.matchMedia('(prefers-color-scheme: dark)').matches
     ? 'dark'
     : 'light';
+}
+
+export function readStoredDisplayPreferences(): PreferenceTokens {
+  if (typeof window === 'undefined') return {};
+
+  try {
+    const rawValue = window.localStorage.getItem(
+      DISPLAY_PREFERENCES_STORAGE_KEY
+    );
+    if (!rawValue) return {};
+
+    const parsedValue = JSON.parse(rawValue) as PreferenceTokens;
+
+    return {
+      theme: normalizeTheme(parsedValue.theme),
+      lang: normalizeLanguage(parsedValue.lang),
+    };
+  } catch {
+    return {};
+  }
+}
+
+export function writeStoredDisplayPreferences(preferences: PreferenceTokens) {
+  if (typeof window === 'undefined') return;
+
+  window.localStorage.setItem(
+    DISPLAY_PREFERENCES_STORAGE_KEY,
+    JSON.stringify(preferences)
+  );
 }
