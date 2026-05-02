@@ -65,10 +65,10 @@ export default function ToolRenderer({
               </div>
             );
 
-          case 'getSports':
+          case 'getInternship':
             return (
               <div key={toolCallId} className="w-full rounded-lg">
-                <Sports />
+                <InternshipCard />
               </div>
             );
 
@@ -79,10 +79,10 @@ export default function ToolRenderer({
               </div>
             );
 
-          case 'getInternship':
+          case 'getSports':
             return (
               <div key={toolCallId} className="w-full rounded-lg">
-                <InternshipCard />
+                <Sports />
               </div>
             );
 
