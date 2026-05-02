@@ -1,13 +1,11 @@
-
-import { tool } from "ai";
-import { z } from "zod";
-
+import { tool } from 'ai';
+import { z } from 'zod';
 
 export const getSports = tool({
   description:
-    "This tool will show some photos of Raphael doing sports",
+    'Shows Oosu visual portfolio archive and reusable profile/project images.',
   parameters: z.object({}),
   execute: async () => {
-    return "Here my best pictures of me doing sports!";
+    return 'Here is Oosu visual archive: animated hover profile frames, 2025 portfolio captures, Flutter app previews, and placeholders for the latest web project screenshots.';
   },
 });
