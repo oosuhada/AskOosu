@@ -1,21 +1,18 @@
 'use client';
 
+import { OosuAvatar } from '@/components/oosu-avatar';
+import { oosuProfile } from '@/lib/oosu-profile';
 import { motion } from 'framer-motion';
-import Image from 'next/image';
 import React from 'react';
 
 export function Presentation() {
   // Personal information
   const profile = {
-    name: 'Raphael Giraud',
-    age: '21 years old',
-    location: 'Paris, France',
-    // Add a newline character after the emoji
+    name: oosuProfile.name,
+    role: oosuProfile.title,
+    location: oosuProfile.location,
     description:
-      "Hey 👋\nI'm Raph also known as Toukoum. I'm a developer specializing in AI at 42 Paris. I'm working at LightOn AI in Paris. I'm passionate about AI, tech, Entrepreneurship and SaaS tech.",
-    src: '/profil-raph.png',
-    fallbackSrc:
-      'https://images.unsplash.com/photo-1610216705422-caa3fcb6d158?q=80&w=3560&auto=format&fit=crop&ixlib=rb-4.0.3',
+      'AskOosu is my 2026 portfolio interface: a conversational portfolio connected to an AI backend. I build fullstack experiences where frontend interaction, backend logic, and LLM responses work together as one product.',
   };
 
   // Animation variants for text elements
@@ -47,31 +44,25 @@ export function Presentation() {
       <div className="grid grid-cols-1 items-center gap-10 md:grid-cols-2">
         {/* Image section */}
         <div className="relative mx-auto aspect-square w-full max-w-sm">
-          <div className="relative h-full w-full overflow-hidden rounded-2xl">
+          <div className="relative h-full w-full overflow-hidden rounded-2xl bg-neutral-100">
             <motion.div
               initial={{ scale: 0.92, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.8, ease: [0.19, 1, 0.22, 1] }}
               className="h-full w-full"
             >
-              <Image
-                src={profile.src}
-                alt={profile.name}
-                width={500}
-                height={500}
-                className="h-full w-full object-cover object-center"
-                onError={(e) => {
-                  // Fallback to placeholder if image fails to load
-                  const target = e.target as HTMLImageElement;
-                  target.src = profile.fallbackSrc;
-                }}
+              <OosuAvatar
+                variant="hover"
+                animate
+                className="h-full w-full"
+                interval={160}
               />
             </motion.div>
           </div>
         </div>
 
         {/* Text content section */}
-        <div className="flex flex-col space-y">
+        <div className="space-y flex flex-col">
           <motion.div
             initial="hidden"
             animate="visible"
@@ -81,7 +72,7 @@ export function Presentation() {
               {profile.name}
             </h1>
             <div className="mt-1 flex flex-col gap-1 md:flex-row md:items-center md:gap-4">
-              <p className="text-muted-foreground">{profile.age}</p>
+              <p className="text-muted-foreground">{profile.role}</p>
               <div className="bg-border hidden h-1.5 w-1.5 rounded-full md:block" />
               <p className="text-muted-foreground">{profile.location}</p>
             </div>
@@ -103,7 +94,7 @@ export function Presentation() {
             transition={{ delay: 0.6, duration: 0.5 }}
             className="mt-4 flex flex-wrap gap-2"
           >
-            {['AI', 'Developer', '42 Paris', 'Sport', 'SaaS Builder'].map(
+            {['AI', 'Fullstack', 'Frontend', 'Notion Wiki', 'Portfolio'].map(
               (tag) => (
                 <span
                   key={tag}
