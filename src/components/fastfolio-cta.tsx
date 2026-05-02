@@ -1,9 +1,9 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { ChevronRight } from 'lucide-react';
-import Image from 'next/image';
+import { BookOpen, ChevronRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { oosuProfile } from '@/lib/oosu-profile';
 
 export function FastfolioCTA() {
   const [isMobile, setIsMobile] = useState(false);
@@ -12,21 +12,23 @@ export function FastfolioCTA() {
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
-    
+
     checkMobile();
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
   const handleClick = () => {
-    window.open('https://fastfol.io?utm_source=toukoum_portfolio&utm_medium=floating_cta&utm_campaign=portfolio_conversion', '_blank');
+    window.open(oosuProfile.notionWikiUrl, '_blank');
   };
 
-  const position = 'fixed top-8 left-6 z-51';
+  const position = isMobile
+    ? 'fixed right-4 bottom-4 z-51'
+    : 'fixed top-8 left-6 z-51';
 
   return (
     <motion.button
-      className={`${position} cursor-pointer group flex items-center gap-2 rounded-full bg-transparent backdrop-blur-2xl  px-4 py-2.5 border hover:shadow-xl transition-all duration-300`}
+      className={`${position} group flex cursor-pointer items-center gap-2 rounded-full border bg-transparent px-4 py-2.5 backdrop-blur-2xl transition-all duration-300 hover:shadow-xl`}
       onClick={handleClick}
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}
@@ -34,20 +36,14 @@ export function FastfolioCTA() {
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
     >
-      <Image 
-        src="/fastfolio-logo.png" 
-        alt="Fastfolio" 
-        width={24} 
-        height={24}
-        className="object-contain"
-      />
-      <span className="text-sm font-medium text-foreground hidden sm:inline">
-        Build your AI portfolio
+      <BookOpen className="h-5 w-5" />
+      <span className="text-foreground hidden text-sm font-medium sm:inline">
+        Open AskOosu Wiki
       </span>
-      <span className="text-sm font-medium text-foreground sm:hidden">
-        Build yours
+      <span className="text-foreground text-sm font-medium sm:hidden">
+        Wiki
       </span>
-      <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform hidden sm:block" />
+      <ChevronRight className="hidden h-4 w-4 transition-transform group-hover:translate-x-0.5 sm:block" />
     </motion.button>
   );
 }
