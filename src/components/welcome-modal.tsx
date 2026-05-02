@@ -9,6 +9,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { getUiText } from '@/lib/i18n';
+import { buildChatHref } from '@/lib/navigation';
+import { useDisplayPreferences } from '@/lib/use-display-preferences';
 import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
 import { useState } from 'react';
@@ -20,24 +23,28 @@ interface WelcomeModalProps {
 
 export default function WelcomeModal({ trigger }: WelcomeModalProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const { language, theme } = useDisplayPreferences();
+  const text = getUiText(language);
 
   // Default trigger is the logo
   const defaultTrigger = (
     <Button
       variant="ghost"
-      className="h-auto w-auto cursor-pointer rounded-2xl bg-white/30 p-3 shadow-lg backdrop-blur-lg hover:bg-white/60 focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+      className="bg-background/30 hover:bg-background/60 h-auto w-auto cursor-pointer rounded-2xl p-3 shadow-lg backdrop-blur-lg focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
       onClick={() => setIsOpen(true)}
     >
       <span className="text-sm font-semibold">AskOosu</span>
-      <span className="sr-only">About AskOosu</span>
+      <span className="sr-only">{text.welcomeTitle}</span>
     </Button>
   );
 
-  // Fonction qui utilise window.location pour forcer un rechargement complet
   const handleContactMe = () => {
     setIsOpen(false);
-    window.location.href =
-      '/chat?query=%EC%97%B0%EB%9D%BD%ED%95%98%EB%A0%A4%EB%A9%B4%20%EC%96%B4%EB%94%94%EB%A1%9C%20%ED%95%98%EB%A9%B4%20%EB%8F%BC%3F';
+    window.location.href = buildChatHref({
+      query: text.contactQuery,
+      language,
+      theme,
+    });
   };
 
   return (
@@ -61,10 +68,10 @@ export default function WelcomeModal({ trigger }: WelcomeModalProps) {
             <DialogHeader className="relative flex flex-row items-start justify-between px-8 pt-8 pb-6">
               <div>
                 <DialogTitle className="flex items-center gap-2 text-4xl font-bold tracking-tight">
-                  Welcome to AskOosu
+                  {text.welcomeTitle}
                 </DialogTitle>
                 <DialogDescription className="mt-2 text-base">
-                  Oosu Jang's AI-connected portfolio
+                  {text.welcomeDescription}
                 </DialogDescription>
               </div>
               <Button
@@ -74,7 +81,7 @@ export default function WelcomeModal({ trigger }: WelcomeModalProps) {
                 onClick={() => setIsOpen(false)}
               >
                 <X className="h-6 w-6" />
-                <span className="sr-only">Close</span>
+                <span className="sr-only">{text.close}</span>
               </Button>
             </DialogHeader>
 
@@ -85,27 +92,20 @@ export default function WelcomeModal({ trigger }: WelcomeModalProps) {
                 {/* What section */}
                 <div className="space-y-3">
                   <h3 className="text-primary flex items-center gap-2 text-xl font-semibold">
-                    What is AskOosu?
+                    {text.whatIsAskOosu}
                   </h3>
                   <p className="text-accent-foreground text-base leading-relaxed">
-                    AskOosu is Oosu Jang's 2026 portfolio rebuilt as a
-                    conversational AI interface. Instead of browsing static
-                    pages only, visitors can ask questions and get guided
-                    answers about projects, skills, contact links, and future
-                    wiki knowledge.
+                    {text.whatIsAskOosuBody}
                   </p>
                 </div>
 
                 {/* Why section */}
                 <div className="space-y-3">
                   <h3 className="text-primary flex items-center gap-2 text-xl font-semibold">
-                    Why this format?
+                    {text.whyThisFormat}
                   </h3>
                   <p className="text-accent-foreground text-base leading-relaxed">
-                    The 2025 portfolio, Portfoli-Oh!, proved Oosu's frontend and
-                    interaction design foundation. AskOosu takes that next:
-                    frontend, backend, AI, and a future Notion wiki working
-                    together as one portfolio system.
+                    {text.whyThisFormatBody}
                   </p>
                 </div>
               </section>
@@ -118,17 +118,15 @@ export default function WelcomeModal({ trigger }: WelcomeModalProps) {
                 className="h-auto rounded-full px-4 py-3"
                 size="sm"
               >
-                Start Chatting
+                {text.startChatting}
               </Button>
               <div
                 className="mt-6 flex cursor-pointer flex-wrap gap-1 text-center text-sm"
                 onClick={handleContactMe}
               >
-                <p className="text-muted-foreground">
-                  If you love it, please share it! Feedback is always welcome.
-                </p>
+                <p className="text-muted-foreground">{text.feedback}</p>
                 <div className="flex cursor-pointer items-center text-blue-500 hover:underline">
-                  Contact me.
+                  {text.contactMe}
                 </div>
               </div>
             </div>

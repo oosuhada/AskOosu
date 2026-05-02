@@ -3,21 +3,26 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ExternalLink, FileText } from 'lucide-react';
+import { getUiText } from '@/lib/i18n';
 import { oosuProfile } from '@/lib/oosu-profile';
+import { useDisplayPreferences } from '@/lib/use-display-preferences';
 
 export function Resume() {
+  const { language } = useDisplayPreferences();
+  const text = getUiText(language);
+
   // Resume details
   const resumeDetails = {
-    title: "Oosu Jang's Resume",
+    title: text.resumeTitle,
     description: oosuProfile.title,
-    lastUpdated: 'Notion links will be connected later',
+    lastUpdated: text.resumeUpdated,
     versions: [
       {
-        label: 'Korean resume',
+        label: text.resumeKorean,
         url: oosuProfile.resumeKoUrl,
       },
       {
-        label: 'English resume',
+        label: text.resumeEnglish,
         url: oosuProfile.resumeEnUrl,
       },
     ],
@@ -31,7 +36,7 @@ export function Resume() {
   return (
     <div className="mx-auto w-full py-8 font-sans">
       <motion.div
-        className="group relative overflow-hidden rounded-xl bg-accent p-0 transition-all duration-300"
+        className="group bg-accent relative overflow-hidden rounded-xl p-0 transition-all duration-300"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.0, ease: 'easeOut' }}
@@ -43,14 +48,14 @@ export function Resume() {
             <div>
               <div className="flex items-center gap-2">
                 <FileText className="h-5 w-5" />
-                <h3 className="text-lg font-medium text-foreground">
+                <h3 className="text-foreground text-lg font-medium">
                   {resumeDetails.title}
                 </h3>
               </div>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-muted-foreground text-sm">
                 {resumeDetails.description}
               </p>
-              <div className="mt-1 flex text-xs text-muted-foreground">
+              <div className="text-muted-foreground mt-1 flex text-xs">
                 <span>{resumeDetails.lastUpdated}</span>
               </div>
             </div>
@@ -62,7 +67,7 @@ export function Resume() {
                   type="button"
                   onClick={() => openResume(version.url)}
                   disabled={!version.url}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-800 transition-colors hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="border-border bg-background text-foreground hover:bg-accent inline-flex items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {version.label}
                   <ExternalLink className="h-4 w-4" />

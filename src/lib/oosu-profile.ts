@@ -22,11 +22,11 @@ export const oosuProfile = {
 } as const;
 
 export const suggestedQuestions = {
-  Portfolio: '포트폴리오 작업 보여줘',
-  Me: 'Oosu Jang은 어떤 사람인가요?',
+  Portfolio: '대표 프로젝트 보여줘',
+  Me: 'Oosu Jang은 어떤 개발자인가요?',
   Skills: '기술 스택과 강점을 알려줘',
-  Wiki: '나중에 Notion wiki를 어떻게 연결할 수 있어?',
-  Contact: '연락하려면 어디로 하면 돼?',
+  Process: '이 포트폴리오는 어떻게 업데이트되나요?',
+  Contact: '연락처를 알려줘',
 } as const;
 
 export const oosuProjects = [

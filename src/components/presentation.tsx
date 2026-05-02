@@ -1,18 +1,22 @@
 'use client';
 
 import { OosuAvatar } from '@/components/oosu-avatar';
+import { getUiText } from '@/lib/i18n';
 import { oosuProfile } from '@/lib/oosu-profile';
+import { useDisplayPreferences } from '@/lib/use-display-preferences';
 import { motion } from 'framer-motion';
 import React from 'react';
 
 export function Presentation() {
+  const { language } = useDisplayPreferences();
+  const text = getUiText(language);
+
   // Personal information
   const profile = {
     name: oosuProfile.name,
     role: oosuProfile.title,
     location: oosuProfile.location,
-    description:
-      'AskOosu is my 2026 portfolio interface: a conversational portfolio connected to an AI backend. I build fullstack experiences where frontend interaction, backend logic, and LLM responses work together as one product.',
+    description: text.presentationDescription,
   };
 
   // Animation variants for text elements

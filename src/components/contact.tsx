@@ -3,9 +3,14 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
+import { getUiText } from '@/lib/i18n';
 import { oosuProfile } from '@/lib/oosu-profile';
+import { useDisplayPreferences } from '@/lib/use-display-preferences';
 
 export function Contact() {
+  const { language } = useDisplayPreferences();
+  const text = getUiText(language);
+
   // Contact information
   const contactInfo = {
     name: oosuProfile.name,
@@ -38,11 +43,9 @@ export function Contact() {
         {/* Header Section */}
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-foreground text-3xl font-semibold md:text-4xl">
-            Contacts
+            {text.contactTitle}
           </h2>
-          <span className="mt-2 sm:mt-0">
-            {contactInfo.handle}
-          </span>
+          <span className="mt-2 sm:mt-0">{contactInfo.handle}</span>
         </div>
 
         {/* Email Section */}

@@ -1,8 +1,11 @@
+import { PreferenceSync } from '@/components/preference-sync';
+import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
 import { cn } from '@/lib/utils';
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import { Suspense } from 'react';
 import './globals.css';
 
 // Load Inter font for non-Apple devices
@@ -10,6 +13,46 @@ const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
 });
+
+const preferenceInitScript = `
+(() => {
+  const themeTokens = new Set(['dark', 'light']);
+  const languageMap = new Map([
+    ['ko', 'ko'],
+    ['kr', 'ko'],
+    ['korean', 'ko'],
+    ['en', 'en'],
+    ['eng', 'en'],
+    ['english', 'en'],
+  ]);
+
+  const tokensFromPath = window.location.pathname
+    .split('/')
+    .filter(Boolean)
+    .flatMap((token) => decodeURIComponent(token).toLowerCase().split(/[\\s_-]+/));
+
+  const search = new URLSearchParams(window.location.search);
+  const tokens = [
+    search.get('theme'),
+    search.get('mode'),
+    search.get('lang'),
+    search.get('locale'),
+    ...tokensFromPath,
+  ].filter(Boolean).map((token) => String(token).toLowerCase());
+
+  const explicitTheme = tokens.find((token) => themeTokens.has(token));
+  const explicitLanguage = tokens.map((token) => languageMap.get(token)).find(Boolean);
+  const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  const browserLanguage = (navigator.languages || [navigator.language])
+    .some((language) => language.toLowerCase().startsWith('ko')) ? 'ko' : 'en';
+  const theme = explicitTheme || systemTheme;
+  const language = explicitLanguage || browserLanguage;
+
+  document.documentElement.classList.toggle('dark', theme === 'dark');
+  document.documentElement.dataset.theme = theme;
+  document.documentElement.lang = language;
+})();
+`;
 
 export const metadata: Metadata = {
   title: 'AskOosu | Oosu Jang',
@@ -76,6 +119,7 @@ export default function RootLayout({
           content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
         />
         <link rel="icon" href="/favicon.svg" sizes="any" />
+        <script dangerouslySetInnerHTML={{ __html: preferenceInitScript }} />
       </head>
       <body
         className={cn(
@@ -83,9 +127,19 @@ export default function RootLayout({
           inter.variable
         )}
       >
-        <main className="flex min-h-screen flex-col">{children}</main>
-        <Toaster />
-        <Analytics />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <Suspense fallback={null}>
+            <PreferenceSync />
+          </Suspense>
+          <main className="flex min-h-screen flex-col">{children}</main>
+          <Toaster />
+          <Analytics />
+        </ThemeProvider>
       </body>
     </html>
   );

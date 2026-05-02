@@ -3,9 +3,14 @@
 import { motion } from 'framer-motion';
 import { BriefcaseBusiness, Code2, Globe } from 'lucide-react';
 import { OosuAvatar } from '@/components/oosu-avatar';
+import { getUiText } from '@/lib/i18n';
 import { oosuProfile } from '@/lib/oosu-profile';
+import { useDisplayPreferences } from '@/lib/use-display-preferences';
 
 const InternshipCard = () => {
+  const { language } = useDisplayPreferences();
+  const text = getUiText(language);
+
   const openMail = () => {
     window.open(`mailto:${oosuProfile.email}`, '_blank');
   };
@@ -124,7 +129,7 @@ const InternshipCard = () => {
           onClick={openMail}
           className="cursor-pointer rounded-full bg-black px-6 py-3 font-semibold text-white transition-colors duration-300 hover:bg-zinc-800"
         >
-          Contact me
+          {text.contactMe}
         </button>
       </div>
     </motion.div>
