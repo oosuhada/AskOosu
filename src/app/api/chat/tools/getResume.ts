@@ -3,9 +3,9 @@ import { z } from 'zod';
 
 export const getResume = tool({
   description:
-    'This tool show my resume.',
+    'Show Oosu Jang resume placeholders for future Korean and English Notion resume links.',
   parameters: z.object({}),
   execute: async () => {
-    return "You can download my resume by clicking on the link above.";
+    return 'Resume links are not connected yet. Korean and English Notion resume slots are prepared for a later update.';
   },
 });

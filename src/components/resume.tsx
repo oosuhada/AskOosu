@@ -2,36 +2,36 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowDownToLine, Download, Eye, File } from 'lucide-react';
-import Image from 'next/image';
+import { ExternalLink, FileText } from 'lucide-react';
+import { oosuProfile } from '@/lib/oosu-profile';
 
 export function Resume() {
   // Resume details
   const resumeDetails = {
-    title: "Raphael's Resume",
-    description: 'Full Stack Developer • AI Specialist',
-    fileType: 'PDF',
-    lastUpdated: 'March 2025',
-    fileSize: '0.5 MB',
-    previewImageSrc: '/resume_giraud_preview.png',
-    downloadUrl: '/resume_giraud.pdf',
+    title: "Oosu Jang's Resume",
+    description: oosuProfile.title,
+    lastUpdated: 'Notion links will be connected later',
+    versions: [
+      {
+        label: 'Korean resume',
+        url: oosuProfile.resumeKoUrl,
+      },
+      {
+        label: 'English resume',
+        url: oosuProfile.resumeEnUrl,
+      },
+    ],
   };
 
-  const handleDownload = () => {
-    // Create a link element
-    const link = document.createElement('a');
-    link.href = resumeDetails.downloadUrl;
-    link.download = resumeDetails.downloadUrl.split('/').pop() || 'resume.pdf';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const openResume = (url: string) => {
+    if (!url) return;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   return (
     <div className="mx-auto w-full py-8 font-sans">
       <motion.div
-        onClick={handleDownload}
-        className="group relative cursor-pointer overflow-hidden rounded-xl bg-accent p-0 transition-all duration-300"
+        className="group relative overflow-hidden rounded-xl bg-accent p-0 transition-all duration-300"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.0, ease: 'easeOut' }}
@@ -39,30 +39,36 @@ export function Resume() {
       >
         {/* Details area (bottom part) */}
         <div className="p-5">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h3 className="text-lg font-medium text-foreground">
-                {resumeDetails.title}
-              </h3>
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                <h3 className="text-lg font-medium text-foreground">
+                  {resumeDetails.title}
+                </h3>
+              </div>
               <p className="text-sm text-muted-foreground">
                 {resumeDetails.description}
               </p>
               <div className="mt-1 flex text-xs text-muted-foreground">
-                <span>{resumeDetails.fileType}</span>
-                <span className="mx-2">•</span>
-                <span>Updated {resumeDetails.lastUpdated}</span>
-                <span className="mx-2">•</span>
-                <span>{resumeDetails.fileSize}</span>
+                <span>{resumeDetails.lastUpdated}</span>
               </div>
             </div>
 
-            {/* Download indicator */}
-            <motion.div
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-black text-primary-foreground group-hover:bg-black/80"
-              initial={{ scale: 1 }}
-            >
-              <Download className="h-5 w-5" />
-            </motion.div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              {resumeDetails.versions.map((version) => (
+                <button
+                  key={version.label}
+                  type="button"
+                  onClick={() => openResume(version.url)}
+                  disabled={!version.url}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-800 transition-colors hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {version.label}
+                  <ExternalLink className="h-4 w-4" />
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </motion.div>

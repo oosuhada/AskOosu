@@ -1,27 +1,23 @@
 import { tool } from 'ai';
 import { z } from 'zod';
+import { oosuProfile } from '@/lib/oosu-profile';
 
 export const getInternship = tool({
   description:
-    "Gives a summary of what kind of internship I'm looking for, plus my contact info and how to reach me. Use this tool when the user asks about my internship search or how to contact me for opportunities.",
+    'Gives a summary of Oosu Jang career direction, desired roles, and contact links. Use this when the user asks about opportunities, career fit, or hiring context.',
   parameters: z.object({}),
   execute: async () => {
-    return `Here’s what I’m looking for 👇
+    return `Oosu Jang is positioning as an AI-connected Fullstack Developer.
 
-- 📅 **Duration**: 6-month internship starting **September 2025**
-- 🌍 **Location**: Preferably **San Francisco** or anywhere in the **United States**
-- 🧑‍💻 **Focus**: AI development, full-stack web apps, SaaS, agentic workflows
-- 🛠️ **Stack**: Python, React/Next.js, Tailwind CSS, TypeScript, GPT, RAG, etc.
-- 💼 **Visa**: I’m based in Paris 🇫🇷 so I might need **J-1 sponsorship**
-- ✅ **What I bring**: Real experience with secure on-prem GPTs (Lighton), deepsearch engines, custom RAG tools, and hackathon wins like **ETH Oxford** & **Paris Blockchain Week**
-- 🔥 I move fast, learn faster, and I’m HUNGRYYYYY for big challenges
+- Desired roles: fullstack developer, AI application developer, and AI service planning/development.
+- Current focus: Spring Boot, React, backend/data processing, generative AI application development, and portfolio knowledge systems.
+- Differentiator: combines GfK Korea data consulting, Oosu Salon founder/operator experience, frontend renewal work, and AI coding tool practice.
+- Location: ${oosuProfile.residence}.
 
-📬 **Contact me** via:
-- Email: raphaelgiraud12@gmail.com
-- LinkedIn: [linkedin.com/in/raphael-giraud](https://www.linkedin.com/in/raphael-giraud-ai/)
-- GitHub: [github.com/raphaelgiraud](https://github.com/toukoum)
-
-Let's build cool shit together ✌️
-    `;
+Contact:
+- Email: ${oosuProfile.email}
+- GitHub: ${oosuProfile.github}
+- LinkedIn: ${oosuProfile.linkedin}
+- Instagram: ${oosuProfile.instagram}`;
   },
 });

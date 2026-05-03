@@ -1,24 +1,19 @@
 'use client';
 
-import Image from 'next/image';
+import { Github } from 'lucide-react';
+import { oosuProfile } from '@/lib/oosu-profile';
 
 export function PoweredByFastfolio() {
   return (
     <a
-      href="https://fastfol.io?utm_source=toukoum_portfolio&utm_medium=powered_by&utm_campaign=portfolio_conversion"
+      href={oosuProfile.github}
       target="_blank"
       rel="noopener noreferrer"
-      className="flex items-center justify-center gap-1.5 pb-4 md:pb-0 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+      className="flex items-center justify-center gap-1.5 pb-4 text-xs text-gray-500 transition-colors hover:text-gray-700 md:pb-0"
     >
-      <span>Powered by</span>
-      <Image 
-        src="/fastfolio-logo.png" 
-        alt="Fastfolio" 
-        width={16} 
-        height={16}
-        className="object-contain"
-      />
-      <span className="font-medium">Fastfolio</span>
+      <span>Built by</span>
+      <Github className="h-3.5 w-3.5" aria-hidden="true" />
+      <span className="font-medium">Oosu Jang</span>
     </a>
   );
 }

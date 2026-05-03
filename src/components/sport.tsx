@@ -6,47 +6,37 @@ import { Photos, PhotoItem } from './photos';
 const Sports = () => {
   const sportPhotos: PhotoItem[] = [
     {
-      src: '/podium.jpg',
-      alt: 'On the podium after a mountain bike race',
-      caption: 'Celebrating a podium finish 3rd at the famous Roc d\'Azur',
+      src: '/oosu-projects/portfoli-oh-2025.webp',
+      alt: 'Portfoli-Oh 2025 portfolio preview',
+      caption: 'Portfoli-Oh! 2025, the frontend bootcamp portfolio.',
     },
     {
-      src: '/levens.JPG',
-      alt: 'Racing in Levens',
-      caption: 'Competing in the mountain bike world cup in Levens with some clean conditions ahah',
+      src: '/oosu-projects/onjung.webp',
+      alt: 'Onjung Flutter app preview',
+      caption: 'Onjung, a Flutter app for life-event money records.',
     },
     {
-      src: '/marseille.JPG',
-      alt: 'Racing in Marseille',
-      caption: 'Pushing limits at the Marseille World cup',
+      src: '/oosu-projects/nomad-market.webp',
+      alt: 'Nomad Market Flutter app preview',
+      caption: 'Nomad Market, a cross-border marketplace app concept.',
     },
     {
-      src: '/transmo.JPG',
-      alt: 'Racing in the Transmaurienne',
-      caption: 'On the start line for the Transmaurienne Race in the french Alps',
+      src: '/oosu-avatar/hover-12.webp',
+      alt: 'Notion wiki placeholder avatar frame',
+      caption:
+        'Notion wiki and resume pages are planned as the next source layer.',
     },
-    {
-      src: '/ploeuc.jpg',
-      alt: 'Racing in the World Cup',
-      caption: 'French championship in Ploeuc',
-    },
-    {
-      src: '/gueret.jpg',
-      alt: 'Racing in the World Cup',
-      caption: 'World cup in Gueret',
-    }
   ];
 
   return (
     <div className="mx-auto w-full">
       <div className="mb-8">
         <h2 className="text-foreground text-3xl font-semibold md:text-4xl">
-          My Sporting Career
+          Project Visual Archive
         </h2>
-        <p className="mt-4 text-muted-foreground">
-          Before focusing on development, I competed at a high level in mountain biking, 
-          reaching Top 15 in the Junior World Cup and Top 10 in French Cup. Here are some highlights from my 
-          athletic journey.
+        <p className="text-muted-foreground mt-4">
+          This restored template section is kept as a reusable gallery for Oosu
+          project screenshots, app previews, and future Notion wiki visuals.
         </p>
       </div>
       <Photos photos={sportPhotos} />

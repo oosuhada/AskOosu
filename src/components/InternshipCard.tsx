@@ -1,44 +1,40 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { CalendarDays, Code2, Globe } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { BriefcaseBusiness, Code2, Globe } from 'lucide-react';
+import { OosuAvatar } from '@/components/oosu-avatar';
+import { oosuProfile } from '@/lib/oosu-profile';
 
 const InternshipCard = () => {
   const openMail = () => {
-    window.open('mailto:raphaelgiraud12@gmail.com', '_blank');
+    window.open(`mailto:${oosuProfile.email}`, '_blank');
   };
-  const router = useRouter();
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 40 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="bg-accent mx-auto mt-8 w-full max-w-4xl rounded-3xl px-6 py-8 font-sans sm:px-10 md:px-16 md:py-12"
+      className="bg-accent mx-auto mt-8 w-full max-w-4xl rounded-lg px-6 py-8 font-sans sm:px-10 md:px-16 md:py-12"
     >
-      {/* Header */}
       <div className="mb-6 flex flex-col items-center sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
-          {/* Avatar placeholder */}
-          <div className="bg-muted h-16 w-16 overflow-hidden rounded-full shadow-md">
-            <img
-              src="/avatar-raphael.jpg"
-              alt="Raphael's avatar"
-              className="h-full w-full object-cover"
-            />
-          </div>
+          <OosuAvatar
+            variant="hover"
+            animate
+            interval={180}
+            className="h-16 w-16 shadow-md"
+          />
           <div>
             <h2 className="text-foreground text-2xl font-semibold">
-              Raphael Giraud
+              {oosuProfile.name}
             </h2>
             <p className="text-muted-foreground text-sm">
-              Intership Application
+              AI-connected Fullstack Developer
             </p>
           </div>
         </div>
 
-        {/* Live badge */}
         <div className="mt-4 flex items-center gap-2 sm:mt-0">
           <span className="flex items-center gap-1 rounded-full border border-green-500 px-3 py-0.5 text-sm font-medium text-green-500">
             <span className="relative flex h-2 w-2">
@@ -50,14 +46,14 @@ const InternshipCard = () => {
         </div>
       </div>
 
-      {/* Internship Info */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         <div className="flex items-start gap-3">
-          <CalendarDays className="mt-1 h-5 w-5 text-blue-500" />
+          <BriefcaseBusiness className="mt-1 h-5 w-5 text-blue-500" />
           <div>
-            <p className="text-foreground text-sm font-medium">Duration</p>
+            <p className="text-foreground text-sm font-medium">Direction</p>
             <p className="text-muted-foreground text-sm">
-              6 months – starting September 2025 (fall 2025)
+              Fullstack developer, AI application developer, and AI service
+              planning.
             </p>
           </div>
         </div>
@@ -66,31 +62,30 @@ const InternshipCard = () => {
           <div>
             <p className="text-foreground text-sm font-medium">Location</p>
             <p className="text-muted-foreground text-sm">
-              Preferably San Francisco 🇺🇸
+              {oosuProfile.residence}, building from Seoul.
             </p>
           </div>
         </div>
 
-        {/* Tech stack */}
         <div className="flex items-start gap-3 sm:col-span-2">
           <Code2 className="mt-1 h-5 w-5 text-purple-500" />
           <div className="w-full">
             <p className="text-foreground text-sm font-medium">Tech stack</p>
             <div className="text-muted-foreground grid grid-cols-1 gap-y-1 text-sm sm:grid-cols-2">
               <ul className="decoration-none list-disc pl-4">
-                <li>Python, Next.js, TypeScript, Tailwind CSS</li>
-                <li>Vercel AI SDK, Supabase, Prisma</li>
-                <li>OpenAI, Mistral, Claude, Whisper</li>
-                <li>Prompt engineering, fine-tuning</li>
+                <li>Python, Java, TypeScript, Dart</li>
+                <li>React, HTML/CSS/JS, Flutter</li>
+                <li>Spring Boot, Node.js</li>
+                <li>PostgreSQL, MySQL</li>
               </ul>
               <ul className="list-disc pl-4">
-                <li>Weaviate, Pinecone, vector DBs</li>
-                <li>Hugging Face Transformers</li>
-                <li>Tool routing, calling, RAG</li>
-                <li>Hackathons + AI agent workflows</li>
+                <li>Claude Code, Gemini CLI, Codex</li>
+                <li>Vercel AI SDK and tool calling</li>
+                <li>Notion API knowledge source planned</li>
+                <li>Service planning and UX structure</li>
                 <li>
                   <a
-                    href="/chat?query=What%20are%20your%20skills%3F%20Give%20me%20a%20list%20of%20your%20soft%20and%20hard%20skills."
+                    href="/chat?query=%EA%B8%B0%EC%88%A0%20%EC%8A%A4%ED%83%9D%EA%B3%BC%20%EA%B0%95%EC%A0%90%EC%9D%84%20%EC%95%8C%EB%A0%A4%EC%A4%98"
                     className="cursor-pointer items-center text-blue-500 underline"
                   >
                     See more
@@ -108,24 +103,22 @@ const InternshipCard = () => {
           What I bring
         </p>
         <p className="text-foreground text-sm">
-          Real-world AI dev experience from Lighton (MCP, secure GPTs, RAG
-          pipelines). <br /> 3x hackathon wins (ETH Oxford, Paris Blockchain
-          Week, Colosseum Breakout on Solana). <br /> I ship fast, and love
-          building useful things that actually work.
+          Oosu connects data analysis, service operations, frontend execution,
+          and AI tooling into practical product work. GfK Korea consulting, Oosu
+          Salon founder/operator experience, and recent web/app projects give
+          the portfolio a business-to-implementation perspective.
         </p>
       </div>
 
-      {/* Goal */}
       <div className="mt-8">
         <p className="text-foreground mb-2 text-lg font-semibold">Goal</p>
         <p className="text-foreground text-sm">
-          Join a bold, innovative team building AI-powered tools that matter. I
-          want to improve fast, contribute hard, and leave a mark. I’m fast,
-          flexible, and HUNGRYYYYY 🔥
+          Grow as an AI service developer who can connect backend/data
+          processing, user experience, and business context into services that
+          solve real problems.
         </p>
       </div>
 
-      {/* Contact button */}
       <div className="mt-10 flex justify-center">
         <button
           onClick={openMail}

@@ -1,70 +1,39 @@
-![image](assets/readme-photo.png)
- 
-# World's first AI portfolio 🤖✨  
+# AskOosu
 
-**Static portfolios are dead.**  
-So I built [toukoum.fr](https://toukoum.fr).
+AskOosu is Oosu Jang's 2026 AI-connected portfolio.
 
-Instead of making you scroll endlessly, my portfolio adapts to *you*.  
-Ask a question — my AI avatar replies instantly.
+Instead of a static portfolio, this project uses a chat-first interface: visitors can ask natural language questions and receive guided answers about Oosu, projects, skills, contact links, resume placeholders, and the planned Notion wiki.
 
-## 👇 What can you ask?
+## Core Direction
 
-- 🧠 **Tech recruiter?** Ask about my stack & results  
-- 💻 **Dev?** Dive into my code & mindset  
-- 🧑‍🤝‍🧑 **Friend or family?** See what I’ve been working on  
+- AI-connected Fullstack Developer portfolio
+- LLM-style browser input as the main UI
+- Suggested question: `포트폴리오 작업 보여줘`
+- Project cards for AskOosu 2026, Instagram Clone, Sticks & Stones Homepage, Portfoli-Oh! 2025, Pylingo, Javalingo, Onjung, Nomad Market, and Notion Knowledge Wiki
+- Future Notion API integration for Korean/English resume pages, study notes, GitHub activity summaries, and wiki-based answers
 
----
+## Links
 
-This is not a portfolio.  
-It’s a **conversation tailored to your curiosity**.
+- GitHub: https://github.com/oosuhada
+- LinkedIn: https://www.linkedin.com/in/oosuhada/
+- Instagram: https://www.instagram.com/oosu.hada
+- AskOosu Wiki: https://www.notion.so/355a342869018181b578d73a791356af
+- Source Notion page: https://www.notion.so/401a342869018248a3f881a3e5fbef07
+- 2025 portfolio: https://oosuhada.github.io/portfoli-oh/
+- 2025 portfolio repository: https://github.com/oosuhada/portfoli-oh
 
-➡️ **Try it now:** [https://toukoum.fr](https://toukoum.fr)  
-*What will you ask?*
+## Run Locally
 
-## 🚀 How to run
+```bash
+pnpm install
+pnpm dev
+```
 
-Want to run this project locally? Here's what you need:
+Create `.env.local` with:
 
-### Prerequisites
-- **Node.js** (v18 or higher)
-- **pnpm** package manager
-- **OpenAI API token** (for AI chat functionality)
-- **GitHub token** (for GitHub integration features)
+```env
+OPENAI_API_KEY=your_openai_api_key_here
+GITHUB_TOKEN=your_github_token_here
+```
 
-### Setup
-1. **Clone the repository**
-   ```bash
-   git clone <your-repo-url>
-   cd portfolio
-   ```
-
-2. **Install dependencies**
-   ```bash
-   pnpm install
-   ```
-
-3. **Environment variables**
-   Create a `.env` file in the root directory:
-   ```env
-   OPENAI_API_KEY=your_openai_api_key_here
-   GITHUB_TOKEN=your_github_token_here
-   ```
-
-4. **Run the development server**
-   ```bash
-   pnpm dev
-   ```
-
-5. **Open your browser**
-   Navigate to `http://localhost:3000`
-
-### Getting your **tokens**
-- **OpenAI API Key**: Get it from [platform.openai.com](https://platform.openai.com/api-keys)
-- **GitHub Token**: Generate one at [github.com/settings/tokens](https://github.com/settings/personal-access-tokens) with repo access
-
-
-
-#### 🔖 Tags
-
-`#AIPortfolio` `#InnovationInTech` `#DigitalResume` `#JobSearch` `#TechInnovation` `#WebDevelopment` `#FutureTech`
+Open http://localhost:3000.

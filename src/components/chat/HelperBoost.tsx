@@ -1,6 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
+import { suggestedQuestions } from '@/lib/oosu-profile';
 import {
   Tooltip,
   TooltipContent,
@@ -17,13 +18,13 @@ import {
   CircleEllipsis,
   CodeIcon,
   GraduationCapIcon,
-  Laugh,
   Layers,
+  LibraryBig,
   MailIcon,
-  PartyPopper,
   Sparkles,
   UserRoundSearch,
   UserSearch,
+  MessageSquareText,
 } from 'lucide-react';
 import { useState } from 'react';
 import { Drawer } from 'vaul';
@@ -35,91 +36,95 @@ interface HelperBoostProps {
 }
 
 const questions = {
-  Me: 'Who are you? I want to know more about you.',
-  Projects: 'What are your projects? What are you working on right now?',
-  Skills: 'What are your skills? Give me a list of your soft and hard skills.',
-  Fun: "What the craziest thing you've ever done? (mb?) What are your hobbies? ",
-  Contact:
-    'How can I reach you? What kind of project would make you say "yes" immediately?',
+  Portfolio: suggestedQuestions.Portfolio,
+  Me: suggestedQuestions.Me,
+  Skills: suggestedQuestions.Skills,
+  Wiki: suggestedQuestions.Wiki,
+  Contact: suggestedQuestions.Contact,
 };
 
 const questionConfig = [
-  { key: 'Me', color: '#329696', icon: Laugh },
-  { key: 'Projects', color: '#3E9858', icon: BriefcaseBusiness },
-  { key: 'Skills', color: '#856ED9', icon: Layers },
-  { key: 'Fun', color: '#B95F9D', icon: PartyPopper },
-  { key: 'Contact', color: '#C19433', icon: UserRoundSearch },
+  {
+    key: 'Portfolio',
+    label: suggestedQuestions.Portfolio,
+    color: '#246BFE',
+    icon: BriefcaseBusiness,
+  },
+  { key: 'Me', label: 'Me', color: '#188B75', icon: MessageSquareText },
+  { key: 'Skills', label: 'Skills', color: '#856ED9', icon: Layers },
+  { key: 'Wiki', label: 'Wiki', color: '#A15C1F', icon: LibraryBig },
+  { key: 'Contact', label: 'Contact', color: '#C19433', icon: UserRoundSearch },
 ];
 
 // Helper drawer data
 const specialQuestions = [
-  'Mountain Bike you said?? Show me!',
-  'Who are you?',
-  'Can I see your resume?',
-  'What projects are you most proud of?',
-  'What are your skills?',
-  'How can I reach you?',
-  "What's the craziest thing you've ever done?",
+  suggestedQuestions.Portfolio,
+  '2025 포트폴리오와 2026 AskOosu의 차이를 보여줘',
+  '나중에 Notion wiki를 어떻게 연결할 수 있어?',
+  'Can you introduce Oosu in English?',
 ];
 
 const questionsByCategory = [
   {
     id: 'me',
-    name: 'Me',
+    name: 'About Oosu',
     icon: UserSearch,
     questions: [
-      'Who are you?',
-      'What are your passions?',
-      'How did you get started in tech?',
-      'Where do you see yourself in 5 years?',
+      suggestedQuestions.Me,
+      'Can you introduce Oosu in English?',
+      'Oosu가 만드는 서비스의 방향성을 알려줘',
+      '오수의 2026 포트폴리오 컨셉을 설명해줘',
     ],
   },
   {
     id: 'professional',
-    name: 'Professional',
+    name: 'Portfolio',
     icon: BriefcaseIcon,
     questions: [
-      'Can I see your resume?',
-      'What makes you a valuable team member?',
-      'Where are you working now?',
-      'Why should I hire you?',
-      "What's your educational background?",
+      suggestedQuestions.Portfolio,
+      '2025 포트폴리오와 2026 AskOosu의 차이를 보여줘',
+      '이력서 링크는 어디에 연결될 예정이야?',
+      'AskOosu 프로젝트의 백엔드와 AI 연결 구조를 설명해줘',
     ],
   },
   {
     id: 'projects',
     name: 'Projects',
     icon: CodeIcon,
-    questions: ['What projects are you most proud of?'],
+    questions: [
+      '현재 등록된 프로젝트를 보여줘',
+      'Portfoli-Oh! 2025 프로젝트 설명해줘',
+      'AskOosu 2026 프로젝트 설명해줘',
+    ],
   },
   {
     id: 'skills',
     name: 'Skills',
     icon: GraduationCapIcon,
     questions: [
-      'What are your skills?',
-      'How was your experience at École 42?',
+      suggestedQuestions.Skills,
+      'AI-connected Fullstack Developer라는 타이틀을 풀어서 설명해줘',
+      '프론트엔드와 AI를 어떻게 연결할 수 있어?',
     ],
   },
   {
-    id: 'fun',
-    name: 'Fun',
-    icon: PartyPopper,
+    id: 'wiki',
+    name: 'Wiki & Notion',
+    icon: LibraryBig,
     questions: [
-      'Mountain Bike you said?? Show me!',
-      "What's the craziest thing you've ever done?",
-      'Mac or PC?',
-      'What are you certain about that 90% get wrong?',
+      suggestedQuestions.Wiki,
+      'GitHub 공부 기록을 Notion으로 자동 관리하려면 어떻게 설계하면 돼?',
+      'Notion API를 포트폴리오 답변 지식으로 쓰는 구조를 알려줘',
     ],
   },
   {
     id: 'contact',
-    name: 'Contact & Future',
+    name: 'Contact',
     icon: MailIcon,
     questions: [
-      'How can I reach you?',
-      "What kind of project would make you say 'yes' immediately?",
-      'Where are you located?',
+      suggestedQuestions.Contact,
+      'GitHub 링크 알려줘',
+      'LinkedIn과 Instagram 링크 알려줘',
     ],
   },
 ];
@@ -206,21 +211,23 @@ export default function HelperBoost({
                 className="flex w-full flex-wrap gap-1 md:gap-3"
                 style={{ justifyContent: 'safe center' }}
               >
-                {questionConfig.map(({ key, color, icon: Icon }) => (
+                {questionConfig.map(({ key, label, color, icon: Icon }) => (
                   <Button
                     key={key}
                     onClick={() => !hasReachedLimit && handleQuestionClick(key)}
                     variant="outline"
-                    className={`h-auto min-w-[100px] flex-shrink-0 rounded-xl border px-4 py-3 shadow-none backdrop-blur-sm transition-none ${
-                      hasReachedLimit 
-                        ? 'cursor-not-allowed border-gray-200 bg-gray-100 opacity-50' 
+                    className={`h-auto min-w-[100px] flex-shrink-0 rounded-lg border px-4 py-3 shadow-none backdrop-blur-sm transition-none ${
+                      hasReachedLimit
+                        ? 'cursor-not-allowed border-gray-200 bg-gray-100 opacity-50'
                         : 'border-border hover:bg-border/30 cursor-pointer bg-white/80 active:scale-95'
                     }`}
                     disabled={hasReachedLimit}
                   >
                     <div className="flex items-center gap-3 text-gray-700">
                       <Icon size={18} strokeWidth={2} color={color} />
-                      <span className="text-sm font-medium">{key}</span>
+                      <span className="text-sm leading-snug font-medium">
+                        {label}
+                      </span>
                     </div>
                   </Button>
                 ))}
@@ -229,11 +236,14 @@ export default function HelperBoost({
                 <TooltipProvider>
                   <Tooltip delayDuration={0}>
                     <TooltipTrigger asChild>
-                      <Drawer.Trigger className="group relative flex flex-shrink-0 items-center justify-center" disabled={hasReachedLimit}>
+                      <Drawer.Trigger
+                        className="group relative flex flex-shrink-0 items-center justify-center"
+                        disabled={hasReachedLimit}
+                      >
                         <motion.div
-                          className={`flex h-auto items-center space-x-1 rounded-xl border px-4 py-3 text-sm backdrop-blur-sm transition-all duration-200 ${
-                            hasReachedLimit 
-                              ? 'cursor-not-allowed border-gray-200 bg-gray-100 opacity-50' 
+                          className={`flex h-auto items-center space-x-1 rounded-lg border px-4 py-3 text-sm backdrop-blur-sm transition-all duration-200 ${
+                            hasReachedLimit
+                              ? 'cursor-not-allowed border-gray-200 bg-gray-100 opacity-50'
                               : 'hover:bg-border/30 cursor-pointer border-neutral-200 bg-white/80 dark:border-neutral-800 dark:bg-neutral-900'
                           }`}
                           whileHover={!hasReachedLimit ? { scale: 1 } : {}}

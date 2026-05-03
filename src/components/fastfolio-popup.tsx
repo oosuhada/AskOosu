@@ -4,12 +4,12 @@ import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { BarChart3, Globe, MessageSquare, Sparkles } from 'lucide-react';
-import Image from 'next/image';
+import { BookOpen, Database, Github, MessageSquare } from 'lucide-react';
+import { OosuAvatar } from '@/components/oosu-avatar';
+import { oosuProfile } from '@/lib/oosu-profile';
 import { PoweredByFastfolio } from './powered-by-fastfolio';
 
 interface FastfolioPopupProps {
@@ -18,50 +18,39 @@ interface FastfolioPopupProps {
   hasReachedLimit?: boolean;
 }
 
-export function FastfolioPopup({ open, onOpenChange, hasReachedLimit = false }: FastfolioPopupProps) {
+export function FastfolioPopup({
+  open,
+  onOpenChange,
+  hasReachedLimit = false,
+}: FastfolioPopupProps) {
   const handleCTA = () => {
-    window.open(
-      'https://fastfol.io?utm_source=toukoum_portfolio&utm_medium=popup&utm_campaign=portfolio_conversion',
-      '_blank'
-    );
+    window.open(oosuProfile.notionWikiUrl, '_blank');
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="overflow-hidden border-none p-0 sm:max-w-[500px]">
-        <div className="relative">
-          <Image
-            src="/portfolio-preview.png"
-            alt="Fastfolio Preview"
-            width={500}
-            height={250}
-            className="h-[200px] w-full object-cover"
+        <div className="bg-accent flex h-[200px] items-center justify-center">
+          <OosuAvatar
+            variant="hover"
+            animate
+            interval={150}
+            className="h-32 w-32"
           />
-          {/*<Badge 
-            className="absolute top-4 right-4 bg-white/90 text-gray-900 backdrop-blur-sm"
-            variant="secondary"
-          >
-            Join 500+ developers
-          </Badge>*/}
         </div>
 
         <div className="space-y-8 p-6">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold">
               {hasReachedLimit ? (
-                <>You've reached your message limit</>
+                <>AskOosu is still being tuned</>
               ) : (
-                <>Build Your Own <span className="text-[#4c55fa]">AI Portfolio</span></>
+                <>
+                  AskOosu <span className="text-[#4c55fa]">Knowledge Wiki</span>
+                </>
               )}
             </DialogTitle>
-            {/*<DialogDescription className="text-muted-foreground">
-              {hasReachedLimit ? (
-                <>Create your own Fastfolio to continue chatting!</>
-              ) : (
-                <>Find your Jobs - More clients - Better Opportunities</>
-              )}
-            </DialogDescription>*/}
           </DialogHeader>
 
           <div className="space-y-6">
@@ -69,36 +58,35 @@ export function FastfolioPopup({ open, onOpenChange, hasReachedLimit = false }: 
               <MessageSquare className="mt-0.5 h-5 w-5 text-[#4c55fa]" />
               <div>
                 <p className="text-sm font-medium">
-                  Answers 24/7 in your voice
+                  Conversational portfolio Q&A
                 </p>
               </div>
             </div>
 
             <div className="flex items-start gap-3">
-              <Sparkles className="mt-0.5 h-5 w-5 text-[#4c55fa]" />
+              <Database className="mt-0.5 h-5 w-5 text-[#4c55fa]" />
               <div>
                 <p className="text-sm font-medium">
-                  GPT-5 powered conversations
+                  Notion wiki as the planned knowledge source
                 </p>
-                {/*<p className="text-xs text-muted-foreground">Engage visitors with intelligent AI responses</p>*/}
               </div>
             </div>
 
             <div className="flex items-start gap-3">
-              <Globe className="mt-0.5 h-5 w-5 text-[#4c55fa]" />
-              <div>
-                <p className="text-sm font-medium">Custom domain support</p>
-                {/*<p className="text-xs text-muted-foreground">Your portfolio, your brand</p>*/}
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <BarChart3 className="mt-0.5 h-5 w-5 text-[#4c55fa]" />
+              <Github className="mt-0.5 h-5 w-5 text-[#4c55fa]" />
               <div>
                 <p className="text-sm font-medium">
-                  Advanced analytics & insights
+                  GitHub project history connected to the portfolio
                 </p>
-                {/*<p className="text-xs text-muted-foreground">Track visitor engagement and conversions</p>*/}
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3">
+              <BookOpen className="mt-0.5 h-5 w-5 text-[#4c55fa]" />
+              <div>
+                <p className="text-sm font-medium">
+                  Korean and English resume pages can be added later
+                </p>
               </div>
             </div>
           </div>
@@ -108,7 +96,7 @@ export function FastfolioPopup({ open, onOpenChange, hasReachedLimit = false }: 
               onClick={handleCTA}
               className="flex-1 cursor-pointer border-none bg-[#4c55fa] hover:bg-[#4c55fa]/80"
             >
-              Create Your Portfolio
+              Open AskOosu Wiki
             </Button>
           </div>
 

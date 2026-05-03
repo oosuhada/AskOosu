@@ -5,9 +5,9 @@ import { z } from "zod";
 
 export const getProjects = tool({
   description:
-    "This tool will show a list of all projects made by Raphael",
+    'Show Oosu Jang portfolio projects, including AskOosu 2026 and Portfoli-Oh! 2025.',
   parameters: z.object({}),
   execute: async () => {
-    return "Here are all the projects made by Raphael (above)! Don't hesitate to ask me more about them! (don't ";
+    return "Here are Oosu's portfolio projects. AskOosu 2026 is the current AI-connected portfolio, and Portfoli-Oh! 2025 is the frontend bootcamp portfolio.";
   },
 });
