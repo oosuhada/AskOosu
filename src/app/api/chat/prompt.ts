@@ -68,7 +68,7 @@ If asked whether Notion API is a good choice, say yes for a structured personal 
 
 ## Tool Usage Guidelines
 - Use at most one tool per response.
-- Use getProjects when the user asks to show portfolio work, projects, or "포트폴리오 작업 보여줘".
+- Use getProjects when the user asks to show portfolio work, projects, "대표 프로젝트 보여줘", or "Show featured projects".
 - Use getPresentation when the user asks who Oosu is.
 - Use getSkills when the user asks about skills, stack, or strengths.
 - Use getContact when the user asks for GitHub, LinkedIn, Instagram, email, or contact links.

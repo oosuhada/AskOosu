@@ -1,10 +1,9 @@
 'use client';
 
 import { OosuAvatar } from '@/components/oosu-avatar';
-import {
-  oosuProfile,
-  suggestedQuestions as profileQuestions,
-} from '@/lib/oosu-profile';
+import { getLocalizedQuestions } from '@/lib/i18n';
+import { oosuProfile } from '@/lib/oosu-profile';
+import { useDisplayPreferences } from '@/lib/use-display-preferences';
 import { motion } from 'framer-motion';
 import {
   BriefcaseBusiness,
@@ -13,7 +12,6 @@ import {
   Mail,
   MessageSquareText,
 } from 'lucide-react';
-import React from 'react';
 
 interface ChatLandingProps {
   submitQuery: (query: string) => void;
@@ -24,27 +22,29 @@ const ChatLanding: React.FC<ChatLandingProps> = ({
   submitQuery,
   hasReachedLimit = false,
 }) => {
-  // Suggested questions that the user can click on
+  const { language } = useDisplayPreferences();
+  const questions = getLocalizedQuestions(language);
+
   const landingQuestions = [
     {
       icon: <BriefcaseBusiness className="h-4 w-4" />,
-      text: profileQuestions.Portfolio,
+      text: questions.Portfolio,
     },
     {
       icon: <MessageSquareText className="h-4 w-4" />,
-      text: profileQuestions.Me,
+      text: questions.Me,
     },
     {
       icon: <Layers className="h-4 w-4" />,
-      text: profileQuestions.Skills,
+      text: questions.Skills,
     },
     {
       icon: <Mail className="h-4 w-4" />,
-      text: profileQuestions.Contact,
+      text: questions.Contact,
     },
     {
       icon: <LibraryBig className="h-4 w-4" />,
-      text: profileQuestions.Wiki,
+      text: questions.Process,
     },
   ];
 
@@ -105,9 +105,9 @@ const ChatLanding: React.FC<ChatLandingProps> = ({
             variants={itemVariants}
             onClick={() => !hasReachedLimit && submitQuery(question.text)}
             disabled={hasReachedLimit}
-            className="flex min-h-14 items-center gap-3 rounded-lg border border-neutral-200 bg-white/70 px-4 py-3 text-left text-sm font-medium text-neutral-800 shadow-none backdrop-blur-lg transition-colors hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50"
+            className="border-border bg-background/70 text-foreground hover:bg-accent flex min-h-14 items-center gap-3 rounded-lg border px-4 py-3 text-left text-sm font-medium shadow-none backdrop-blur-lg transition-colors disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <span className="text-neutral-500">{question.icon}</span>
+            <span className="text-muted-foreground">{question.icon}</span>
             <span>{question.text}</span>
           </motion.button>
         ))}

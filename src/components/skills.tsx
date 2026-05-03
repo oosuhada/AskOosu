@@ -2,13 +2,18 @@
 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { getUiText } from '@/lib/i18n';
+import { useDisplayPreferences } from '@/lib/use-display-preferences';
 import { motion } from 'framer-motion';
 import { Code, Cpu, PenTool, Users } from 'lucide-react';
 
 const Skills = () => {
+  const { language } = useDisplayPreferences();
+  const text = getUiText(language);
+
   const skillsData = [
     {
-      category: 'Frontend Development',
+      category: text.skillCategories.frontend,
       icon: <Code className="h-5 w-5" />,
       skills: [
         'HTML',
@@ -25,7 +30,7 @@ const Skills = () => {
       color: 'bg-blue-50 text-blue-600 border border-blue-200',
     },
     {
-      category: 'Backend & Product Engineering',
+      category: text.skillCategories.backend,
       icon: <Cpu className="h-5 w-5" />,
       skills: [
         'Next.js Route Handlers',
@@ -40,7 +45,7 @@ const Skills = () => {
       color: 'bg-emerald-50 text-emerald-600 border border-emerald-200',
     },
     {
-      category: 'AI-connected Interfaces',
+      category: text.skillCategories.ai,
       icon: <Cpu className="h-5 w-5" />,
       skills: [
         'OpenAI API',
@@ -55,7 +60,7 @@ const Skills = () => {
       color: 'bg-purple-50 text-purple-600 border border-purple-200',
     },
     {
-      category: 'Design & Creative Tools',
+      category: text.skillCategories.design,
       icon: <PenTool className="h-5 w-5" />,
       skills: [
         'Figma',
@@ -67,7 +72,7 @@ const Skills = () => {
       color: 'bg-indigo-50 text-indigo-600 border border-indigo-200',
     },
     {
-      category: 'Soft Skills',
+      category: text.skillCategories.soft,
       icon: <Users className="h-5 w-5" />,
       skills: [
         'Communication',
@@ -121,7 +126,7 @@ const Skills = () => {
       <Card className="w-full border-none px-0 pb-12 shadow-none">
         <CardHeader className="px-0 pb-1">
           <CardTitle className="text-primary px-0 text-4xl font-bold">
-            Skills & Expertise
+            {text.skillsTitle}
           </CardTitle>
         </CardHeader>
 

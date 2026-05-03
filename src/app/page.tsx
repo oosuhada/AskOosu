@@ -4,7 +4,10 @@ import FluidCursor from '@/components/FluidCursor';
 import { OosuAvatar } from '@/components/oosu-avatar';
 import { Button } from '@/components/ui/button';
 import WelcomeModal from '@/components/welcome-modal';
-import { oosuProfile, suggestedQuestions } from '@/lib/oosu-profile';
+import { getLocalizedQuestions, getUiText } from '@/lib/i18n';
+import { buildChatHref } from '@/lib/navigation';
+import { oosuProfile } from '@/lib/oosu-profile';
+import { useDisplayPreferences } from '@/lib/use-display-preferences';
 import { motion } from 'framer-motion';
 import {
   ArrowRight,
@@ -15,27 +18,34 @@ import {
   UserRoundSearch,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
-
-/* ---------- quick-question data ---------- */
-const questions = suggestedQuestions;
+import { Suspense, useRef, useState } from 'react';
 
 const questionConfig = [
   { key: 'Portfolio', color: '#246BFE', icon: BriefcaseBusiness },
   { key: 'Me', color: '#188B75', icon: MessageSquareText },
   { key: 'Skills', color: '#6E57C9', icon: Layers },
-  { key: 'Wiki', color: '#A15C1F', icon: LibraryBig },
+  { key: 'Process', color: '#A15C1F', icon: LibraryBig },
   { key: 'Contact', color: '#C19433', icon: UserRoundSearch },
 ] as const;
 
-/* ---------- component ---------- */
 export default function Home() {
+  return (
+    <Suspense fallback={null}>
+      <HomeContent />
+    </Suspense>
+  );
+}
+
+function HomeContent() {
   const [input, setInput] = useState('');
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
+  const { language, theme } = useDisplayPreferences();
+  const questions = getLocalizedQuestions(language);
+  const text = getUiText(language);
 
   const goToChat = (query: string) =>
-    router.push(`/chat?query=${encodeURIComponent(query)}`);
+    router.push(buildChatHref({ query, language, theme }));
 
   /* hero animations (unchanged) */
   const topElementVariants = {
@@ -107,14 +117,14 @@ export default function Home() {
           }}
           className="relative w-full max-w-lg"
         >
-          <div className="mx-auto flex items-center rounded-full border border-neutral-200 bg-white/30 py-2.5 pr-2 pl-6 backdrop-blur-lg transition-all hover:border-neutral-300 dark:border-neutral-700 dark:bg-neutral-800 dark:hover:border-neutral-600">
+          <div className="border-border bg-background/50 hover:border-ring mx-auto flex items-center rounded-full border py-2.5 pr-2 pl-6 backdrop-blur-lg transition-all">
             <input
               ref={inputRef}
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask Oosu anything..."
-              className="w-full border-none bg-transparent text-base text-neutral-800 placeholder:text-neutral-500 focus:outline-none dark:text-neutral-200 dark:placeholder:text-neutral-500"
+              placeholder={text.askAnything}
+              className="text-foreground placeholder:text-muted-foreground w-full border-none bg-transparent text-base focus:outline-none"
             />
             <button
               type="submit"
@@ -134,16 +144,16 @@ export default function Home() {
               key={key}
               onClick={() => goToChat(questions[key])}
               variant="outline"
-              className="border-border hover:bg-border/30 min-h-14 w-full cursor-pointer rounded-lg border bg-white/45 px-4 py-3 shadow-none backdrop-blur-lg active:scale-95"
+              className="border-border hover:bg-accent bg-background/55 min-h-14 w-full cursor-pointer rounded-lg border px-4 py-3 whitespace-normal shadow-none backdrop-blur-lg active:scale-95"
             >
-              <div className="flex h-full w-full items-center justify-start gap-3 text-left text-gray-700">
+              <div className="text-foreground flex h-full w-full items-center justify-start gap-3 text-left">
                 <Icon
                   className="shrink-0"
                   size={20}
                   strokeWidth={2}
                   color={color}
                 />
-                <span className="text-sm leading-snug font-medium">
+                <span className="text-foreground text-sm leading-snug font-medium">
                   {questions[key]}
                 </span>
               </div>

@@ -11,6 +11,8 @@ import ChatLanding from '@/components/chat/chat-landing';
 import ChatMessageContent from '@/components/chat/chat-message-content';
 import { OosuAvatar } from '@/components/oosu-avatar';
 import { SimplifiedChatView } from '@/components/chat/simple-chat-view';
+import { getUiText } from '@/lib/i18n';
+import { useDisplayPreferences } from '@/lib/use-display-preferences';
 import {
   ChatBubble,
   ChatBubbleMessage,
@@ -35,6 +37,8 @@ const Chat = () => {
   const [autoSubmitted, setAutoSubmitted] = useState(false);
   const [loadingSubmit, setLoadingSubmit] = useState(false);
   const [isTalking, setIsTalking] = useState(false);
+  const { language } = useDisplayPreferences();
+  const text = getUiText(language);
 
   const {
     messages,
@@ -167,13 +171,7 @@ const Chat = () => {
       </div>
 
       {/* Fixed Avatar Header with Gradient */}
-      <div
-        className="fixed top-0 right-0 left-0 z-50"
-        style={{
-          background:
-            'linear-gradient(to bottom, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.95) 30%, rgba(255, 255, 255, 0.8) 50%, rgba(255, 255, 255, 0) 100%)',
-        }}
-      >
+      <div className="from-background via-background/95 to-background/0 fixed top-0 right-0 left-0 z-50 bg-gradient-to-b">
         <div
           className={`transition-all duration-300 ease-in-out ${hasActiveTool ? 'pt-6 pb-0' : 'py-6'}`}
         >
@@ -258,7 +256,7 @@ const Chat = () => {
         </div>
 
         {/* Fixed Bottom Bar */}
-        <div className="sticky bottom-0 bg-white px-2 pt-3 md:px-0 md:pb-4">
+        <div className="bg-background sticky bottom-0 px-2 pt-3 md:px-0 md:pb-4">
           <div className="relative flex flex-col items-center gap-3">
             <HelperBoost submitQuery={submitQuery} setInput={setInput} />
             <ChatBottombar
@@ -268,6 +266,8 @@ const Chat = () => {
               isLoading={isLoading}
               stop={handleStop}
               isToolInProgress={isToolInProgress}
+              placeholder={text.askAnything}
+              thinkingLabel={text.thinking}
             />
           </div>
         </div>
