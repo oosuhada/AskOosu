@@ -47,7 +47,6 @@ const Chat = () => {
   const initialConversationId = searchParams.get('conversationId');
   const [autoSubmitted, setAutoSubmitted] = useState(false);
   const [loadingSubmit, setLoadingSubmit] = useState(false);
-  const [isTalking, setIsTalking] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<
     string | null
   >(null);
@@ -82,11 +81,9 @@ const Chat = () => {
     transport: chatTransport,
     onFinish: () => {
       setLoadingSubmit(false);
-      setIsTalking(false);
     },
     onError: (error) => {
       setLoadingSubmit(false);
-      setIsTalking(false);
       setChatErrorMessage(text.aiResponseUnavailable);
       console.warn('Chat request failed:', error.message, error.cause);
     },
@@ -104,13 +101,11 @@ const Chat = () => {
   useEffect(() => {
     if (status === 'streaming') {
       setLoadingSubmit(false);
-      setIsTalking(true);
       return;
     }
 
     if (status === 'ready' || status === 'error') {
       setLoadingSubmit(false);
-      setIsTalking(false);
     }
   }, [status]);
 
@@ -188,8 +183,7 @@ const Chat = () => {
 
   const isToolInProgress = messages.some(
     (m) =>
-      m.role === 'assistant' &&
-      m.parts?.some((part) => isPendingToolPart(part))
+      m.role === 'assistant' && m.parts?.some((part) => isPendingToolPart(part))
   );
 
   const submitQuery = useCallback(
@@ -244,7 +238,6 @@ const Chat = () => {
   const handleStop = () => {
     void stop();
     setLoadingSubmit(false);
-    setIsTalking(false);
   };
 
   const handleNewChat = useCallback(() => {
@@ -254,7 +247,6 @@ const Chat = () => {
     setLastSubmittedQuery(null);
     setChatErrorMessage(null);
     setLoadingSubmit(false);
-    setIsTalking(false);
     setAutoSubmitted(false);
     replaceChatUrl();
   }, [replaceChatUrl, setInput, setMessages]);
@@ -267,7 +259,6 @@ const Chat = () => {
       setLastSubmittedQuery(null);
       setChatErrorMessage(null);
       setLoadingSubmit(false);
-      setIsTalking(false);
       replaceChatUrl();
     },
     [replaceChatUrl, setInput, setMessages]
@@ -321,11 +312,9 @@ const Chat = () => {
                 aria-label="Go to AskOosu home"
               >
                 <OosuAvatar
-                  variant={
-                    isTalking || isLoading || loadingSubmit ? 'hover' : 'static'
-                  }
-                  animate={isTalking || isLoading || loadingSubmit}
-                  interval={hasActiveTool ? 150 : 120}
+                  priority
+                  variant="static"
+                  animate={false}
                   className={`transition-all duration-300 ${hasActiveTool ? 'h-20 w-20' : 'h-28 w-28'}`}
                 />
               </button>
