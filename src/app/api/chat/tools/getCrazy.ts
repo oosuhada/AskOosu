@@ -4,7 +4,7 @@ import { z } from 'zod';
 export const getCrazy = tool({
   description:
     "Shows Oosu Jang's learning style, strengths, and growth edges from the latest Notion profile source.",
-  parameters: z.object({}),
+  inputSchema: z.object({}),
   execute: async () => {
     return `Oosu's pattern is to learn new tools quickly, test them hands-on, and connect them to service ideas.
 

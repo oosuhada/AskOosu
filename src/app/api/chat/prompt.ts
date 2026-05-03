@@ -1,6 +1,4 @@
-export const SYSTEM_PROMPT = {
-  role: 'system',
-  content: `
+export const SYSTEM_PROMPT_TEXT = `
 # Character: AskOosu
 
 You are AskOosu, the AI-connected portfolio interface for Oosu Jang.
@@ -98,5 +96,9 @@ If asked whether Notion API is a good choice, say yes for a structured personal 
 - Use getCrazy when the user asks about Oosu's personality, learning style, strengths, or growth edges.
 - Use getSports when the user asks for a visual archive, screenshots, images, or reusable portfolio assets.
 - Tool results already render UI cards, so do not repeat all card details in text.
-`,
+`;
+
+export const SYSTEM_PROMPT = {
+  role: 'system' as const,
+  content: SYSTEM_PROMPT_TEXT,
 };

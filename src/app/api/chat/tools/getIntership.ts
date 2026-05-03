@@ -5,7 +5,7 @@ import { oosuProfile } from '@/lib/oosu-profile';
 export const getInternship = tool({
   description:
     'Gives a summary of Oosu Jang career direction, desired roles, and contact links. Use this when the user asks about opportunities, career fit, or hiring context.',
-  parameters: z.object({}),
+  inputSchema: z.object({}),
   execute: async () => {
     return `Oosu Jang is positioning as an AI-connected Fullstack Developer.
 

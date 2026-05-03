@@ -4,7 +4,7 @@ import { z } from 'zod';
 export const getPresentation = tool({
   description:
     'Return a concise personal introduction of Oosu Jang. Use it when the user asks who Oosu is.',
-  parameters: z.object({}),
+  inputSchema: z.object({}),
   execute: async () => {
     return {
       presentation:

@@ -9,18 +9,25 @@ import Skills from '../skills';
 import Sports from '../sport';
 
 interface ToolRendererProps {
-  toolInvocations: any[];
-  messageId: string;
+  toolInvocations: Array<{
+    type: string;
+    toolCallId: string;
+    toolName?: string;
+    output?: unknown;
+    errorText?: string;
+  }>;
 }
 
 export default function ToolRenderer({
   toolInvocations,
-  messageId,
 }: ToolRendererProps) {
   return (
     <div className="w-full transition-all duration-300">
       {toolInvocations.map((tool) => {
-        const { toolCallId, toolName } = tool;
+        const { toolCallId } = tool;
+        const toolName =
+          tool.toolName ??
+          (tool.type.startsWith('tool-') ? tool.type.slice(5) : tool.type);
 
         // Return specialized components based on tool name
         switch (toolName) {
@@ -100,12 +107,14 @@ export default function ToolRenderer({
                   </span>
                 </div>
                 <div className="mt-2">
-                  {typeof tool.result === 'object' ? (
+                  {tool.errorText ? (
+                    <p>{tool.errorText}</p>
+                  ) : typeof tool.output === 'object' ? (
                     <pre className="bg-secondary/20 overflow-x-auto rounded p-3 text-sm">
-                      {JSON.stringify(tool.result, null, 2)}
+                      {JSON.stringify(tool.output, null, 2)}
                     </pre>
                   ) : (
-                    <p>{String(tool.result)}</p>
+                    <p>{String(tool.output ?? '')}</p>
                   )}
                 </div>
               </div>

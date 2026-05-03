@@ -4,19 +4,23 @@ import {
   ChatBubble,
   ChatBubbleMessage,
 } from '@/components/ui/chat/chat-bubble';
-import { ChatRequestOptions } from 'ai';
-import { Message } from 'ai/react';
+import type { UIMessage } from 'ai';
 import { motion } from 'framer-motion';
 import ChatMessageContent from './chat-message-content';
 import ToolRenderer from './tool-renderer';
 
+type CompletedToolPart = {
+  type: string;
+  toolCallId: string;
+  toolName?: string;
+  output?: unknown;
+  errorText?: string;
+};
+
 interface SimplifiedChatViewProps {
-  message: Message;
+  message: UIMessage;
   isLoading: boolean;
-  reload: (
-    chatRequestOptions?: ChatRequestOptions
-  ) => Promise<string | null | undefined>;
-  addToolResult?: (args: { toolCallId: string; result: string }) => void;
+  regenerate: () => Promise<void>;
 }
 
 const MOTION_CONFIG = {
@@ -32,31 +36,17 @@ const MOTION_CONFIG = {
 export function SimplifiedChatView({
   message,
   isLoading,
-  reload,
-  addToolResult,
+  regenerate,
 }: SimplifiedChatViewProps) {
   if (message.role !== 'assistant') return null;
 
-  // Extract tool invocations that are in "result" state
-  const toolInvocations =
-    message.parts
-      ?.filter(
-        (part) =>
-          part.type === 'tool-invocation' &&
-          part.toolInvocation?.state === 'result'
-      )
-      .map((part) =>
-        part.type === 'tool-invocation' ? part.toolInvocation : null
-      )
-      .filter(Boolean) || [];
+  const toolInvocations = message.parts.filter(isCompletedToolPart);
 
   // Only display the first tool (if any)
   const currentTool = toolInvocations.length > 0 ? [toolInvocations[0]] : [];
 
-  const hasTextContent = message.content.trim().length > 0;
+  const hasTextContent = getMessageText(message).length > 0;
   const hasTools = currentTool.length > 0;
-
-  console.log('currentTool', currentTool);
 
   return (
     <motion.div {...MOTION_CONFIG} className="flex h-full w-full flex-col px-4">
@@ -67,7 +57,6 @@ export function SimplifiedChatView({
           <div className="mb-4 w-full">
             <ToolRenderer
               toolInvocations={currentTool}
-              messageId={message.id || 'current-msg'}
             />
           </div>
         )}
@@ -81,8 +70,7 @@ export function SimplifiedChatView({
                   message={message}
                   isLast={true}
                   isLoading={isLoading}
-                  reload={reload}
-                  addToolResult={addToolResult}
+                  regenerate={regenerate}
                   skipToolRendering={true}
                 />
               </ChatBubbleMessage>
@@ -94,5 +82,30 @@ export function SimplifiedChatView({
         <div className="pb-4"></div>
       </div>
     </motion.div>
+  );
+}
+
+function getMessageText(message: UIMessage) {
+  return message.parts
+    .filter((part) => part.type === 'text')
+    .map((part) => part.text)
+    .join('\n')
+    .trim();
+}
+
+function isCompletedToolPart(
+  part: UIMessage['parts'][number]
+): part is UIMessage['parts'][number] & CompletedToolPart {
+  if (
+    !(part.type === 'dynamic-tool' || part.type.startsWith('tool-')) ||
+    !('state' in part)
+  ) {
+    return false;
+  }
+
+  return (
+    part.state === 'output-available' ||
+    part.state === 'output-error' ||
+    part.state === 'output-denied'
   );
 }

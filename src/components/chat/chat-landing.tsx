@@ -1,32 +1,16 @@
 'use client';
 
 import { OosuAvatar } from '@/components/oosu-avatar';
-import { useSuggestedQuestions } from '@/hooks/use-suggested-questions';
 import { oosuProfile } from '@/lib/oosu-profile';
-import type { SuggestedQuestionId } from '@/lib/suggested-questions';
 import { motion } from 'framer-motion';
-import {
-  BriefcaseBusiness,
-  Layers,
-  LibraryBig,
-  Mail,
-  MessageSquareText,
-  Sparkles,
-} from 'lucide-react';
-import type { ReactNode } from 'react';
 
 interface ChatLandingProps {
-  submitQuery: (query: string) => void;
   hasReachedLimit?: boolean;
 }
 
-const ChatLanding: React.FC<ChatLandingProps> = ({
-  submitQuery,
+export default function ChatLanding({
   hasReachedLimit = false,
-}) => {
-  const { visibleQuestions, markQuestionAsked } = useSuggestedQuestions(5);
-
-  // Animation variants for staggered animation
+}: ChatLandingProps) {
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -56,7 +40,7 @@ const ChatLanding: React.FC<ChatLandingProps> = ({
       animate="visible"
       variants={containerVariants}
     >
-      <motion.div variants={itemVariants} className="mb-8 text-center">
+      <motion.div variants={itemVariants} className="text-center">
         <OosuAvatar
           animate={!hasReachedLimit}
           interval={180}
@@ -72,43 +56,6 @@ const ChatLanding: React.FC<ChatLandingProps> = ({
           {oosuProfile.title}
         </p>
       </motion.div>
-
-      <motion.div
-        variants={containerVariants}
-        className="grid w-full max-w-2xl grid-cols-1 gap-2 sm:grid-cols-2"
-      >
-        {visibleQuestions.map((question) => (
-          <motion.button
-            key={question.id}
-            variants={itemVariants}
-            onClick={() => {
-              if (hasReachedLimit) return;
-              markQuestionAsked(question.id);
-              submitQuery(question.text);
-            }}
-            disabled={hasReachedLimit}
-            className="border-border bg-background/70 text-foreground hover:bg-accent flex min-h-14 items-center gap-3 rounded-lg border px-4 py-3 text-left text-sm font-medium shadow-none backdrop-blur-lg transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <span className="text-muted-foreground">
-              {questionIcons[question.id]}
-            </span>
-            <span>{question.text}</span>
-          </motion.button>
-        ))}
-      </motion.div>
     </motion.div>
   );
-};
-
-export default ChatLanding;
-
-const questionIcons: Record<SuggestedQuestionId, ReactNode> = {
-  bestProjects: <BriefcaseBusiness className="h-4 w-4" />,
-  developerType: <MessageSquareText className="h-4 w-4" />,
-  nowBuilding: <Sparkles className="h-4 w-4" />,
-  techStack: <Layers className="h-4 w-4" />,
-  aiUsage: <LibraryBig className="h-4 w-4" />,
-  fullstackAiGrowth: <Layers className="h-4 w-4" />,
-  conversationalPortfolio: <LibraryBig className="h-4 w-4" />,
-  contactCollab: <Mail className="h-4 w-4" />,
-};
+}

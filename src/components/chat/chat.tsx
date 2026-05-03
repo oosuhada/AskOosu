@@ -1,14 +1,14 @@
 'use client';
 import { useChat } from '@ai-sdk/react';
+import { DefaultChatTransport } from 'ai';
+import type { UIMessage } from 'ai';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { toast } from 'sonner';
 
 // Component imports
 import ChatBottombar from '@/components/chat/chat-bottombar';
 import ChatLanding from '@/components/chat/chat-landing';
-import ChatMessageContent from '@/components/chat/chat-message-content';
 import { PortfolioSidebar } from '@/components/portfolio-sidebar';
 import { OosuAvatar } from '@/components/oosu-avatar';
 import { SimplifiedChatView } from '@/components/chat/simple-chat-view';
@@ -51,34 +51,35 @@ const Chat = () => {
   const [activeConversationId, setActiveConversationId] = useState<
     string | null
   >(null);
+  const [lastSubmittedQuery, setLastSubmittedQuery] = useState<string | null>(
+    null
+  );
+  const [chatErrorMessage, setChatErrorMessage] = useState<string | null>(null);
   const [conversations, setConversations] = useState<StoredChatConversation[]>(
     []
   );
+  const [input, setInput] = useState('');
   const { language, theme } = useDisplayPreferences();
   const { markQueryAsked } = useSuggestedQuestions(5);
   const text = getUiText(language);
+  const chatTransport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: '/api/chat',
+      }),
+    []
+  );
 
   const {
     messages,
-    input,
-    handleInputChange,
-    isLoading,
+    status,
     stop,
     setMessages,
-    setInput,
-    reload,
-    addToolResult,
-    append,
+    regenerate,
+    sendMessage,
+    clearError,
   } = useChat({
-    body: {
-      conversationId: activeConversationId,
-    },
-    onResponse: (response) => {
-      if (response) {
-        setLoadingSubmit(false);
-        setIsTalking(true);
-      }
-    },
+    transport: chatTransport,
     onFinish: () => {
       setLoadingSubmit(false);
       setIsTalking(false);
@@ -86,14 +87,32 @@ const Chat = () => {
     onError: (error) => {
       setLoadingSubmit(false);
       setIsTalking(false);
-      console.error('Chat error:', error.message, error.cause);
-      toast.error(`Error: ${error.message}`);
-    },
-    onToolCall: (tool) => {
-      const toolName = tool.toolCall.toolName;
-      console.log('Tool call:', toolName);
+      setChatErrorMessage(text.aiResponseUnavailable);
+      console.warn('Chat request failed:', error.message, error.cause);
     },
   });
+
+  const isLoading = status === 'submitted' || status === 'streaming';
+
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setInput(e.target.value);
+    },
+    []
+  );
+
+  useEffect(() => {
+    if (status === 'streaming') {
+      setLoadingSubmit(false);
+      setIsTalking(true);
+      return;
+    }
+
+    if (status === 'ready' || status === 'error') {
+      setLoadingSubmit(false);
+      setIsTalking(false);
+    }
+  }, [status]);
 
   const replaceChatUrl = useCallback(() => {
     const params = new URLSearchParams({ lang: language, theme });
@@ -155,10 +174,8 @@ const Chat = () => {
 
     if (result.currentAIMessage) {
       result.hasActiveTool =
-        result.currentAIMessage.parts?.some(
-          (part) =>
-            part.type === 'tool-invocation' &&
-            part.toolInvocation?.state === 'result'
+        result.currentAIMessage.parts?.some((part) =>
+          isCompletedToolPart(part)
         ) || false;
     }
 
@@ -172,29 +189,40 @@ const Chat = () => {
   const isToolInProgress = messages.some(
     (m) =>
       m.role === 'assistant' &&
-      m.parts?.some(
-        (part) =>
-          part.type === 'tool-invocation' &&
-          part.toolInvocation?.state !== 'result'
-      )
+      m.parts?.some((part) => isPendingToolPart(part))
   );
 
   const submitQuery = useCallback(
     (query: string) => {
-      if (!query.trim() || isToolInProgress) return;
+      const trimmedQuery = query.trim();
+      if (!trimmedQuery || isToolInProgress) return;
 
-      if (!activeConversationId) {
-        setActiveConversationId(createConversationId());
-      }
+      const conversationId = activeConversationId ?? createConversationId();
+      if (!activeConversationId) setActiveConversationId(conversationId);
 
-      markQueryAsked(query);
+      setLastSubmittedQuery(trimmedQuery);
+      setChatErrorMessage(null);
+      clearError();
+      markQueryAsked(trimmedQuery);
       setLoadingSubmit(true);
-      void append({
-        role: 'user',
-        content: query,
-      });
+      void sendMessage(
+        {
+          text: trimmedQuery,
+        },
+        {
+          body: {
+            conversationId,
+          },
+        }
+      );
     },
-    [activeConversationId, append, isToolInProgress, markQueryAsked]
+    [
+      activeConversationId,
+      clearError,
+      isToolInProgress,
+      markQueryAsked,
+      sendMessage,
+    ]
   );
 
   useEffect(() => {
@@ -214,7 +242,7 @@ const Chat = () => {
   };
 
   const handleStop = () => {
-    stop();
+    void stop();
     setLoadingSubmit(false);
     setIsTalking(false);
   };
@@ -223,6 +251,8 @@ const Chat = () => {
     setMessages([]);
     setInput('');
     setActiveConversationId(null);
+    setLastSubmittedQuery(null);
+    setChatErrorMessage(null);
     setLoadingSubmit(false);
     setIsTalking(false);
     setAutoSubmitted(false);
@@ -234,6 +264,8 @@ const Chat = () => {
       setMessages(conversation.messages);
       setInput('');
       setActiveConversationId(conversation.id);
+      setLastSubmittedQuery(null);
+      setChatErrorMessage(null);
       setLoadingSubmit(false);
       setIsTalking(false);
       replaceChatUrl();
@@ -241,15 +273,24 @@ const Chat = () => {
     [replaceChatUrl, setInput, setMessages]
   );
 
-  // Check if this is the initial empty state (no messages)
-  const isEmptyState =
-    !currentAIMessage && !latestUserMessage && !loadingSubmit;
+  const latestUserText =
+    (latestUserMessage ? getMessageText(latestUserMessage) : '') ||
+    lastSubmittedQuery;
+
+  const hasConversationContent =
+    loadingSubmit ||
+    Boolean(latestUserText) ||
+    messages.some(
+      (message) => message.role === 'user' || message.role === 'assistant'
+    );
+  const isEmptyState = !hasConversationContent;
+  const shouldShowFixedHeader = hasConversationContent;
 
   // Calculate header height based on hasActiveTool
-  const headerHeight = hasActiveTool ? 100 : 180;
+  const headerHeight = !shouldShowFixedHeader ? 24 : hasActiveTool ? 100 : 180;
 
   return (
-    <div className="relative h-screen overflow-hidden">
+    <div className="relative h-screen overflow-hidden pl-[72px]">
       <PortfolioSidebar
         conversations={conversations}
         activeConversationId={activeConversationId}
@@ -268,48 +309,30 @@ const Chat = () => {
       </div>
 
       {/* Fixed Avatar Header with Gradient */}
-      <div className="from-background via-background/95 to-background/0 fixed top-0 right-0 left-0 z-50 bg-gradient-to-b">
-        <div
-          className={`transition-all duration-300 ease-in-out ${hasActiveTool ? 'pt-6 pb-0' : 'py-6'}`}
-        >
-          <div className="flex justify-center">
-            <button
-              className="cursor-pointer"
-              onClick={() => (window.location.href = '/')}
-              aria-label="Go to AskOosu home"
-            >
-              <OosuAvatar
-                variant={
-                  isTalking || isLoading || loadingSubmit ? 'hover' : 'static'
-                }
-                animate={isTalking || isLoading || loadingSubmit}
-                interval={hasActiveTool ? 150 : 120}
-                className={`transition-all duration-300 ${hasActiveTool ? 'h-20 w-20' : 'h-28 w-28'}`}
-              />
-            </button>
-          </div>
-
-          <AnimatePresence>
-            {latestUserMessage && !currentAIMessage && (
-              <motion.div
-                {...MOTION_CONFIG}
-                className="mx-auto flex max-w-3xl px-4"
+      {shouldShowFixedHeader && (
+        <div className="from-background via-background/95 to-background/0 fixed top-0 right-0 left-[72px] z-50 bg-gradient-to-b">
+          <div
+            className={`transition-all duration-300 ease-in-out ${hasActiveTool ? 'pt-6 pb-0' : 'py-6'}`}
+          >
+            <div className="flex justify-center">
+              <button
+                className="cursor-pointer"
+                onClick={() => (window.location.href = '/')}
+                aria-label="Go to AskOosu home"
               >
-                <ChatBubble variant="sent">
-                  <ChatBubbleMessage>
-                    <ChatMessageContent
-                      message={latestUserMessage}
-                      isLast={true}
-                      isLoading={false}
-                      reload={() => Promise.resolve(null)}
-                    />
-                  </ChatBubbleMessage>
-                </ChatBubble>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                <OosuAvatar
+                  variant={
+                    isTalking || isLoading || loadingSubmit ? 'hover' : 'static'
+                  }
+                  animate={isTalking || isLoading || loadingSubmit}
+                  interval={hasActiveTool ? 150 : 120}
+                  className={`transition-all duration-300 ${hasActiveTool ? 'h-20 w-20' : 'h-28 w-28'}`}
+                />
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main Content Area */}
       <div className="container mx-auto flex h-full max-w-3xl flex-col">
@@ -325,29 +348,36 @@ const Chat = () => {
                 className="flex min-h-full items-center justify-center"
                 {...MOTION_CONFIG}
               >
-                <ChatLanding submitQuery={submitQuery} />
+                <ChatLanding />
               </motion.div>
-            ) : currentAIMessage ? (
-              <div className="pb-4">
-                <SimplifiedChatView
-                  message={currentAIMessage}
-                  isLoading={isLoading}
-                  reload={reload}
-                  addToolResult={addToolResult}
-                />
-              </div>
             ) : (
-              loadingSubmit && (
-                <motion.div
-                  key="loading"
-                  {...MOTION_CONFIG}
-                  className="px-4 pt-18"
-                >
-                  <ChatBubble variant="received">
-                    <ChatBubbleMessage isLoading />
-                  </ChatBubble>
-                </motion.div>
-              )
+              <motion.div
+                key="conversation"
+                className="flex min-h-full flex-col justify-start pb-4"
+                {...MOTION_CONFIG}
+              >
+                {latestUserText && (
+                  <UserQuestionBubble content={latestUserText} />
+                )}
+
+                {currentAIMessage ? (
+                  <SimplifiedChatView
+                    message={currentAIMessage}
+                    isLoading={isLoading}
+                    regenerate={regenerate}
+                  />
+                ) : loadingSubmit ? (
+                  <div className="px-4 pt-4">
+                    <ChatBubble variant="received">
+                      <ChatBubbleMessage isLoading />
+                    </ChatBubble>
+                  </div>
+                ) : (
+                  chatErrorMessage && (
+                    <AssistantNoticeBubble content={chatErrorMessage} />
+                  )
+                )}
+              </motion.div>
             )}
           </AnimatePresence>
         </div>
@@ -374,3 +404,54 @@ const Chat = () => {
 };
 
 export default Chat;
+
+function UserQuestionBubble({ content }: { content: string }) {
+  return (
+    <div className="mx-auto flex w-full max-w-3xl justify-end px-4 pb-4">
+      <ChatBubble
+        variant="sent"
+        className="mr-0 ml-auto max-w-[min(85%,40rem)] self-end"
+      >
+        <ChatBubbleMessage>{content}</ChatBubbleMessage>
+      </ChatBubble>
+    </div>
+  );
+}
+
+function AssistantNoticeBubble({ content }: { content: string }) {
+  return (
+    <div className="mx-auto flex w-full max-w-3xl justify-start px-4 pt-2">
+      <ChatBubble variant="received" className="max-w-[min(90%,42rem)]">
+        <ChatBubbleMessage className="text-muted-foreground rounded-lg border px-4 py-3 text-sm">
+          {content}
+        </ChatBubbleMessage>
+      </ChatBubble>
+    </div>
+  );
+}
+
+function getMessageText(message: UIMessage) {
+  return message.parts
+    .filter((part) => part.type === 'text')
+    .map((part) => part.text)
+    .join('\n')
+    .trim();
+}
+
+function isToolPart(part: UIMessage['parts'][number]) {
+  return part.type === 'dynamic-tool' || part.type.startsWith('tool-');
+}
+
+function isCompletedToolPart(part: UIMessage['parts'][number]) {
+  if (!isToolPart(part) || !('state' in part)) return false;
+
+  return (
+    part.state === 'output-available' ||
+    part.state === 'output-error' ||
+    part.state === 'output-denied'
+  );
+}
+
+function isPendingToolPart(part: UIMessage['parts'][number]) {
+  return isToolPart(part) && !isCompletedToolPart(part);
+}

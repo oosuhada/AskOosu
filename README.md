@@ -12,8 +12,8 @@ Instead of a static portfolio, this project uses a chat-first interface: visitor
 - Local chat history, language preference, and theme preference
 - Visitor-facing concept question: `포트폴리오를 왜 대화형으로 만들었어요?`
 - Project cards for AskOosu 2026, Instagram Clone, Sticks & Stones Homepage, Portfoli-Oh! 2025, Pylingo, Javalingo, Onjung, Nomad Market, and Notion Knowledge Wiki
-- Future Notion API integration for Korean/English resume pages, study notes, GitHub activity summaries, and wiki-based answers
-- Optional Grok/xAI provider mode through the same streaming chat route
+- Notion RAG retrieval path for Korean/English resume pages, study notes, GitHub activity summaries, and wiki-based answers
+- Optional Grok/xAI provider mode through AI SDK 6, using xAI Responses by default
 
 ## Links
 
@@ -36,12 +36,20 @@ Create `.env.local` with:
 
 ```env
 OPENAI_API_KEY=your_openai_api_key_here
+OPENAI_MODEL=gpt-4o-mini
 GITHUB_TOKEN=your_github_token_here
 
 # Optional Grok/xAI mode
 ASKOOSU_AI_PROVIDER=xai
 XAI_API_KEY=your_xai_api_key_here
-XAI_MODEL=grok-4.3
+XAI_MODEL=grok-4
+XAI_API_MODE=responses
+
+# Optional Notion RAG
+NOTION_API_KEY=your_notion_integration_secret
+ASKOOSU_NOTION_PAGE_IDS=401a342869018248a3f881a3e5fbef07
+ASKOOSU_NOTION_DATABASE_IDS=
+ASKOOSU_RAG_RETRIEVAL=lexical
 ```
 
 Open http://localhost:3000.
