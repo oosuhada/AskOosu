@@ -1,6 +1,5 @@
 'use client';
 
-import { OosuAvatar } from '@/components/oosu-avatar';
 import { getUiText } from '@/lib/i18n';
 import { oosuProfile } from '@/lib/oosu-profile';
 import { useDisplayPreferences } from '@/lib/use-display-preferences';
@@ -48,19 +47,14 @@ export function Presentation() {
       <div className="grid grid-cols-1 items-center gap-10 md:grid-cols-2">
         {/* Image section */}
         <div className="relative mx-auto aspect-square w-full max-w-sm">
-          <div className="relative h-full w-full overflow-hidden rounded-2xl bg-neutral-100">
+          <div className="bg-background relative h-full w-full overflow-hidden rounded-2xl border">
             <motion.div
               initial={{ scale: 0.92, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.8, ease: [0.19, 1, 0.22, 1] }}
               className="h-full w-full"
             >
-              <OosuAvatar
-                variant="hover"
-                animate
-                className="h-full w-full"
-                interval={160}
-              />
+              <MemojiLoop />
             </motion.div>
           </div>
         </div>
@@ -116,3 +110,21 @@ export function Presentation() {
 }
 
 export default Presentation;
+
+function MemojiLoop() {
+  return (
+    <video
+      className="h-full w-full object-contain object-center"
+      autoPlay
+      muted
+      loop
+      playsInline
+      preload="metadata"
+      poster="/oosuhada.png"
+      aria-label="Animated Oosu memoji"
+    >
+      <source src="/final_memojis.webm" type="video/webm" />
+      <source src="/final_memojis_ios.mp4" type="video/mp4" />
+    </video>
+  );
+}

@@ -25,15 +25,20 @@ export default function WelcomeModal({ trigger }: WelcomeModalProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { language, theme } = useDisplayPreferences();
   const text = getUiText(language);
+  const introLabel = language === 'ko' ? '소개' : 'About';
 
   // Default trigger is the logo
   const defaultTrigger = (
     <Button
       variant="ghost"
-      className="bg-background/30 hover:bg-background/60 h-auto w-auto cursor-pointer rounded-2xl p-3 shadow-lg backdrop-blur-lg focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+      className="border-border/60 bg-background/45 hover:bg-background/70 h-auto w-auto cursor-pointer rounded-full border px-3 py-1.5 shadow-none backdrop-blur-lg focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
       onClick={() => setIsOpen(true)}
     >
       <span className="text-sm font-semibold">AskOosu</span>
+      <span className="bg-border h-3.5 w-px" aria-hidden />
+      <span className="text-muted-foreground text-xs font-medium">
+        {introLabel}
+      </span>
       <span className="sr-only">{text.welcomeTitle}</span>
     </Button>
   );

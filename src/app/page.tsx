@@ -88,7 +88,7 @@ function HomeContent() {
   };
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4 pb-52 pl-24 md:pb-64">
+    <div className="relative flex min-h-screen flex-col items-center justify-start overflow-hidden px-4 pt-10 pb-52 pl-24 md:pt-12 md:pb-64">
       <PortfolioSidebar onNewChat={startNewChat} />
 
       {/* big blurred footer word */}
@@ -103,27 +103,28 @@ function HomeContent() {
 
       {/* header */}
       <motion.div
-        className="z-1 mt-24 mb-8 flex flex-col items-center text-center md:mt-4 md:mb-12"
+        className="z-1 mt-8 mb-7 flex w-full max-w-7xl flex-col items-center text-center md:mt-4 md:mb-9"
         variants={topElementVariants}
         initial="hidden"
         animate="visible"
       >
-        <div className="z-100">
+        <div className="z-100 mb-5">
           <WelcomeModal />
         </div>
 
-        <h2 className="text-secondary-foreground mt-1 text-xl font-semibold md:text-2xl">
+        <h2 className="text-secondary-foreground text-base font-semibold md:text-xl">
           {oosuProfile.name}
         </h2>
-        <h1 className="text-4xl font-bold sm:text-5xl md:text-6xl lg:text-7xl">
-          {oosuProfile.title}
+        <h1 className="mt-3 max-w-[min(90vw,1120px)] text-[clamp(2.45rem,5.4vw,4.75rem)] leading-[0.98] font-bold">
+          <span className="block">AI-connected</span>
+          <span className="block">Fullstack Developer</span>
         </h1>
       </motion.div>
 
       <OosuAvatar
         priority
         interval={150}
-        className="relative z-10 h-56 w-52 sm:h-72 sm:w-72"
+        className="relative z-10 h-32 w-32 sm:h-56 sm:w-52 md:h-64 md:w-64 lg:h-72 lg:w-72"
       />
 
       {/* input + quick buttons */}
