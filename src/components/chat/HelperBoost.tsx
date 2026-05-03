@@ -47,32 +47,9 @@ export default function HelperBoost({
 
   return (
     <div className="w-full">
-      <div
-        className={
-          isVisible ? 'mb-2 flex justify-center' : 'mb-0 flex justify-center'
-        }
-      >
-        <button
-          onClick={() => setIsVisible((currentValue) => !currentValue)}
-          className="text-muted-foreground hover:text-foreground flex items-center gap-1 px-3 py-1 text-xs transition-colors"
-        >
-          {isVisible ? (
-            <>
-              <ChevronDown size={14} />
-              {text.hideQuickQuestions}
-            </>
-          ) : (
-            <>
-              <ChevronUp size={14} />
-              {text.showQuickQuestions}
-            </>
-          )}
-        </button>
-      </div>
-
       {isVisible && (
         <div
-          className="flex w-full flex-wrap gap-1 md:gap-3"
+          className="mb-2 flex w-full flex-wrap gap-1 md:gap-3"
           style={{ justifyContent: 'safe center' }}
         >
           {visibleQuestions.map((question) => {
@@ -105,6 +82,29 @@ export default function HelperBoost({
           })}
         </div>
       )}
+
+      <div
+        className={
+          isVisible ? 'mb-2 flex justify-center' : 'mb-0 flex justify-center'
+        }
+      >
+        <button
+          onClick={() => setIsVisible((currentValue) => !currentValue)}
+          className="text-muted-foreground hover:text-foreground flex items-center gap-1 px-3 py-1 text-xs transition-colors"
+        >
+          {isVisible ? (
+            <>
+              <ChevronDown size={14} />
+              {text.hideQuickQuestions}
+            </>
+          ) : (
+            <>
+              <ChevronUp size={14} />
+              {text.showQuickQuestions}
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 }

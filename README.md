@@ -41,6 +41,7 @@ GITHUB_TOKEN=your_github_token_here
 # Optional Grok/xAI mode
 ASKOOSU_AI_PROVIDER=xai
 XAI_API_KEY=your_xai_api_key_here
+XAI_API_KEYS=your_first_xai_key,your_second_xai_key
 XAI_MODEL=grok-4.3
 ```
 

@@ -1,18 +1,18 @@
 'use client';
 
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-import {
   Drawer,
   DrawerContent,
-  DrawerDescription,
   DrawerHeader,
   DrawerTitle,
   DrawerTrigger,
 } from '@/components/ui/drawer';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { getUiText } from '@/lib/i18n';
@@ -26,7 +26,6 @@ import { cn } from '@/lib/utils';
 import { useDisplayPreferences } from '@/lib/use-display-preferences';
 import {
   Check,
-  ChevronDown,
   Code2,
   ExternalLink,
   FileText,
@@ -36,9 +35,11 @@ import {
   Menu,
   MessageSquare,
   Moon,
-  Plus,
+  PanelLeft,
   Settings,
+  SquarePen,
   Sun,
+  X,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import type { ElementType } from 'react';
@@ -60,6 +61,7 @@ export function PortfolioSidebar({
   className,
 }: PortfolioSidebarProps) {
   const [open, setOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [storedConversations, setStoredConversations] = useState<
     StoredChatConversation[]
   >([]);
@@ -90,6 +92,11 @@ export function PortfolioSidebar({
     setOpen(false);
   };
 
+  const openSettings = () => {
+    setSettingsOpen(true);
+    setOpen(false);
+  };
+
   const handleSelectConversation = (conversation: StoredChatConversation) => {
     if (onSelectConversation) {
       onSelectConversation(conversation);
@@ -107,71 +114,126 @@ export function PortfolioSidebar({
   };
 
   return (
-    <Drawer direction="left" open={open} onOpenChange={setOpen}>
-      <DrawerTrigger
-        aria-label={text.menu}
-        className={cn(
-          'bg-background/70 text-foreground hover:bg-accent fixed top-6 left-6 z-[60] inline-flex h-11 w-11 items-center justify-center rounded-full border shadow-sm backdrop-blur-lg transition-colors',
-          className
-        )}
-      >
-        <Menu className="h-5 w-5" />
-      </DrawerTrigger>
-      <DrawerContent className="w-[86vw] max-w-[380px] rounded-none">
-        <DrawerHeader className="px-5 pt-6 pb-4">
-          <DrawerTitle className="text-2xl">{text.menu}</DrawerTitle>
-          <DrawerDescription>{text.menuDescription}</DrawerDescription>
-        </DrawerHeader>
+    <>
+      <Drawer direction="left" open={open} onOpenChange={setOpen}>
+        <aside
+          className={cn(
+            'bg-sidebar text-sidebar-foreground fixed inset-y-0 left-0 z-[60] flex w-[72px] flex-col items-center border-r py-7 shadow-sm',
+            className
+          )}
+        >
+          <DrawerTrigger
+            aria-label={text.menu}
+            className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground inline-flex h-11 w-11 items-center justify-center rounded-lg transition-colors"
+          >
+            <Menu className="h-6 w-6" />
+          </DrawerTrigger>
 
-        <ScrollArea className="min-h-0 flex-1 px-5">
-          <div className="space-y-7 pb-8">
+          <button
+            type="button"
+            onClick={handleNewChat}
+            aria-label={text.newChat}
+            className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground mt-20 inline-flex h-11 w-11 items-center justify-center rounded-lg transition-colors"
+          >
+            <SquarePen className="h-6 w-6" />
+          </button>
+
+          <button
+            type="button"
+            onClick={openSettings}
+            aria-label={text.settings}
+            className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground mt-auto inline-flex h-11 w-11 items-center justify-center rounded-lg transition-colors"
+          >
+            <Settings className="h-6 w-6" />
+          </button>
+        </aside>
+
+        <DrawerContent className="bg-sidebar text-sidebar-foreground z-[70] w-[min(420px,calc(100vw-24px))] max-w-none rounded-none border-r">
+          <DrawerHeader className="flex flex-row items-center justify-between px-8 pt-8 pb-5">
+            <DrawerTitle className="flex items-center gap-3 text-2xl">
+              <PanelLeft className="h-5 w-5" />
+              {text.menu}
+            </DrawerTitle>
             <button
               type="button"
-              onClick={handleNewChat}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 flex w-full items-center justify-between rounded-lg px-4 py-3 text-sm font-medium transition-colors"
+              onClick={() => setOpen(false)}
+              aria-label={text.close}
+              className="hover:bg-sidebar-accent inline-flex h-10 w-10 items-center justify-center rounded-lg transition-colors"
             >
-              <span className="flex items-center gap-3">
-                <Plus className="h-4 w-4" />
-                {text.newChat}
-              </span>
+              <X className="h-5 w-5" />
             </button>
+          </DrawerHeader>
 
-            <section className="space-y-3">
-              <SectionLabel icon={MessageSquare} label={text.chatHistory} />
-              {sortedConversations.length > 0 ? (
-                <div className="space-y-2">
-                  {sortedConversations.map((conversation) => (
-                    <button
-                      type="button"
-                      key={conversation.id}
-                      onClick={() => handleSelectConversation(conversation)}
-                      className={cn(
-                        'hover:bg-accent flex w-full flex-col rounded-lg border px-3 py-3 text-left transition-colors',
-                        activeConversationId === conversation.id &&
-                          'border-primary bg-accent'
-                      )}
-                    >
-                      <span className="line-clamp-2 text-sm font-medium">
-                        {conversation.title}
-                      </span>
-                      <span className="text-muted-foreground mt-1 text-xs">
-                        {formatConversationDate(
-                          conversation.updatedAt,
-                          language
+          <ScrollArea className="min-h-0 flex-1 px-6">
+            <div className="space-y-8 pb-8">
+              <button
+                type="button"
+                onClick={handleNewChat}
+                className="hover:bg-sidebar-accent flex w-full items-center gap-4 rounded-lg px-4 py-3 text-left text-base font-medium transition-colors"
+              >
+                <SquarePen className="h-5 w-5" />
+                {text.newChat}
+              </button>
+
+              <section className="space-y-3">
+                <SectionLabel icon={MessageSquare} label={text.chatHistory} />
+                {sortedConversations.length > 0 ? (
+                  <div className="space-y-2">
+                    {sortedConversations.map((conversation) => (
+                      <button
+                        type="button"
+                        key={conversation.id}
+                        onClick={() => handleSelectConversation(conversation)}
+                        className={cn(
+                          'hover:bg-sidebar-accent flex w-full flex-col rounded-lg px-4 py-3 text-left transition-colors',
+                          activeConversationId === conversation.id &&
+                            'bg-sidebar-primary text-sidebar-primary-foreground'
                         )}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-muted-foreground rounded-lg border px-3 py-4 text-sm">
-                  {text.emptyChatHistory}
-                </p>
-              )}
-            </section>
+                      >
+                        <span className="line-clamp-2 text-sm font-medium">
+                          {conversation.title}
+                        </span>
+                        <span className="text-muted-foreground mt-1 text-xs">
+                          {formatConversationDate(
+                            conversation.updatedAt,
+                            language
+                          )}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sidebar-foreground/65 px-4 py-3 text-sm">
+                    {text.emptyChatHistory}
+                  </p>
+                )}
+              </section>
 
-            <Separator />
+              <Separator />
 
+              <button
+                type="button"
+                onClick={openSettings}
+                className="hover:bg-sidebar-accent flex w-full items-center gap-4 rounded-lg px-4 py-3 text-left text-base font-medium transition-colors"
+              >
+                <Settings className="h-5 w-5" />
+                {text.settings} & {text.help}
+              </button>
+            </div>
+          </ScrollArea>
+        </DrawerContent>
+      </Drawer>
+
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent className="bg-background max-h-[86vh] overflow-y-auto border p-0 sm:max-w-[520px]">
+          <DialogHeader className="border-b px-6 py-5">
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <Settings className="h-5 w-5" />
+              {text.settings} & {text.help}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6 px-6 py-6">
             <section className="space-y-4">
               <SectionLabel icon={Settings} label={text.settings} />
               <PreferenceGroup
@@ -229,23 +291,20 @@ export function PortfolioSidebar({
 
             <section className="space-y-3">
               <SectionLabel icon={HelpCircle} label={text.help} />
-              <Collapsible>
-                <CollapsibleTrigger className="hover:bg-accent flex w-full items-center justify-between rounded-lg border px-3 py-3 text-left text-sm transition-colors">
-                  <span className="flex items-center gap-3">
-                    <Code2 className="h-4 w-4" />
-                    {text.siteStackTitle}
-                  </span>
-                  <ChevronDown className="text-muted-foreground h-4 w-4" />
-                </CollapsibleTrigger>
-                <CollapsibleContent className="text-muted-foreground px-3 pt-3 text-sm leading-relaxed">
+              <div className="rounded-lg border px-4 py-4">
+                <div className="flex items-center gap-3 text-sm font-medium">
+                  <Code2 className="h-4 w-4" />
+                  {text.siteStackTitle}
+                </div>
+                <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
                   {text.siteStackBody}
-                </CollapsibleContent>
-              </Collapsible>
+                </p>
+              </div>
             </section>
           </div>
-        </ScrollArea>
-      </DrawerContent>
-    </Drawer>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

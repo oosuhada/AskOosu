@@ -88,7 +88,7 @@ function HomeContent() {
   };
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4 pb-10 md:pb-20">
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4 pb-52 pl-24 md:pb-64">
       <PortfolioSidebar onNewChat={startNewChat} />
 
       {/* big blurred footer word */}
@@ -131,17 +131,70 @@ function HomeContent() {
         variants={bottomElementVariants}
         initial="hidden"
         animate="visible"
-        className="z-10 mt-4 flex w-full flex-col items-center justify-center md:px-0"
+        className="fixed right-4 bottom-4 left-20 z-40 flex flex-col items-center justify-end md:right-8 md:left-24"
       >
+        {/* quick-question grid */}
+        {isQuickQuestionsVisible && (
+          <div className="mb-2 grid w-full max-w-3xl grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {visibleQuestions.map((question) => {
+              const { color, icon: Icon } = questionConfig[question.id];
+
+              return (
+                <Button
+                  key={question.id}
+                  onClick={() => {
+                    markQuestionAsked(question.id);
+                    goToChat(question.text);
+                  }}
+                  variant="outline"
+                  className="border-border hover:bg-accent bg-background/80 min-h-12 w-full cursor-pointer rounded-lg border px-4 py-3 whitespace-normal shadow-none backdrop-blur-lg active:scale-95"
+                >
+                  <div className="text-foreground flex h-full w-full items-center justify-start gap-3 text-left">
+                    <Icon
+                      className="shrink-0"
+                      size={18}
+                      strokeWidth={2}
+                      color={color}
+                    />
+                    <span className="text-foreground text-sm leading-snug font-medium">
+                      {question.text}
+                    </span>
+                  </div>
+                </Button>
+              );
+            })}
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={() =>
+            setIsQuickQuestionsVisible((currentValue) => !currentValue)
+          }
+          className="text-muted-foreground hover:text-foreground mb-2 flex items-center gap-1 px-3 py-1 text-xs transition-colors"
+        >
+          {isQuickQuestionsVisible ? (
+            <>
+              <ChevronDown size={14} />
+              {text.hideQuickQuestions}
+            </>
+          ) : (
+            <>
+              <ChevronUp size={14} />
+              {text.showQuickQuestions}
+            </>
+          )}
+        </button>
+
         {/* free-form question */}
         <form
           onSubmit={(e) => {
             e.preventDefault();
             if (input.trim()) goToChat(input.trim());
           }}
-          className="relative w-full max-w-lg"
+          className="relative w-full max-w-xl"
         >
-          <div className="border-border bg-background/50 hover:border-ring mx-auto flex items-center rounded-full border py-2.5 pr-2 pl-6 backdrop-blur-lg transition-all">
+          <div className="border-border bg-background/85 hover:border-ring mx-auto flex items-center rounded-full border py-2.5 pr-2 pl-6 shadow-lg backdrop-blur-lg transition-all">
             <input
               ref={inputRef}
               type="text"
@@ -160,59 +213,6 @@ function HomeContent() {
             </button>
           </div>
         </form>
-
-        <button
-          type="button"
-          onClick={() =>
-            setIsQuickQuestionsVisible((currentValue) => !currentValue)
-          }
-          className="text-muted-foreground hover:text-foreground mt-3 flex items-center gap-1 px-3 py-1 text-xs transition-colors"
-        >
-          {isQuickQuestionsVisible ? (
-            <>
-              <ChevronDown size={14} />
-              {text.hideQuickQuestions}
-            </>
-          ) : (
-            <>
-              <ChevronUp size={14} />
-              {text.showQuickQuestions}
-            </>
-          )}
-        </button>
-
-        {/* quick-question grid */}
-        {isQuickQuestionsVisible && (
-          <div className="mt-2 grid w-full max-w-3xl grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {visibleQuestions.map((question) => {
-              const { color, icon: Icon } = questionConfig[question.id];
-
-              return (
-                <Button
-                  key={question.id}
-                  onClick={() => {
-                    markQuestionAsked(question.id);
-                    goToChat(question.text);
-                  }}
-                  variant="outline"
-                  className="border-border hover:bg-accent bg-background/55 min-h-14 w-full cursor-pointer rounded-lg border px-4 py-3 whitespace-normal shadow-none backdrop-blur-lg active:scale-95"
-                >
-                  <div className="text-foreground flex h-full w-full items-center justify-start gap-3 text-left">
-                    <Icon
-                      className="shrink-0"
-                      size={20}
-                      strokeWidth={2}
-                      color={color}
-                    />
-                    <span className="text-foreground text-sm leading-snug font-medium">
-                      {question.text}
-                    </span>
-                  </div>
-                </Button>
-              );
-            })}
-          </div>
-        )}
       </motion.div>
       <FluidCursor />
     </div>
