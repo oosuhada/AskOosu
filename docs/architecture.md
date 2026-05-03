@@ -19,9 +19,9 @@ Model selection is isolated in `src/app/api/chat/model-provider.ts`:
 
 - Default provider: OpenAI with `OPENAI_MODEL` or `gpt-4o-mini`
 - Grok provider: set `ASKOOSU_AI_PROVIDER=xai`
-- Required for Grok: `XAI_API_KEY` or comma/newline-separated `XAI_API_KEYS`
+- Required for Grok: `XAI_API_KEY`
 - Optional for Grok: `XAI_MODEL`, `XAI_BASE_URL`
-- When multiple `XAI_API_KEYS` are provided, the backend rotates them per request. This is useful on a long-running Mac mini server, but it is not a replacement for quota monitoring or provider fallback.
+- For reliability, prefer provider fallback, caching, rate limiting, and graceful UI error states over rotating keys across accounts.
 
 The xAI-compatible path uses the OpenAI-compatible base URL `https://api.x.ai/v1`. xAI's current docs also recommend the newer Responses API for future features, so the provider wrapper is the right place to migrate later without touching the UI.
 
@@ -54,7 +54,6 @@ OPENAI_MODEL=gpt-4o-mini
 # Optional Grok mode
 ASKOOSU_AI_PROVIDER=xai
 XAI_API_KEY=your_xai_api_key_here
-XAI_API_KEYS=your_first_xai_key,your_second_xai_key
 XAI_MODEL=grok-4.3
 XAI_BASE_URL=https://api.x.ai/v1
 ```
