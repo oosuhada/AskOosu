@@ -2,11 +2,14 @@
 
 import FluidCursor from '@/components/FluidCursor';
 import { OosuAvatar } from '@/components/oosu-avatar';
+import { PortfolioSidebar } from '@/components/portfolio-sidebar';
 import { Button } from '@/components/ui/button';
 import WelcomeModal from '@/components/welcome-modal';
-import { getLocalizedQuestions, getUiText } from '@/lib/i18n';
+import { useSuggestedQuestions } from '@/hooks/use-suggested-questions';
+import { getUiText } from '@/lib/i18n';
 import { buildChatHref } from '@/lib/navigation';
 import { oosuProfile } from '@/lib/oosu-profile';
+import type { SuggestedQuestionId } from '@/lib/suggested-questions';
 import { useDisplayPreferences } from '@/lib/use-display-preferences';
 import { motion } from 'framer-motion';
 import {
@@ -15,18 +18,26 @@ import {
   Layers,
   LibraryBig,
   MessageSquareText,
+  Sparkles,
   UserRoundSearch,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import type { ElementType } from 'react';
 import { Suspense, useRef, useState } from 'react';
 
-const questionConfig = [
-  { key: 'Portfolio', color: '#246BFE', icon: BriefcaseBusiness },
-  { key: 'Me', color: '#188B75', icon: MessageSquareText },
-  { key: 'Skills', color: '#6E57C9', icon: Layers },
-  { key: 'Process', color: '#A15C1F', icon: LibraryBig },
-  { key: 'Contact', color: '#C19433', icon: UserRoundSearch },
-] as const;
+const questionConfig: Record<
+  SuggestedQuestionId,
+  { color: string; icon: ElementType }
+> = {
+  bestProjects: { color: '#246BFE', icon: BriefcaseBusiness },
+  developerType: { color: '#188B75', icon: MessageSquareText },
+  nowBuilding: { color: '#D04E6B', icon: Sparkles },
+  techStack: { color: '#6E57C9', icon: Layers },
+  aiUsage: { color: '#0F8AA3', icon: LibraryBig },
+  fullstackAiGrowth: { color: '#A15C1F', icon: Layers },
+  conversationalPortfolio: { color: '#8B5CF6', icon: LibraryBig },
+  contactCollab: { color: '#C19433', icon: UserRoundSearch },
+};
 
 export default function Home() {
   return (
@@ -41,11 +52,19 @@ function HomeContent() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const { language, theme } = useDisplayPreferences();
-  const questions = getLocalizedQuestions(language);
+  const { visibleQuestions, markQuestionAsked, markQueryAsked } =
+    useSuggestedQuestions(5);
   const text = getUiText(language);
 
-  const goToChat = (query: string) =>
+  const goToChat = (query: string) => {
+    markQueryAsked(query);
     router.push(buildChatHref({ query, language, theme }));
+  };
+
+  const startNewChat = () => {
+    const params = new URLSearchParams({ lang: language, theme });
+    router.push(`/chat?${params.toString()}`);
+  };
 
   /* hero animations (unchanged) */
   const topElementVariants = {
@@ -67,6 +86,8 @@ function HomeContent() {
 
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-4 pb-10 md:pb-20">
+      <PortfolioSidebar onNewChat={startNewChat} />
+
       {/* big blurred footer word */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center overflow-hidden">
         <div
@@ -139,26 +160,33 @@ function HomeContent() {
 
         {/* quick-question grid */}
         <div className="mt-4 grid w-full max-w-3xl grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {questionConfig.map(({ key, color, icon: Icon }) => (
-            <Button
-              key={key}
-              onClick={() => goToChat(questions[key])}
-              variant="outline"
-              className="border-border hover:bg-accent bg-background/55 min-h-14 w-full cursor-pointer rounded-lg border px-4 py-3 whitespace-normal shadow-none backdrop-blur-lg active:scale-95"
-            >
-              <div className="text-foreground flex h-full w-full items-center justify-start gap-3 text-left">
-                <Icon
-                  className="shrink-0"
-                  size={20}
-                  strokeWidth={2}
-                  color={color}
-                />
-                <span className="text-foreground text-sm leading-snug font-medium">
-                  {questions[key]}
-                </span>
-              </div>
-            </Button>
-          ))}
+          {visibleQuestions.map((question) => {
+            const { color, icon: Icon } = questionConfig[question.id];
+
+            return (
+              <Button
+                key={question.id}
+                onClick={() => {
+                  markQuestionAsked(question.id);
+                  goToChat(question.text);
+                }}
+                variant="outline"
+                className="border-border hover:bg-accent bg-background/55 min-h-14 w-full cursor-pointer rounded-lg border px-4 py-3 whitespace-normal shadow-none backdrop-blur-lg active:scale-95"
+              >
+                <div className="text-foreground flex h-full w-full items-center justify-start gap-3 text-left">
+                  <Icon
+                    className="shrink-0"
+                    size={20}
+                    strokeWidth={2}
+                    color={color}
+                  />
+                  <span className="text-foreground text-sm leading-snug font-medium">
+                    {question.text}
+                  </span>
+                </div>
+              </Button>
+            );
+          })}
         </div>
       </motion.div>
       <FluidCursor />

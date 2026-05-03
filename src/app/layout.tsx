@@ -42,11 +42,18 @@ const preferenceInitScript = `
 
   const explicitTheme = tokens.find((token) => themeTokens.has(token));
   const explicitLanguage = tokens.map((token) => languageMap.get(token)).find(Boolean);
+  let storedTheme;
+  let storedLanguage;
+  try {
+    const storedPreferences = JSON.parse(window.localStorage.getItem('ask-oosu-display-preferences') || '{}');
+    storedTheme = themeTokens.has(storedPreferences.theme) ? storedPreferences.theme : undefined;
+    storedLanguage = languageMap.get(storedPreferences.lang);
+  } catch {}
   const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   const browserLanguage = (navigator.languages || [navigator.language])
     .some((language) => language.toLowerCase().startsWith('ko')) ? 'ko' : 'en';
-  const theme = explicitTheme || systemTheme;
-  const language = explicitLanguage || browserLanguage;
+  const theme = explicitTheme || storedTheme || systemTheme;
+  const language = explicitLanguage || storedLanguage || browserLanguage;
 
   document.documentElement.classList.toggle('dark', theme === 'dark');
   document.documentElement.dataset.theme = theme;

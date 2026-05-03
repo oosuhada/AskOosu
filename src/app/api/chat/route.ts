@@ -1,5 +1,5 @@
-import { openai } from '@ai-sdk/openai';
 import { streamText } from 'ai';
+import { getChatModel } from './model-provider';
 import { SYSTEM_PROMPT } from './prompt';
 import { getCrazy } from './tools/getCrazy';
 import { getContact } from './tools/getContact';
@@ -12,7 +12,6 @@ import { getSports } from './tools/getSport';
 
 export const maxDuration = 30;
 
-// ❌ Pas besoin de l'export ici, Next.js n'aime pas ça
 function errorHandler(error: unknown) {
   if (error == null) {
     return 'Unknown error';
@@ -29,9 +28,8 @@ function errorHandler(error: unknown) {
 export async function POST(req: Request) {
   try {
     const { messages } = await req.json();
-    console.log('[CHAT-API] Incoming messages:', messages);
-
-    messages.unshift(SYSTEM_PROMPT);
+    const model = getChatModel();
+    const promptMessages = [SYSTEM_PROMPT, ...messages];
 
     const tools = {
       getProjects,
@@ -45,8 +43,8 @@ export async function POST(req: Request) {
     };
 
     const result = streamText({
-      model: openai('gpt-4o-mini'),
-      messages,
+      model,
+      messages: promptMessages,
       toolCallStreaming: true,
       tools,
       maxSteps: 2,

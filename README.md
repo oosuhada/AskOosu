@@ -8,10 +8,12 @@ Instead of a static portfolio, this project uses a chat-first interface: visitor
 
 - AI-connected Fullstack Developer portfolio
 - LLM-style browser input as the main UI
-- Suggested question: `대표 프로젝트 보여줘`
-- Visitor-facing update question: `이 포트폴리오는 어떻게 업데이트되나요?`
+- Five suggested questions at a time from an eight-question pool
+- Local chat history, language preference, and theme preference
+- Visitor-facing concept question: `포트폴리오를 왜 대화형으로 만들었어요?`
 - Project cards for AskOosu 2026, Instagram Clone, Sticks & Stones Homepage, Portfoli-Oh! 2025, Pylingo, Javalingo, Onjung, Nomad Market, and Notion Knowledge Wiki
 - Future Notion API integration for Korean/English resume pages, study notes, GitHub activity summaries, and wiki-based answers
+- Optional Grok/xAI provider mode through the same streaming chat route
 
 ## Links
 
@@ -35,6 +37,13 @@ Create `.env.local` with:
 ```env
 OPENAI_API_KEY=your_openai_api_key_here
 GITHUB_TOKEN=your_github_token_here
+
+# Optional Grok/xAI mode
+ASKOOSU_AI_PROVIDER=xai
+XAI_API_KEY=your_xai_api_key_here
+XAI_MODEL=grok-4.3
 ```
 
 Open http://localhost:3000.
+
+See [docs/architecture.md](docs/architecture.md) for the frontend, Grok streaming, and Notion/RAG upgrade plan.

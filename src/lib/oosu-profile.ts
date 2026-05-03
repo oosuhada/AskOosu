@@ -1,3 +1,5 @@
+import { getSuggestedQuestionText } from '@/lib/suggested-questions';
+
 export const oosuProfile = {
   name: 'Oosu Jang',
   handle: '@oosuhada',
@@ -22,11 +24,11 @@ export const oosuProfile = {
 } as const;
 
 export const suggestedQuestions = {
-  Portfolio: '대표 프로젝트 보여줘',
-  Me: 'Oosu Jang은 어떤 개발자인가요?',
-  Skills: '기술 스택과 강점을 알려줘',
-  Process: '이 포트폴리오는 어떻게 업데이트되나요?',
-  Contact: '연락처를 알려줘',
+  Portfolio: getSuggestedQuestionText('ko', 'bestProjects'),
+  Me: getSuggestedQuestionText('ko', 'developerType'),
+  Skills: getSuggestedQuestionText('ko', 'techStack'),
+  Process: getSuggestedQuestionText('ko', 'conversationalPortfolio'),
+  Contact: getSuggestedQuestionText('ko', 'contactCollab'),
 } as const;
 
 export const oosuProjects = [
