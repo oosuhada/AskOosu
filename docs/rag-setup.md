@@ -56,6 +56,7 @@ psql "$DATABASE_URL" -f db/migrations/001_create_rag_database_schema.sql
 psql "$DATABASE_URL" -f db/migrations/002_create_answer_feedback.sql
 psql "$DATABASE_URL" -f db/migrations/003_create_chat_cache_and_provider_usage.sql
 psql "$DATABASE_URL" -f db/migrations/004_add_rag_language_and_sync_lock.sql
+psql "$DATABASE_URL" -f db/migrations/005_create_rag_search_cache.sql
 ```
 
 For the Mac mini Docker Compose deployment, run:
@@ -74,6 +75,7 @@ The migration creates:
 - `ai_provider_usage`
 - `ai_provider_status`
 - `rag_sync_locks`
+- `rag_search_cache`
 
 It also adds PostgreSQL indexes for `chunk_id`, `entity_id`, `source_id`, `has_todo`, metadata JSON, full-text search, and pgvector embedding search.
 
@@ -81,7 +83,7 @@ It also adds PostgreSQL indexes for `chunk_id`, `entity_id`, `source_id`, `has_t
 
 `answer_cache` stores generated RAG answers by normalized question, language, and wiki version so repeat questions can skip the provider call. `ai_provider_usage` and `ai_provider_status` record provider latency, token usage, success/failure, and recent status for Groq/Google fallback operations.
 
-`rag_sources.language` and `rag_chunks.language` let Korean questions search Korean chunks first and English questions search English chunks first. `rag_sync_locks` prevents two sync runs from mutating the same chunk set at the same time.
+`rag_sources.language` and `rag_chunks.language` let Korean questions search Korean chunks first and English questions search English chunks first. `rag_sync_locks` prevents two sync runs from mutating the same chunk set at the same time. `rag_search_cache` stores short-lived top chunk results so repeated free-form questions do not rerun ranking every time.
 
 ## Google Vertex Fallback
 
@@ -100,13 +102,15 @@ Minimum fallback env:
 ```env
 GOOGLE_AI_ENABLED=true
 GOOGLE_AI_MAX_CALLS_PER_DAY=100
+GOOGLE_AI_COOLDOWN_MS=60000
 GOOGLE_VERTEX_PROJECT=
+GOOGLE_CLOUD_PROJECT=
 GOOGLE_VERTEX_LOCATION=us-central1
 GOOGLE_VERTEX_MODEL=gemini-2.5-flash
 GOOGLE_APPLICATION_CREDENTIALS=
 ```
 
-`GOOGLE_AI_MAX_CALLS_PER_DAY` is enforced from `ai_provider_usage`. Keep `GOOGLE_AI_ENABLED=false` until credentials are configured.
+`GOOGLE_AI_MAX_CALLS_PER_DAY` is enforced from `ai_provider_usage`. Provider cooldown state is read from `ai_provider_status`, so a rate-limited provider can be skipped on the next request instead of retried immediately. Keep `GOOGLE_AI_ENABLED=false` until credentials are configured.
 
 ## Sync Step
 

@@ -61,11 +61,13 @@ GROQ_KEY_QUOTA_COOLDOWN_MS=3600000
 # ASKOOSU_AI_PROVIDER=google_vertex
 GOOGLE_VERTEX_API_KEY=
 GOOGLE_VERTEX_PROJECT=
+GOOGLE_CLOUD_PROJECT=
 GOOGLE_VERTEX_LOCATION=us-central1
 GOOGLE_VERTEX_MODEL=gemini-2.5-flash
 GOOGLE_APPLICATION_CREDENTIALS=
 GOOGLE_AI_ENABLED=false
 GOOGLE_AI_MAX_CALLS_PER_DAY=100
+GOOGLE_AI_COOLDOWN_MS=60000
 
 # Optional Notion RAG
 NOTION_API_KEY=your_notion_integration_secret
@@ -80,6 +82,7 @@ ASKOOSU_RAG_STORE=memory
 ASKOOSU_RAG_AUTO_SYNC=true
 ASKOOSU_RAG_RETRIEVAL=lexical
 ASKOOSU_RAG_TOP_K=5
+ASKOOSU_RAG_SEARCH_CACHE_TTL_MS=300000
 ASKOOSU_RAG_ADMIN_TOKEN=local_or_server_secret
 ASKOOSU_WIKI_VERSION=v10
 ASKOOSU_ANSWER_CACHE_TTL_HOURS=24
@@ -107,6 +110,6 @@ RAG admin routes:
 
 Use `NOTION_PAGE_ID` for the parent AskOosu Wiki page. If the parent sync only sees child page titles and misses imported KO/EN page content, leave `NOTION_PAGE_ID` empty and set `ASKOOSU_NOTION_PAGE_IDS` to the KO and EN child page ids.
 
-For Google Vertex fallback, run `gcloud auth application-default login` in local development, or mount credentials into the Docker container and set `GOOGLE_APPLICATION_CREDENTIALS` in production. Keep `GOOGLE_AI_ENABLED=false` until the Google project and credentials are ready.
+For Google Vertex fallback, run `gcloud auth application-default login` in local development, then set `GOOGLE_AI_ENABLED=true` and `GOOGLE_VERTEX_PROJECT` or `GOOGLE_CLOUD_PROJECT`. In production Docker, mount credentials into the container and set `GOOGLE_APPLICATION_CREDENTIALS`, or use `GOOGLE_VERTEX_API_KEY` intentionally.
 
 See [docs/architecture.md](docs/architecture.md) for the frontend, Grok streaming, and Notion/RAG upgrade plan.
