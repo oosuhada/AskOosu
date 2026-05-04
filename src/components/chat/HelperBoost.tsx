@@ -49,6 +49,7 @@ export default function HelperBoost({
     <div className="w-full">
       {isVisible && (
         <div
+          id="quick-question-starters"
           className="mb-2 flex w-full flex-wrap gap-1 md:gap-3"
           style={{ justifyContent: 'safe center' }}
         >
@@ -70,6 +71,7 @@ export default function HelperBoost({
                     : 'border-border hover:bg-accent bg-background/80 cursor-pointer active:scale-95'
                 }`}
                 disabled={hasReachedLimit}
+                aria-label={`Ask starter question: ${question.text}`}
               >
                 <div className="text-foreground flex items-center gap-3">
                   <Icon size={18} strokeWidth={2} color={color} />
@@ -90,7 +92,12 @@ export default function HelperBoost({
       >
         <button
           onClick={() => setIsVisible((currentValue) => !currentValue)}
-          className="text-muted-foreground hover:text-foreground flex items-center gap-1 px-3 py-1 text-xs transition-colors"
+          className="text-muted-foreground hover:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex items-center gap-1 rounded-md px-3 py-1 text-xs transition-colors outline-none focus-visible:ring-[3px]"
+          aria-controls="quick-question-starters"
+          aria-expanded={isVisible}
+          aria-label={
+            isVisible ? 'Hide starter questions' : 'Show starter questions'
+          }
         >
           {isVisible ? (
             <>

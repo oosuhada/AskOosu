@@ -55,9 +55,7 @@ export function SimplifiedChatView({
         {/* Tool invocation result - displayed at the top */}
         {hasTools && (
           <div className="mb-4 w-full">
-            <ToolRenderer
-              toolInvocations={currentTool}
-            />
+            <ToolRenderer toolInvocations={currentTool} />
           </div>
         )}
 
@@ -65,7 +63,7 @@ export function SimplifiedChatView({
         {hasTextContent && (
           <div className="w-full">
             <ChatBubble variant="received" className="w-full">
-              <ChatBubbleMessage className="w-full">
+              <ChatBubbleMessage className="bg-background/85 w-full rounded-2xl border px-4 py-3 shadow-sm backdrop-blur-sm">
                 <ChatMessageContent
                   message={message}
                   isLast={true}
