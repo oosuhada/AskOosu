@@ -50,8 +50,7 @@ export default function HelperBoost({
       {isVisible && (
         <div
           id="quick-question-starters"
-          className="mb-2 flex w-full flex-wrap gap-1 md:gap-3"
-          style={{ justifyContent: 'safe center' }}
+          className="-mx-2 mb-2 flex snap-x gap-2 overflow-x-auto px-2 pb-1 md:mx-0 md:flex-wrap md:justify-center md:gap-3 md:overflow-visible md:px-0 md:pb-0"
         >
           {visibleQuestions.map((question) => {
             const { color, icon: Icon } = questionConfig[question.id];
@@ -66,16 +65,21 @@ export default function HelperBoost({
                   setIsVisible(false);
                 }}
                 variant="outline"
-                className={`h-auto min-w-[100px] flex-shrink-0 rounded-lg border px-4 py-3 whitespace-normal shadow-none backdrop-blur-sm transition-none ${
+                className={`h-auto w-[78vw] max-w-[23rem] shrink-0 snap-center justify-start gap-2.5 rounded-2xl border px-3.5 py-2.5 text-left whitespace-normal shadow-[0_8px_24px_rgba(15,23,42,0.08)] backdrop-blur-xl transition-all md:w-auto ${
                   hasReachedLimit
-                    ? 'border-border bg-muted cursor-not-allowed opacity-50'
-                    : 'border-border hover:bg-accent bg-background/80 cursor-pointer active:scale-95'
+                    ? 'border-border/60 bg-muted/50 cursor-not-allowed opacity-50'
+                    : 'bg-background/35 hover:bg-background/60 text-foreground/90 cursor-pointer border-white/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_30px_rgba(15,23,42,0.1)] active:scale-[0.98] dark:border-white/15 dark:bg-white/[0.11] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_10px_30px_rgba(0,0,0,0.28)] dark:hover:bg-white/[0.16]'
                 }`}
                 disabled={hasReachedLimit}
                 aria-label={`Ask starter question: ${question.text}`}
               >
-                <div className="text-foreground flex items-center gap-3">
-                  <Icon size={18} strokeWidth={2} color={color} />
+                <div className="flex items-center gap-2.5">
+                  <Icon
+                    className="shrink-0"
+                    size={17}
+                    strokeWidth={2}
+                    color={color}
+                  />
                   <span className="text-sm leading-snug font-medium">
                     {question.text}
                   </span>
@@ -93,7 +97,7 @@ export default function HelperBoost({
       >
         <button
           onClick={() => setIsVisible((currentValue) => !currentValue)}
-          className="text-muted-foreground hover:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex items-center gap-1 rounded-md px-3 py-1 text-xs transition-colors outline-none focus-visible:ring-[3px]"
+          className="text-muted-foreground hover:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 bg-background/20 flex items-center gap-1 rounded-full border border-transparent px-3 py-1 text-xs backdrop-blur-xl transition-colors outline-none focus-visible:ring-[3px] dark:border-white/10 dark:bg-white/[0.06]"
           aria-controls="quick-question-starters"
           aria-expanded={isVisible}
           aria-label={

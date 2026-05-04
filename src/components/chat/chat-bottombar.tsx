@@ -7,7 +7,7 @@ import { ArrowUp, Square } from 'lucide-react';
 import React, { useEffect } from 'react';
 
 interface ChatBottombarProps {
-  handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   handleSubmit: (
     e: React.FormEvent<HTMLFormElement>,
     chatRequestOptions?: ChatRequestOptions
@@ -32,11 +32,12 @@ export default function ChatBottombar({
   placeholder = 'Ask Oosu anything...',
   thinkingLabel = 'Thinking...',
 }: ChatBottombarProps) {
-  const inputRef = React.useRef<HTMLInputElement>(null);
+  const inputRef = React.useRef<HTMLTextAreaElement>(null);
 
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (
       e.key === 'Enter' &&
+      !e.shiftKey &&
       !e.nativeEvent.isComposing &&
       !isToolInProgress &&
       input.trim()
@@ -47,6 +48,14 @@ export default function ChatBottombar({
   };
 
   useEffect(() => {
+    const inputEl = inputRef.current;
+    if (!inputEl) return;
+
+    inputEl.style.height = '0px';
+    inputEl.style.height = `${Math.min(inputEl.scrollHeight, 144)}px`;
+  }, [input]);
+
+  useEffect(() => {
     if (inputRef.current) {
       inputRef.current.focus();
     }
@@ -54,15 +63,15 @@ export default function ChatBottombar({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={false}
       animate={{ opacity: 1, y: 0 }}
-      className="w-full pb-2 md:pb-5"
+      className="w-full pb-3 md:pb-5"
     >
       <form onSubmit={handleSubmit} className="relative w-full md:px-4">
-        <div className="border-border bg-muted mx-auto flex items-center rounded-full border py-2 pr-2 pl-6">
-          <input
+        <div className="bg-background/50 mx-auto flex min-h-14 items-center rounded-3xl border border-white/55 py-2 pr-2 pl-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_12px_36px_rgba(15,23,42,0.14)] backdrop-blur-2xl transition-colors md:min-h-12 md:rounded-full md:pl-6 dark:border-white/10 dark:bg-white/[0.08] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_14px_40px_rgba(0,0,0,0.32)]">
+          <textarea
             ref={inputRef}
-            type="text"
+            rows={1}
             value={input}
             onChange={handleInputChange}
             onKeyDown={handleKeyPress}
@@ -74,7 +83,7 @@ export default function ChatBottombar({
                   : placeholder
             }
             aria-label={placeholder}
-            className={`text-md w-full border-none bg-transparent placeholder:text-gray-500 focus:outline-none ${
+            className={`placeholder:text-muted-foreground/80 max-h-36 min-h-8 w-full resize-none border-none bg-transparent py-1.5 text-base leading-5 focus:outline-none md:text-sm ${
               disabled ? 'text-muted-foreground font-medium' : 'text-foreground'
             }`}
             disabled={isToolInProgress || isLoading || disabled}
@@ -86,7 +95,7 @@ export default function ChatBottombar({
               !isLoading && (!input.trim() || isToolInProgress || disabled)
             }
             aria-label={isLoading ? 'Stop response' : 'Send message'}
-            className="focus-visible:ring-ring/50 flex items-center justify-center rounded-full bg-[#0171E3] p-2 text-white outline-none focus-visible:ring-[3px] disabled:opacity-50"
+            className="focus-visible:ring-ring/50 mb-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0171E3] text-white outline-none focus-visible:ring-[3px] disabled:opacity-50 md:h-9 md:w-9"
             onClick={(e) => {
               if (isLoading) {
                 e.preventDefault();
@@ -95,9 +104,9 @@ export default function ChatBottombar({
             }}
           >
             {isLoading ? (
-              <Square className="h-6 w-6 fill-current" />
+              <Square className="h-5 w-5 fill-current" />
             ) : (
-              <ArrowUp className="h-6 w-6" />
+              <ArrowUp className="h-5 w-5" />
             )}
           </button>
         </div>

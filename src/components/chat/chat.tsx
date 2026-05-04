@@ -4,7 +4,13 @@ import { DefaultChatTransport } from 'ai';
 import type { UIMessage } from 'ai';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 
 // Component imports
 import ChatBottombar from '@/components/chat/chat-bottombar';
@@ -27,12 +33,13 @@ import {
   ChatBubble,
   ChatBubbleMessage,
 } from '@/components/ui/chat/chat-bubble';
+import { Button } from '@/components/ui/button';
 import WelcomeModal from '@/components/welcome-modal';
-import { Info } from 'lucide-react';
+import { ArrowDown, Info } from 'lucide-react';
 import HelperBoost from './HelperBoost';
 
 const MOTION_CONFIG = {
-  initial: { opacity: 0, y: 20 },
+  initial: false,
   animate: { opacity: 1, y: 0 },
   exit: { opacity: 0, y: 20 },
   transition: {
@@ -59,6 +66,10 @@ const Chat = () => {
     []
   );
   const [input, setInput] = useState('');
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const conversationEndRef = useRef<HTMLDivElement>(null);
+  const autoSubmittedQueryRef = useRef<string | null>(null);
   const { language, theme } = useDisplayPreferences();
   const { markQueryAsked } = useSuggestedQuestions(5);
   const text = getUiText(language);
@@ -93,11 +104,31 @@ const Chat = () => {
   const isLoading = status === 'submitted' || status === 'streaming';
 
   const handleInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
       setInput(e.target.value);
     },
     []
   );
+
+  const isScrolledNearBottom = useCallback(() => {
+    const scrollContainer = scrollContainerRef.current;
+    if (!scrollContainer) return true;
+
+    const distanceFromBottom =
+      scrollContainer.scrollHeight -
+      scrollContainer.scrollTop -
+      scrollContainer.clientHeight;
+
+    return distanceFromBottom < 180;
+  }, []);
+
+  const scrollToLatest = useCallback((behavior: ScrollBehavior = 'smooth') => {
+    conversationEndRef.current?.scrollIntoView({
+      block: 'end',
+      behavior,
+    });
+    setShowJumpToLatest(false);
+  }, []);
 
   useEffect(() => {
     if (status === 'streaming') {
@@ -224,12 +255,19 @@ const Chat = () => {
   );
 
   useEffect(() => {
-    if (initialQuery && !autoSubmitted) {
+    const trimmedInitialQuery = initialQuery?.trim();
+    if (
+      trimmedInitialQuery &&
+      !autoSubmitted &&
+      autoSubmittedQueryRef.current !== trimmedInitialQuery
+    ) {
+      autoSubmittedQueryRef.current = trimmedInitialQuery;
       setAutoSubmitted(true);
       setInput('');
-      submitQuery(initialQuery);
+      submitQuery(trimmedInitialQuery);
+      replaceChatUrl();
     }
-  }, [initialQuery, autoSubmitted, setInput, submitQuery]);
+  }, [initialQuery, autoSubmitted, replaceChatUrl, setInput, submitQuery]);
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -252,6 +290,7 @@ const Chat = () => {
     setChatErrorMessage(null);
     setLoadingSubmit(false);
     setAutoSubmitted(false);
+    autoSubmittedQueryRef.current = null;
     replaceChatUrl();
   }, [replaceChatUrl, setInput, setMessages]);
 
@@ -279,6 +318,41 @@ const Chat = () => {
       (message) => message.role === 'user' || message.role === 'assistant'
     );
   const isEmptyState = !hasConversationContent;
+  const shouldOfferJumpToLatest =
+    hasConversationContent && messages.length >= 4;
+
+  const handleChatScroll = useCallback(() => {
+    if (!shouldOfferJumpToLatest) {
+      setShowJumpToLatest(false);
+      return;
+    }
+
+    setShowJumpToLatest(!isScrolledNearBottom());
+  }, [isScrolledNearBottom, shouldOfferJumpToLatest]);
+
+  useEffect(() => {
+    if (!hasConversationContent) {
+      setShowJumpToLatest(false);
+      return;
+    }
+
+    if (isScrolledNearBottom()) {
+      scrollToLatest('auto');
+      return;
+    }
+
+    if (shouldOfferJumpToLatest) {
+      setShowJumpToLatest(true);
+    }
+  }, [
+    hasConversationContent,
+    isScrolledNearBottom,
+    loadingSubmit,
+    messages,
+    scrollToLatest,
+    shouldOfferJumpToLatest,
+    status,
+  ]);
 
   return (
     <div className="relative h-screen overflow-hidden md:pl-[72px]">
@@ -302,7 +376,11 @@ const Chat = () => {
       {/* Main Content Area */}
       <div className="container mx-auto flex h-full max-w-3xl flex-col">
         {/* Scrollable Chat Content */}
-        <div className="flex-1 overflow-y-auto px-2 pt-4">
+        <div
+          ref={scrollContainerRef}
+          onScroll={handleChatScroll}
+          className="flex-1 overflow-y-auto px-2 pt-4"
+        >
           <AnimatePresence mode="wait">
             {isEmptyState ? (
               <motion.div
@@ -355,14 +433,42 @@ const Chat = () => {
                 {chatErrorMessage && (
                   <AssistantNoticeBubble content={chatErrorMessage} />
                 )}
+                <div ref={conversationEndRef} className="h-1" />
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
         {/* Fixed Bottom Bar */}
-        <div className="bg-background sticky bottom-0 px-2 pt-3 md:px-0 md:pb-4">
+        <div className="sticky bottom-0 px-2 pt-3 md:px-0 md:pb-4">
           <div className="relative flex flex-col items-center gap-3">
+            <AnimatePresence>
+              {showJumpToLatest && (
+                <motion.div
+                  key="jump-to-latest"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  className="absolute -top-10 right-3 z-10 md:-top-12 md:right-6"
+                >
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    aria-label={
+                      language === 'ko'
+                        ? '최신 답변으로 이동'
+                        : 'Jump to the latest answer'
+                    }
+                    className="h-8 rounded-full border shadow-sm"
+                    onClick={() => scrollToLatest()}
+                  >
+                    <ArrowDown className="h-4 w-4" />
+                    {language === 'ko' ? '최신 답변' : 'Latest'}
+                  </Button>
+                </motion.div>
+              )}
+            </AnimatePresence>
             <HelperBoost submitQuery={submitQuery} setInput={setInput} />
             <ChatBottombar
               input={input}

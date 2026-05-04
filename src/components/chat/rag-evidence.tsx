@@ -7,6 +7,8 @@ import {
   AlertTriangle,
   BookOpenCheck,
   BrainCircuit,
+  ChevronDown,
+  ChevronUp,
   CheckCircle2,
   FolderKanban,
   ShieldAlert,
@@ -49,6 +51,11 @@ type ProjectCardInfo = {
 
 type FeedbackRating = 'up' | 'down';
 type FeedbackState = 'idle' | 'editing-down' | 'saving' | 'saved' | 'error';
+type FeedbackReasonKey =
+  | 'incorrect'
+  | 'missing_context'
+  | 'hard_to_follow'
+  | 'too_long';
 
 type FeedbackContext = {
   sessionId?: string | null;
@@ -61,6 +68,39 @@ const MAX_VISIBLE_SOURCES = 4;
 const MAX_CLIENT_TEXT_LENGTH = 4000;
 const MAX_CLIENT_QUESTION_LENGTH = 1000;
 const MAX_CLIENT_REASON_LENGTH = 1000;
+const FEEDBACK_REASON_OPTIONS: {
+  key: FeedbackReasonKey;
+  label: Record<'ko' | 'en', string>;
+}[] = [
+  {
+    key: 'incorrect',
+    label: {
+      ko: '부정확해요',
+      en: 'Inaccurate',
+    },
+  },
+  {
+    key: 'missing_context',
+    label: {
+      ko: '근거가 부족해요',
+      en: 'Needs sources',
+    },
+  },
+  {
+    key: 'hard_to_follow',
+    label: {
+      ko: '이해가 어려워요',
+      en: 'Hard to follow',
+    },
+  },
+  {
+    key: 'too_long',
+    label: {
+      ko: '너무 길어요',
+      en: 'Too long',
+    },
+  },
+];
 
 const PROJECT_CARDS: Record<string, ProjectCardInfo> = {
   askoosu: {
@@ -178,14 +218,20 @@ export function RagEvidencePanel({
   );
   const [feedbackState, setFeedbackState] = useState<FeedbackState>('idle');
   const [feedbackReason, setFeedbackReason] = useState('');
+  const [selectedFeedbackReasons, setSelectedFeedbackReasons] = useState<
+    FeedbackReasonKey[]
+  >([]);
+  const [sourcesExpanded, setSourcesExpanded] = useState(false);
 
   if (!ragMetadata) return null;
 
-  const visibleSources = ragMetadata.sources.slice(0, MAX_VISIBLE_SOURCES);
   const hiddenSourceCount = Math.max(
     0,
-    ragMetadata.sources.length - visibleSources.length
+    ragMetadata.sources.length - MAX_VISIBLE_SOURCES
   );
+  const displayedSources = sourcesExpanded
+    ? ragMetadata.sources
+    : ragMetadata.sources.slice(0, MAX_VISIBLE_SOURCES);
   const hasReviewEvidence = ragMetadata.sources.some(
     (source) => source.visibility && source.visibility !== 'public'
   );
@@ -317,9 +363,9 @@ export function RagEvidencePanel({
         </div>
       )}
 
-      {visibleSources.length > 0 && (
+      {displayedSources.length > 0 && (
         <div className="flex flex-wrap gap-2" aria-label="Source badges">
-          {visibleSources.map((source, index) => (
+          {displayedSources.map((source, index) => (
             <span
               key={source.chunk_id}
               title={formatSourceTitle(source)}
@@ -336,11 +382,25 @@ export function RagEvidencePanel({
           ))}
 
           {hiddenSourceCount > 0 && (
-            <span className="bg-background text-muted-foreground inline-flex items-center rounded-lg border px-2.5 py-1 text-xs">
+            <button
+              type="button"
+              className="bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring/50 inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs outline-none focus-visible:ring-[3px]"
+              aria-expanded={sourcesExpanded}
+              onClick={() => setSourcesExpanded((current) => !current)}
+            >
               {displayLanguage === 'ko'
-                ? `+${hiddenSourceCount}개 더`
-                : `+${hiddenSourceCount} more`}
-            </span>
+                ? sourcesExpanded
+                  ? '접기'
+                  : `+${hiddenSourceCount}개 더`
+                : sourcesExpanded
+                  ? 'Collapse'
+                  : `+${hiddenSourceCount} more`}
+              {sourcesExpanded ? (
+                <ChevronUp className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5" />
+              )}
+            </button>
           )}
         </div>
       )}
@@ -367,6 +427,8 @@ export function RagEvidencePanel({
             className="h-8 rounded-lg"
             disabled={feedbackState === 'saving'}
             onClick={() => {
+              setFeedbackReason('');
+              setSelectedFeedbackReasons([]);
               void submitFeedback({
                 rating: 'up',
                 reason: null,
@@ -395,6 +457,8 @@ export function RagEvidencePanel({
             onClick={() => {
               setFeedbackRating('down');
               setFeedbackState('editing-down');
+              setFeedbackReason('');
+              setSelectedFeedbackReasons([]);
             }}
           >
             <ThumbsDown className="h-4 w-4" />
@@ -404,12 +468,40 @@ export function RagEvidencePanel({
       </div>
 
       {feedbackState === 'editing-down' && (
-        <div className="space-y-2">
+        <div className="bg-muted/20 space-y-3 rounded-lg border p-3">
+          <div className="flex flex-wrap gap-2">
+            {FEEDBACK_REASON_OPTIONS.map((option) => {
+              const selected = selectedFeedbackReasons.includes(option.key);
+
+              return (
+                <button
+                  key={option.key}
+                  type="button"
+                  aria-pressed={selected}
+                  className={cn(
+                    'focus-visible:ring-ring/50 rounded-lg border px-2.5 py-1 text-xs transition outline-none focus-visible:ring-[3px]',
+                    selected
+                      ? 'bg-foreground text-background border-foreground'
+                      : 'bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                  )}
+                  onClick={() => {
+                    setSelectedFeedbackReasons((currentReasons) =>
+                      currentReasons.includes(option.key)
+                        ? currentReasons.filter((key) => key !== option.key)
+                        : [...currentReasons, option.key]
+                    );
+                  }}
+                >
+                  {option.label[displayLanguage]}
+                </button>
+              );
+            })}
+          </div>
           <label
             className="text-muted-foreground text-xs"
             htmlFor={feedbackReasonId}
           >
-            {displayLanguage === 'ko' ? '선택 메모' : 'Optional note'}
+            {displayLanguage === 'ko' ? '추가 메모' : 'Optional note'}
           </label>
           <textarea
             id={feedbackReasonId}
@@ -423,7 +515,21 @@ export function RagEvidencePanel({
             }
             className="border-input bg-background focus-visible:ring-ring/50 min-h-20 w-full resize-y rounded-lg border px-3 py-2 text-sm outline-none focus-visible:ring-[3px]"
           />
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-8 rounded-lg"
+              onClick={() => {
+                setFeedbackRating(null);
+                setFeedbackState('idle');
+                setFeedbackReason('');
+                setSelectedFeedbackReasons([]);
+              }}
+            >
+              {displayLanguage === 'ko' ? '취소' : 'Cancel'}
+            </Button>
             <Button
               type="button"
               size="sm"
@@ -432,7 +538,11 @@ export function RagEvidencePanel({
               onClick={() => {
                 void submitFeedback({
                   rating: 'down',
-                  reason: feedbackReason,
+                  reason: buildDownFeedbackReason({
+                    reasonKeys: selectedFeedbackReasons,
+                    note: feedbackReason,
+                    language: displayLanguage,
+                  }),
                   metadata: ragMetadata,
                   context: feedbackContext,
                   setFeedbackRating,
@@ -536,6 +646,29 @@ function getFeedbackStatusText(
   if (rating === 'down') return 'Thanks. This answer can be improved.';
 
   return 'Was this answer helpful?';
+}
+
+function buildDownFeedbackReason({
+  reasonKeys,
+  note,
+  language,
+}: {
+  reasonKeys: FeedbackReasonKey[];
+  note: string;
+  language: 'ko' | 'en';
+}) {
+  const reasonLabels = reasonKeys
+    .map((reasonKey) => {
+      const option = FEEDBACK_REASON_OPTIONS.find(
+        (item) => item.key === reasonKey
+      );
+
+      return option?.label[language];
+    })
+    .filter((label): label is string => Boolean(label));
+  const trimmedNote = note.trim();
+
+  return [...reasonLabels, trimmedNote].filter(Boolean).join(' | ');
 }
 
 function parseRagMetadata(value: unknown): RagMetadata | null {
