@@ -1,22 +1,28 @@
-import { getRagTopK, getPositiveIntEnv } from '@/lib/rag/config';
-import { searchPortfolioKnowledge } from '@/lib/rag/notion-rag';
+import { searchRagChunks } from '@/lib/rag/search';
 import { isRagAdminRequest, unauthorizedRagResponse } from '../auth';
 
 export const runtime = 'nodejs';
 
 type SearchBody = {
+  q?: string;
   query?: string;
-  limit?: number;
+  limit?: number | string;
+  entityId?: string;
+  includePrivate?: boolean | string;
+  debug?: boolean | string;
 };
 
 export async function GET(req: Request) {
   if (!isRagAdminRequest(req)) return unauthorizedRagResponse();
 
   const url = new URL(req.url);
-  const query = url.searchParams.get('query') ?? '';
-  const limit = parseLimit(url.searchParams.get('limit'));
-
-  return searchResponse({ query, limit });
+  return searchResponse({
+    q: url.searchParams.get('q') ?? url.searchParams.get('query') ?? '',
+    limit: parseLimit(url.searchParams.get('limit')),
+    entityId: url.searchParams.get('entityId') ?? undefined,
+    includePrivate: parseBoolean(url.searchParams.get('includePrivate')),
+    debug: parseBoolean(url.searchParams.get('debug')),
+  });
 }
 
 export async function POST(req: Request) {
@@ -24,32 +30,58 @@ export async function POST(req: Request) {
 
   const body = (await req.json().catch(() => ({}))) as SearchBody;
   return searchResponse({
-    query: body.query ?? '',
+    q: body.q ?? body.query ?? '',
     limit: parseLimit(body.limit),
+    entityId: body.entityId,
+    includePrivate: parseBoolean(body.includePrivate),
+    debug: parseBoolean(body.debug),
   });
 }
 
 async function searchResponse({
-  query,
+  q,
   limit,
+  entityId,
+  includePrivate = false,
+  debug = false,
 }: {
-  query: string;
+  q: string;
   limit?: number;
+  entityId?: string;
+  includePrivate?: boolean;
+  debug?: boolean;
 }) {
-  const normalizedQuery = query.trim();
+  const normalizedQuery = q.trim();
+  const normalizedEntityId = entityId?.trim();
 
-  if (!normalizedQuery) {
-    return Response.json({ error: 'query is required' }, { status: 400 });
+  if (!normalizedQuery && !normalizedEntityId) {
+    return Response.json(
+      {
+        ok: false,
+        query: {
+          q: normalizedQuery,
+          limit: limit ?? null,
+          entityId: normalizedEntityId || undefined,
+          includePrivate,
+          debug,
+        },
+        results: [],
+        warnings: ['q or entityId is required.'],
+        error: 'q or entityId is required.',
+      },
+      { status: 400 }
+    );
   }
 
-  const results = await searchPortfolioKnowledge(normalizedQuery, {
-    limit: limit ?? getRagTopK(),
+  const payload = await searchRagChunks({
+    q: normalizedQuery,
+    limit,
+    entityId: normalizedEntityId,
+    includePrivate,
+    debug,
   });
 
-  return Response.json({
-    query: normalizedQuery,
-    results,
-  });
+  return Response.json(payload, { status: payload.ok ? 200 : 500 });
 }
 
 function parseLimit(value: string | number | null | undefined) {
@@ -57,8 +89,18 @@ function parseLimit(value: string | number | null | undefined) {
 
   const parsedValue =
     typeof value === 'number' ? value : Number.parseInt(value, 10);
-  const maxLimit = getPositiveIntEnv('ASKOOSU_RAG_MAX_SEARCH_LIMIT', 20);
 
   if (!Number.isFinite(parsedValue) || parsedValue < 1) return undefined;
-  return Math.min(parsedValue, maxLimit);
+  return Math.floor(parsedValue);
+}
+
+function parseBoolean(value: boolean | string | null | undefined) {
+  if (typeof value === 'boolean') return value;
+  if (!value) return undefined;
+
+  const normalizedValue = value.toLowerCase();
+  if (['1', 'true', 'yes'].includes(normalizedValue)) return true;
+  if (['0', 'false', 'no'].includes(normalizedValue)) return false;
+
+  return undefined;
 }
