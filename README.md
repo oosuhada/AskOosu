@@ -81,8 +81,8 @@ Open http://localhost:3000.
 
 RAG admin routes:
 
-- `GET /api/rag/sync`: recursively fetches the configured Notion wiki page and returns normalized sections
-- `POST /api/rag/sync`: same recursive Notion fetch response; DB persistence is planned for a later step
+- `GET /api/rag/sync`: recursively fetches the configured Notion wiki page, returns normalized sections, and persists chunks when `DATABASE_URL` is configured
+- `POST /api/rag/sync`: same recursive Notion sync behavior
 - `GET /api/rag/search?query=...`: searches the synced knowledge base
 - `POST /api/rag/search`: searches with JSON body `{ "query": "...", "limit": 5 }`
 
