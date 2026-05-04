@@ -4,10 +4,16 @@ export type RagRetrievalMode = 'lexical' | 'embedding' | 'hybrid';
 
 export type RagStoreKind = 'memory' | 'postgres';
 
-export type RagChunkMetadata = Record<
-  string,
-  string | number | boolean | null | undefined
->;
+export type RagChunkMetadataValue =
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | RagChunkMetadataValue[]
+  | { [key: string]: RagChunkMetadataValue };
+
+export type RagChunkMetadata = Record<string, RagChunkMetadataValue>;
 
 export type RagChunk = {
   id: string;

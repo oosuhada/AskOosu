@@ -42,9 +42,9 @@ Current behavior:
 4. Retrieval defaults to lexical ranking for speed and no extra cost.
 5. `ASKOOSU_RAG_RETRIEVAL=embedding` or `hybrid` enables OpenAI embedding ranking with `text-embedding-3-small`, falling back to lexical ranking if embeddings fail.
 6. `ASKOOSU_RAG_STORE=memory` keeps chunks in the running Node process. `ASKOOSU_RAG_STORE=postgres` stores chunks and vectors in Postgres using pgvector.
-7. `/api/rag/sync` recursively fetches the configured Notion wiki page and returns normalized sections for the next DB persistence step. `/api/rag/search` exposes an admin-protected search/debug API.
+7. `/api/rag/sync` recursively fetches the configured Notion wiki page, returns normalized sections, and persists chunks into `rag_sources`, `rag_chunks`, and `rag_sync_runs` when `DATABASE_URL` is configured. `/api/rag/search` exposes an admin-protected search/debug API.
 
-The next Mac mini/home-server step is to persist `/api/rag/sync` sections into Postgres + pgvector, run sync on a schedule, and eventually add incremental sync based on Notion edit timestamps.
+The next Mac mini/home-server step is to run sync on a schedule, keep Postgres + pgvector warm, and eventually add incremental sync based on Notion edit timestamps.
 
 ## Suggested Notion Shape
 

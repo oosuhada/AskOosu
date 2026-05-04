@@ -10,6 +10,7 @@ export type NotionRagSection = {
   id: string;
   title: string;
   level: number;
+  sectionPath: string[];
   text: string;
   textLength: number;
   blockCount: number;
@@ -19,6 +20,7 @@ export type NotionRagSection = {
 export type NotionRagSyncResult = {
   ok: true;
   pageId: string;
+  pageUrl?: string;
   pageTitle: string;
   blockCount: number;
   textLength: number;
@@ -159,6 +161,7 @@ export async function fetchNotionRagPage({
   return {
     ok: true,
     pageId,
+    pageUrl: page.url,
     pageTitle,
     blockCount: blocks.length,
     textLength: fullText.length,
@@ -171,13 +174,7 @@ class NotionApiClient {
   private apiKey: string;
   private warnings: string[];
 
-  constructor({
-    apiKey,
-    warnings,
-  }: {
-    apiKey: string;
-    warnings: string[];
-  }) {
+  constructor({ apiKey, warnings }: { apiKey: string; warnings: string[] }) {
     this.apiKey = apiKey;
     this.warnings = warnings;
   }
@@ -285,7 +282,7 @@ async function fetchBlockTree({
     }
 
     startCursor = response.has_more
-      ? response.next_cursor ?? undefined
+      ? (response.next_cursor ?? undefined)
       : undefined;
   } while (startCursor);
 
@@ -339,16 +336,21 @@ function buildSections({
   const sections: Array<NotionRagSection & { textParts: string[] }> = [];
   let currentSection: (NotionRagSection & { textParts: string[] }) | null =
     null;
+  const headingPath: string[] = [];
 
   for (const block of blocks) {
     const headingLevel = getHeadingLevel(block.type);
     const plainText = stripMarkdownHeading(block.text);
 
     if (headingLevel && plainText) {
+      headingPath.splice(headingLevel - 1);
+      headingPath[headingLevel - 1] = plainText;
+
       currentSection = {
         id: block.id,
         title: plainText,
         level: headingLevel,
+        sectionPath: headingPath.filter(Boolean),
         text: '',
         textLength: 0,
         blockCount: 0,
@@ -363,6 +365,7 @@ function buildSections({
         id: 'page-root',
         title: pageTitle,
         level: 0,
+        sectionPath: [pageTitle],
         text: '',
         textLength: 0,
         blockCount: 0,

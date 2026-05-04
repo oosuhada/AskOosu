@@ -3,6 +3,10 @@ import {
   getNotionRagConfig,
   NotionRequestError,
 } from '@/lib/rag/notion';
+import {
+  hasPostgresDatabaseUrl,
+  persistNotionRagSyncResult,
+} from '@/lib/rag/database';
 import { isRagAdminRequest, unauthorizedRagResponse } from '../auth';
 
 export const runtime = 'nodejs';
@@ -40,7 +44,17 @@ async function syncNotionPage(req: Request) {
       initialWarnings: warnings,
     });
 
-    return Response.json(result);
+    if (!hasPostgresDatabaseUrl()) {
+      result.warnings.push('DATABASE_URL is not set; DB persistence skipped.');
+      return Response.json(result);
+    }
+
+    const persistence = await persistNotionRagSyncResult(result);
+
+    return Response.json({
+      ...result,
+      persistence,
+    });
   } catch (error) {
     console.warn('Notion RAG sync failed.', getSafeErrorLog(error));
 
