@@ -99,6 +99,9 @@ export function hasChatModelCredentials() {
 export function getChatProviderName(): ChatProviderName {
   if (process.env.ASKOOSU_AI_PROVIDER === 'groq') return 'groq';
   if (process.env.ASKOOSU_AI_PROVIDER === 'xai') return 'xai';
+  if (process.env.ASKOOSU_AI_PROVIDER === 'openai') return 'openai';
+  if (getGroqCredentials().length > 0) return 'groq';
+  if (process.env.XAI_API_KEY) return 'xai';
   return 'openai';
 }
 
@@ -145,6 +148,10 @@ export function recordChatModelFailure(
   }
 
   pool.keys.set(selection.groqKeyId, state);
+}
+
+export function isChatModelRateLimitError(error: unknown) {
+  return getProviderFailure(error).isQuotaOrRateLimit;
 }
 
 function selectGroqCredential() {

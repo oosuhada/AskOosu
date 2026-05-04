@@ -9,6 +9,7 @@ export type RagChunkSearchInput = {
   limit?: number;
   entityId?: string;
   includePrivate?: boolean;
+  includeContent?: boolean;
   debug?: boolean;
 };
 
@@ -17,6 +18,7 @@ export type RagChunkSearchQuery = {
   limit: number;
   entityId?: string;
   includePrivate: boolean;
+  includeContent: boolean;
   debug: boolean;
 };
 
@@ -38,6 +40,7 @@ export type RagChunkSearchResult = {
   section_path: string[];
   score: number;
   contentPreview: string;
+  content?: string;
   metadata: RagChunkMetadata;
   has_todo: boolean;
   visibility: string;
@@ -138,6 +141,7 @@ export async function searchRagChunks(
       rowToSearchResult({
         row,
         q: query.q,
+        includeContent: query.includeContent,
         debug: query.debug,
         searchMode: resolvedSearchMode,
       })
@@ -164,6 +168,7 @@ function normalizeSearchInput(input: RagChunkSearchInput): RagChunkSearchQuery {
     limit: normalizeSearchLimit(input.limit),
     entityId: entityId || undefined,
     includePrivate: input.includePrivate ?? false,
+    includeContent: input.includeContent ?? false,
     debug: input.debug ?? false,
   };
 }
@@ -381,11 +386,13 @@ async function searchWithEntityFilter(query: RagChunkSearchQuery) {
 function rowToSearchResult({
   row,
   q,
+  includeContent,
   debug,
   searchMode,
 }: {
   row: RagChunkSearchRow;
   q: string;
+  includeContent: boolean;
   debug: boolean;
   searchMode: RagChunkRankingDetail['searchMode'];
 }): RagChunkSearchResult {
@@ -407,6 +414,7 @@ function rowToSearchResult({
     section_path: row.section_path ?? [],
     score: toNumber(row.score),
     contentPreview: createContentPreview(row.content, q),
+    ...(includeContent ? { content: row.content } : {}),
     metadata: row.metadata ?? {},
     has_todo: row.has_todo,
     visibility: row.visibility,
