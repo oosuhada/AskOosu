@@ -36,6 +36,12 @@ psql "$DATABASE_URL" -f db/migrations/001_create_rag_database_schema.sql
 psql "$DATABASE_URL" -f db/migrations/002_create_answer_feedback.sql
 ```
 
+For the Mac mini Docker Compose deployment, run:
+
+```bash
+scripts/prod-migrate.sh
+```
+
 The migration creates:
 
 - `rag_sources`
@@ -55,4 +61,11 @@ After the Markdown import and integration sharing are complete, call the admin-p
 curl -X POST http://localhost:3000/api/rag/sync \
   -H "Authorization: Bearer $ASKOOSU_RAG_ADMIN_TOKEN" \
   -H "Content-Type: application/json"
+```
+
+For production:
+
+```bash
+ASKOOSU_BASE_URL=https://oosu.dev scripts/prod-rag-sync.sh
+corepack pnpm rag:eval -- --base-url https://oosu.dev
 ```

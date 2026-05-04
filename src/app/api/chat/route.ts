@@ -17,6 +17,7 @@ import { getResume } from './tools/getResume';
 import { getSkills } from './tools/getSkills';
 import { getSports } from './tools/getSport';
 import { buildRagChatContext } from '@/lib/rag/chat-context';
+import { checkRateLimit, rateLimitHeaders } from '@/lib/rate-limit';
 
 export const maxDuration = 30;
 
@@ -37,6 +38,23 @@ export async function POST(req: Request) {
   let messages: UIMessage[] = [];
 
   try {
+    const rateLimit = checkRateLimit(req, {
+      scope: 'api:chat',
+      windowMs: 60 * 1000,
+      max: 20,
+    });
+
+    if (!rateLimit.allowed) {
+      return Response.json(
+        {
+          ok: false,
+          error: 'Too many chat requests. Please wait and try again.',
+          retryAfter: rateLimit.retryAfter,
+        },
+        { status: 429, headers: rateLimitHeaders(rateLimit) }
+      );
+    }
+
     const body = (await req.json()) as { messages?: UIMessage[] };
     messages = Array.isArray(body.messages) ? body.messages : [];
 
