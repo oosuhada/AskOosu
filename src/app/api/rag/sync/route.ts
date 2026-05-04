@@ -6,6 +6,8 @@ import {
 import {
   hasPostgresDatabaseUrl,
   persistNotionRagSyncResult,
+  RagSyncPersistenceError,
+  recordFailedNotionRagSyncRun,
 } from '@/lib/rag/database';
 import { isRagAdminRequest, unauthorizedRagResponse } from '../auth';
 
@@ -45,27 +47,62 @@ async function syncNotionPage(req: Request) {
     });
 
     if (!hasPostgresDatabaseUrl()) {
-      result.warnings.push('DATABASE_URL is not set; DB persistence skipped.');
-      return Response.json(result);
+      result.warnings.push('DATABASE_URL is not set; DB persistence failed.');
+      return Response.json(
+        {
+          ok: false,
+          sourceId: null,
+          syncRunId: null,
+          blockCount: result.blockCount,
+          chunkCount: 0,
+          inserted: 0,
+          updated: 0,
+          skipped: 0,
+          warnings: result.warnings,
+          error: 'DATABASE_URL or POSTGRES_URL is required for RAG sync.',
+        },
+        { status: 500 }
+      );
     }
 
     const persistence = await persistNotionRagSyncResult(result);
 
     return Response.json({
-      ...result,
-      persistence,
+      ok: true,
+      sourceId: persistence.sourceId,
+      syncRunId: persistence.syncRunId,
+      blockCount: result.blockCount,
+      chunkCount: persistence.chunkCount,
+      inserted: persistence.inserted,
+      updated: persistence.updated,
+      skipped: persistence.skipped,
+      warnings: result.warnings,
     });
   } catch (error) {
     console.warn('Notion RAG sync failed.', getSafeErrorLog(error));
+    const failedRun = await maybeRecordFailedSyncRun({
+      error,
+      pageId: config.pageId,
+      warnings,
+    });
 
     return Response.json(
       {
         ok: false,
+        sourceId: getFailedSourceId(error) ?? failedRun?.sourceId ?? null,
+        syncRunId: getFailedSyncRunId(error) ?? failedRun?.syncRunId ?? null,
+        blockCount: getFailedBlockCount(error),
+        chunkCount: getFailedChunkCount(error),
+        inserted: 0,
+        updated: 0,
+        skipped: 0,
         pageId: config.pageId,
         error:
           error instanceof NotionRequestError
             ? error.message
-            : 'Notion RAG sync failed.',
+            : error instanceof RagSyncPersistenceError
+              ? error.message
+              : 'Notion RAG sync failed.',
         warnings,
       },
       {
@@ -73,6 +110,52 @@ async function syncNotionPage(req: Request) {
       }
     );
   }
+}
+
+async function maybeRecordFailedSyncRun({
+  error,
+  pageId,
+  warnings,
+}: {
+  error: unknown;
+  pageId: string;
+  warnings: string[];
+}) {
+  if (error instanceof RagSyncPersistenceError || !hasPostgresDatabaseUrl()) {
+    return null;
+  }
+
+  try {
+    return await recordFailedNotionRagSyncRun({
+      pageId,
+      warnings,
+      errorMessage:
+        error instanceof Error ? error.message : 'Notion RAG sync failed.',
+    });
+  } catch (syncRunError) {
+    warnings.push('Failed to record failed RAG sync run.');
+    console.warn(
+      'Failed to record failed RAG sync run.',
+      getSafeErrorLog(syncRunError)
+    );
+    return null;
+  }
+}
+
+function getFailedSourceId(error: unknown) {
+  return error instanceof RagSyncPersistenceError ? error.sourceId : null;
+}
+
+function getFailedSyncRunId(error: unknown) {
+  return error instanceof RagSyncPersistenceError ? error.syncRunId : null;
+}
+
+function getFailedBlockCount(error: unknown) {
+  return error instanceof RagSyncPersistenceError ? error.blockCount : 0;
+}
+
+function getFailedChunkCount(error: unknown) {
+  return error instanceof RagSyncPersistenceError ? error.chunkCount : 0;
 }
 
 function getSafeErrorLog(error: unknown) {
