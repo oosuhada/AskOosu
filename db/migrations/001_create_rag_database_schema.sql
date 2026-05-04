@@ -39,10 +39,23 @@ CREATE TABLE IF NOT EXISTS rag_sync_runs (
   status text NOT NULL CHECK (status IN ('running', 'success', 'failed')),
   block_count integer NOT NULL DEFAULT 0 CHECK (block_count >= 0),
   chunk_count integer NOT NULL DEFAULT 0 CHECK (chunk_count >= 0),
+  inserted_count integer NOT NULL DEFAULT 0 CHECK (inserted_count >= 0),
+  updated_count integer NOT NULL DEFAULT 0 CHECK (updated_count >= 0),
+  skipped_count integer NOT NULL DEFAULT 0 CHECK (skipped_count >= 0),
+  warnings jsonb NOT NULL DEFAULT '[]'::jsonb,
   error_message text,
   started_at timestamptz NOT NULL DEFAULT now(),
   finished_at timestamptz
 );
+
+ALTER TABLE rag_sync_runs
+  ADD COLUMN IF NOT EXISTS inserted_count integer NOT NULL DEFAULT 0 CHECK (inserted_count >= 0);
+ALTER TABLE rag_sync_runs
+  ADD COLUMN IF NOT EXISTS updated_count integer NOT NULL DEFAULT 0 CHECK (updated_count >= 0);
+ALTER TABLE rag_sync_runs
+  ADD COLUMN IF NOT EXISTS skipped_count integer NOT NULL DEFAULT 0 CHECK (skipped_count >= 0);
+ALTER TABLE rag_sync_runs
+  ADD COLUMN IF NOT EXISTS warnings jsonb NOT NULL DEFAULT '[]'::jsonb;
 
 CREATE INDEX IF NOT EXISTS rag_chunks_chunk_id_idx ON rag_chunks (chunk_id);
 CREATE INDEX IF NOT EXISTS rag_chunks_entity_id_idx ON rag_chunks (entity_id);

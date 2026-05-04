@@ -1,17 +1,17 @@
 import type { PoolClient } from 'pg';
-import {
-  getEmbeddingDimensions,
-  getPositiveIntEnv,
-  DEFAULT_CHUNK_OVERLAP,
-  DEFAULT_CHUNK_SIZE,
-} from './config';
+import { getEmbeddingDimensions } from './config';
 import {
   getPostgresPool,
   hasPostgresDatabaseUrl,
   withPostgresTransaction,
 } from '@/lib/db/postgres';
-import { hashString } from './text';
-import type { NotionRagSection, NotionRagSyncResult } from './notion';
+import {
+  detectEntityId,
+  hasTodoMarker,
+  notionResultToDatabaseChunks,
+  type NotionDatabaseChunk,
+} from './notion-chunks';
+import type { NotionRagSyncResult } from './notion';
 import type {
   RagChunk,
   RagChunkMetadata,
@@ -27,18 +27,7 @@ type RagSourceInput = {
   url?: string | null;
 };
 
-type RagDatabaseChunkInput = {
-  chunkId: string;
-  entityId?: string | null;
-  title: string;
-  sectionPath: string[];
-  content: string;
-  contentHash: string;
-  metadata: RagChunkMetadata;
-  visibility: string;
-  freshness: string;
-  hasTodo: boolean;
-  confidence: number;
+type RagDatabaseChunkInput = NotionDatabaseChunk & {
   embedding?: number[];
 };
 
@@ -52,7 +41,38 @@ export type PersistedNotionRagSync = {
   sourceId: string;
   syncRunId: string;
   chunkCount: number;
+  inserted: number;
+  updated: number;
+  skipped: number;
 };
+
+export class RagSyncPersistenceError extends Error {
+  sourceId: string;
+  syncRunId: string;
+  blockCount: number;
+  chunkCount: number;
+
+  constructor({
+    message,
+    sourceId,
+    syncRunId,
+    blockCount,
+    chunkCount,
+  }: {
+    message: string;
+    sourceId: string;
+    syncRunId: string;
+    blockCount: number;
+    chunkCount: number;
+  }) {
+    super(message);
+    this.name = 'RagSyncPersistenceError';
+    this.sourceId = sourceId;
+    this.syncRunId = syncRunId;
+    this.blockCount = blockCount;
+    this.chunkCount = chunkCount;
+  }
+}
 
 export { hasPostgresDatabaseUrl };
 
@@ -103,11 +123,27 @@ export async function ensureRagDatabaseSchema() {
       status text NOT NULL CHECK (status IN ('running', 'success', 'failed')),
       block_count integer NOT NULL DEFAULT 0 CHECK (block_count >= 0),
       chunk_count integer NOT NULL DEFAULT 0 CHECK (chunk_count >= 0),
+      inserted_count integer NOT NULL DEFAULT 0 CHECK (inserted_count >= 0),
+      updated_count integer NOT NULL DEFAULT 0 CHECK (updated_count >= 0),
+      skipped_count integer NOT NULL DEFAULT 0 CHECK (skipped_count >= 0),
+      warnings jsonb NOT NULL DEFAULT '[]'::jsonb,
       error_message text,
       started_at timestamptz NOT NULL DEFAULT now(),
       finished_at timestamptz
     )
   `);
+  await pool.query(
+    'ALTER TABLE rag_sync_runs ADD COLUMN IF NOT EXISTS inserted_count integer NOT NULL DEFAULT 0 CHECK (inserted_count >= 0)'
+  );
+  await pool.query(
+    'ALTER TABLE rag_sync_runs ADD COLUMN IF NOT EXISTS updated_count integer NOT NULL DEFAULT 0 CHECK (updated_count >= 0)'
+  );
+  await pool.query(
+    'ALTER TABLE rag_sync_runs ADD COLUMN IF NOT EXISTS skipped_count integer NOT NULL DEFAULT 0 CHECK (skipped_count >= 0)'
+  );
+  await pool.query(
+    "ALTER TABLE rag_sync_runs ADD COLUMN IF NOT EXISTS warnings jsonb NOT NULL DEFAULT '[]'::jsonb"
+  );
   await pool.query(
     'CREATE INDEX IF NOT EXISTS rag_chunks_chunk_id_idx ON rag_chunks (chunk_id)'
   );
@@ -188,32 +224,117 @@ export async function persistNotionRagSyncResult(
   };
   const chunks = notionResultToDatabaseChunks(result);
 
-  return withPostgresTransaction(async (client) => {
-    const sourceId = await upsertRagSource(client, source);
-    const syncRunId = await createRagSyncRun(client, {
-      sourceId,
-      status: 'running',
-      blockCount: result.blockCount,
-      chunkCount: 0,
-    });
+  const { sourceId, syncRunId } = await withPostgresTransaction(
+    async (client) => {
+      const sourceId = await upsertRagSource(client, source);
+      const syncRunId = await createRagSyncRun(client, {
+        sourceId,
+        status: 'running',
+        blockCount: result.blockCount,
+        chunkCount: 0,
+        warnings: result.warnings,
+      });
 
-    await replaceChunksForSource(client, {
-      sourceId,
-      chunks,
-    });
-    await markRagSourceSynced(client, sourceId);
-    await finishRagSyncRun(client, {
-      syncRunId,
-      status: 'success',
-      blockCount: result.blockCount,
-      chunkCount: chunks.length,
+      return {
+        sourceId,
+        syncRunId,
+      };
+    }
+  );
+
+  try {
+    const stats = await withPostgresTransaction(async (client) => {
+      const upsertStats = await upsertChunksForSource(client, {
+        sourceId,
+        chunks,
+      });
+
+      await markRagSourceSynced(client, sourceId);
+      await finishRagSyncRun(client, {
+        syncRunId,
+        status: 'success',
+        blockCount: result.blockCount,
+        chunkCount: chunks.length,
+        inserted: upsertStats.inserted,
+        updated: upsertStats.updated,
+        skipped: upsertStats.skipped,
+        warnings: result.warnings,
+      });
+
+      return upsertStats;
     });
 
     return {
       sourceId,
       syncRunId,
       chunkCount: chunks.length,
+      ...stats,
     };
+  } catch (error) {
+    await markNotionRagSyncFailed({
+      syncRunId,
+      blockCount: result.blockCount,
+      chunkCount: chunks.length,
+      warnings: result.warnings,
+      errorMessage:
+        error instanceof Error ? error.message : 'RAG sync persistence failed.',
+    });
+
+    throw new RagSyncPersistenceError({
+      sourceId,
+      syncRunId,
+      blockCount: result.blockCount,
+      chunkCount: chunks.length,
+      message:
+        error instanceof Error ? error.message : 'RAG sync persistence failed.',
+    });
+  }
+}
+
+export async function recordFailedNotionRagSyncRun({
+  pageId,
+  errorMessage,
+  warnings = [],
+  blockCount = 0,
+  chunkCount = 0,
+}: {
+  pageId: string;
+  errorMessage: string;
+  warnings?: string[];
+  blockCount?: number;
+  chunkCount?: number;
+}) {
+  await ensureRagDatabaseSchema();
+
+  const source: RagSourceInput = {
+    type: 'notion',
+    sourceKey: pageId,
+    title: `Notion source ${pageId.slice(0, 12)}`,
+  };
+
+  return withPostgresTransaction(async (client) => {
+    const sourceId = await upsertRagSource(client, source);
+    const syncRunId = await createRagSyncRun(client, {
+      sourceId,
+      status: 'running',
+      blockCount,
+      chunkCount,
+      warnings,
+    });
+
+    await finishRagSyncRun(client, {
+      syncRunId,
+      status: 'failed',
+      blockCount,
+      chunkCount,
+      inserted: 0,
+      updated: 0,
+      skipped: 0,
+      warnings,
+      errorMessage,
+    });
+
+    return { sourceId, syncRunId };
   });
 }
 
@@ -230,7 +351,7 @@ export async function replaceStoredRagChunks(chunks: RagChunk[]) {
 
     for (const group of groups) {
       const sourceId = await upsertRagSource(client, group);
-      await replaceChunksForSource(client, {
+      await upsertChunksForSource(client, {
         sourceId,
         chunks: group.chunks.map(ragChunkToDatabaseChunk),
       });
@@ -322,9 +443,9 @@ async function upsertRagSource(client: PoolClient, source: RagSourceInput) {
   const result = await client.query<{ id: string }>(
     `
       INSERT INTO rag_sources
-        (type, source_key, title, url, last_synced_at, updated_at)
+        (type, source_key, title, url, updated_at)
       VALUES
-        ($1, $2, $3, $4, now(), now())
+        ($1, $2, $3, $4, now())
       ON CONFLICT (type, source_key) DO UPDATE SET
         title = EXCLUDED.title,
         url = EXCLUDED.url,
@@ -355,17 +476,24 @@ async function createRagSyncRun(
     status: RagSyncRunStatus;
     blockCount: number;
     chunkCount: number;
+    warnings?: string[];
   }
 ) {
   const result = await client.query<{ id: string }>(
     `
       INSERT INTO rag_sync_runs
-        (source_id, status, block_count, chunk_count, started_at)
+        (source_id, status, block_count, chunk_count, warnings, started_at)
       VALUES
-        ($1, $2, $3, $4, now())
+        ($1, $2, $3, $4, $5::jsonb, now())
       RETURNING id
     `,
-    [input.sourceId, input.status, input.blockCount, input.chunkCount]
+    [
+      input.sourceId,
+      input.status,
+      input.blockCount,
+      input.chunkCount,
+      JSON.stringify(input.warnings ?? []),
+    ]
   );
 
   return result.rows[0].id;
@@ -378,6 +506,10 @@ async function finishRagSyncRun(
     status: Exclude<RagSyncRunStatus, 'running'>;
     blockCount: number;
     chunkCount: number;
+    inserted: number;
+    updated: number;
+    skipped: number;
+    warnings?: string[];
     errorMessage?: string;
   }
 ) {
@@ -388,7 +520,11 @@ async function finishRagSyncRun(
         status = $2,
         block_count = $3,
         chunk_count = $4,
-        error_message = $5,
+        inserted_count = $5,
+        updated_count = $6,
+        skipped_count = $7,
+        warnings = $8::jsonb,
+        error_message = $9,
         finished_at = now()
       WHERE id = $1
     `,
@@ -397,70 +533,73 @@ async function finishRagSyncRun(
       input.status,
       input.blockCount,
       input.chunkCount,
+      input.inserted,
+      input.updated,
+      input.skipped,
+      JSON.stringify(input.warnings ?? []),
       input.errorMessage ?? null,
     ]
   );
 }
 
-async function replaceChunksForSource(
+async function markNotionRagSyncFailed({
+  syncRunId,
+  blockCount,
+  chunkCount,
+  warnings,
+  errorMessage,
+}: {
+  syncRunId: string;
+  blockCount: number;
+  chunkCount: number;
+  warnings: string[];
+  errorMessage: string;
+}) {
+  await withPostgresTransaction(async (client) => {
+    await finishRagSyncRun(client, {
+      syncRunId,
+      status: 'failed',
+      blockCount,
+      chunkCount,
+      inserted: 0,
+      updated: 0,
+      skipped: 0,
+      warnings,
+      errorMessage,
+    });
+  });
+}
+
+async function upsertChunksForSource(
   client: PoolClient,
   input: {
     sourceId: string;
     chunks: RagDatabaseChunkInput[];
   }
 ) {
+  const stats = {
+    inserted: 0,
+    updated: 0,
+    skipped: 0,
+  };
+  const currentChunkIds = new Set<string>();
+  const matchedContentHashes = new Set<string>();
+
   for (const chunk of input.chunks) {
-    await client.query(
-      `
-        INSERT INTO rag_chunks
-          (
-            source_id,
-            chunk_id,
-            entity_id,
-            title,
-            section_path,
-            content,
-            content_hash,
-            metadata,
-            visibility,
-            freshness,
-            has_todo,
-            confidence,
-            embedding,
-            updated_at
-          )
-        VALUES
-          ($1, $2, $3, $4, $5::text[], $6, $7, $8::jsonb, $9, $10, $11, $12, $13::vector, now())
-        ON CONFLICT (source_id, chunk_id) DO UPDATE SET
-          entity_id = EXCLUDED.entity_id,
-          title = EXCLUDED.title,
-          section_path = EXCLUDED.section_path,
-          content = EXCLUDED.content,
-          content_hash = EXCLUDED.content_hash,
-          metadata = EXCLUDED.metadata,
-          visibility = EXCLUDED.visibility,
-          freshness = EXCLUDED.freshness,
-          has_todo = EXCLUDED.has_todo,
-          confidence = EXCLUDED.confidence,
-          embedding = EXCLUDED.embedding,
-          updated_at = now()
-      `,
-      [
-        input.sourceId,
-        chunk.chunkId,
-        chunk.entityId ?? null,
-        chunk.title,
-        chunk.sectionPath,
-        chunk.content,
-        chunk.contentHash,
-        JSON.stringify(chunk.metadata),
-        chunk.visibility,
-        chunk.freshness,
-        chunk.hasTodo,
-        chunk.confidence,
-        chunk.embedding ? toVectorLiteral(chunk.embedding) : null,
-      ]
-    );
+    if (currentChunkIds.has(chunk.chunkId)) {
+      stats.skipped += 1;
+      continue;
+    }
+
+    const result = await upsertChunkForSource(client, {
+      sourceId: input.sourceId,
+      chunk,
+      allowContentHashMatch: !matchedContentHashes.has(chunk.contentHash),
+    });
+
+    currentChunkIds.add(chunk.chunkId);
+    matchedContentHashes.add(chunk.contentHash);
+    stats[result] += 1;
   }
 
   if (input.chunks.length > 0) {
@@ -476,6 +615,146 @@ async function replaceChunksForSource(
       input.sourceId,
     ]);
   }
+
+  return stats;
+}
+
+async function upsertChunkForSource(
+  client: PoolClient,
+  input: {
+    sourceId: string;
+    chunk: RagDatabaseChunkInput;
+    allowContentHashMatch: boolean;
+  }
+) {
+  const existing = await client.query<{
+    id: string;
+    chunk_id: string;
+    content_hash: string;
+  }>(
+    `
+      SELECT id, chunk_id, content_hash
+      FROM rag_chunks
+      WHERE source_id = $1
+        AND (
+          chunk_id = $2
+          OR ($4 = true AND content_hash = $3)
+        )
+      ORDER BY
+        CASE WHEN chunk_id = $2 THEN 0 ELSE 1 END,
+        updated_at DESC
+      LIMIT 1
+    `,
+    [
+      input.sourceId,
+      input.chunk.chunkId,
+      input.chunk.contentHash,
+      input.allowContentHashMatch,
+    ]
+  );
+
+  if (existing.rowCount === 0) {
+    await insertRagChunk(client, input.sourceId, input.chunk);
+    return 'inserted' as const;
+  }
+
+  const existingChunk = existing.rows[0];
+  if (
+    existingChunk.chunk_id === input.chunk.chunkId &&
+    existingChunk.content_hash === input.chunk.contentHash
+  ) {
+    return 'skipped' as const;
+  }
+
+  await updateRagChunk(client, existingChunk.id, input.chunk);
+  return 'updated' as const;
+}
+
+async function insertRagChunk(
+  client: PoolClient,
+  sourceId: string,
+  chunk: RagDatabaseChunkInput
+) {
+  await client.query(
+    `
+      INSERT INTO rag_chunks
+        (
+          source_id,
+          chunk_id,
+          entity_id,
+          title,
+          section_path,
+          content,
+          content_hash,
+          metadata,
+          visibility,
+          freshness,
+          has_todo,
+          confidence,
+          embedding,
+          updated_at
+        )
+      VALUES
+        ($1, $2, $3, $4, $5::text[], $6, $7, $8::jsonb, $9, $10, $11, $12, $13::vector, now())
+    `,
+    [
+      sourceId,
+      chunk.chunkId,
+      chunk.entityId ?? null,
+      chunk.title,
+      chunk.sectionPath,
+      chunk.content,
+      chunk.contentHash,
+      JSON.stringify(chunk.metadata),
+      chunk.visibility,
+      chunk.freshness,
+      chunk.hasTodo,
+      chunk.confidence,
+      chunk.embedding ? toVectorLiteral(chunk.embedding) : null,
+    ]
+  );
+}
+
+async function updateRagChunk(
+  client: PoolClient,
+  rowId: string,
+  chunk: RagDatabaseChunkInput
+) {
+  await client.query(
+    `
+      UPDATE rag_chunks
+      SET
+        chunk_id = $2,
+        entity_id = $3,
+        title = $4,
+        section_path = $5::text[],
+        content = $6,
+        content_hash = $7,
+        metadata = $8::jsonb,
+        visibility = $9,
+        freshness = $10,
+        has_todo = $11,
+        confidence = $12,
+        embedding = $13::vector,
+        updated_at = now()
+      WHERE id = $1
+    `,
+    [
+      rowId,
+      chunk.chunkId,
+      chunk.entityId ?? null,
+      chunk.title,
+      chunk.sectionPath,
+      chunk.content,
+      chunk.contentHash,
+      JSON.stringify(chunk.metadata),
+      chunk.visibility,
+      chunk.freshness,
+      chunk.hasTodo,
+      chunk.confidence,
+      chunk.embedding ? toVectorLiteral(chunk.embedding) : null,
+    ]
+  );
 }
 
 function groupChunksBySource(chunks: RagChunk[]): RagChunkGroup[] {
@@ -545,90 +824,6 @@ function ragChunkToDatabaseChunk(chunk: RagChunk): RagDatabaseChunkInput {
   };
 }
 
-function notionResultToDatabaseChunks(result: NotionRagSyncResult) {
-  return result.sections.flatMap((section, sectionIndex) =>
-    sectionToDatabaseChunks({
-      pageId: result.pageId,
-      pageUrl: result.pageUrl,
-      section,
-      sectionIndex,
-    })
-  );
-}
-
-function sectionToDatabaseChunks({
-  pageId,
-  pageUrl,
-  section,
-  sectionIndex,
-}: {
-  pageId: string;
-  pageUrl?: string;
-  section: NotionRagSection;
-  sectionIndex: number;
-}) {
-  const parts = splitChunkContent(section.text);
-
-  return parts.map((content, partIndex) => {
-    const chunkId = ['notion', pageId, section.id, partIndex + 1].join(':');
-    const hasTodo = hasTodoMarker(content);
-    const metadata: RagChunkMetadata = {
-      notionPageId: pageId,
-      notionBlockId: section.id,
-      pageUrl,
-      sectionLevel: section.level,
-      sectionIndex,
-      sectionPath: section.sectionPath,
-      sourceBlockIds: section.blockIds,
-      sourceBlockCount: section.blockCount,
-      sourceTextLength: section.textLength,
-      chunkPart: partIndex + 1,
-      chunkPartCount: parts.length,
-    };
-
-    return {
-      chunkId,
-      entityId: detectEntityId(`${section.title}\n${content}`),
-      title:
-        parts.length > 1 ? `${section.title} ${partIndex + 1}` : section.title,
-      sectionPath: section.sectionPath,
-      content,
-      contentHash: hashString(`${chunkId}:${content}`),
-      metadata,
-      visibility: 'public',
-      freshness: hasTodo ? 'needs_review' : 'current',
-      hasTodo,
-      confidence: hasTodo ? 0.6 : 1,
-    };
-  });
-}
-
-function splitChunkContent(content: string) {
-  const maxLength = getPositiveIntEnv(
-    'ASKOOSU_RAG_CHUNK_SIZE',
-    DEFAULT_CHUNK_SIZE
-  );
-  const overlap = getPositiveIntEnv(
-    'ASKOOSU_RAG_CHUNK_OVERLAP',
-    DEFAULT_CHUNK_OVERLAP
-  );
-
-  if (content.length <= maxLength) return [content];
-
-  const chunks: string[] = [];
-  let start = 0;
-
-  while (start < content.length) {
-    const end = Math.min(start + maxLength, content.length);
-    chunks.push(content.slice(start, end).trim());
-
-    if (end === content.length) break;
-    start = Math.max(0, end - overlap);
-  }
-
-  return chunks.filter(Boolean);
-}
-
 function rowToChunk(row: {
   chunk_id: string;
   source: RagChunk['source'];
@@ -679,18 +874,6 @@ function getMetadataStringArray(
   );
 
   return strings.length > 0 ? strings : null;
-}
-
-function hasTodoMarker(value: string) {
-  return /\bTODO\b|확인 필요|채워야|미정/i.test(value);
-}
-
-function detectEntityId(value: string) {
-  const match = value.match(
-    /\b(?:person|project|career|skill|knowledge|policy|audience|question)\.[a-z0-9_.-]+\b/i
-  );
-
-  return match?.[0] ?? null;
 }
 
 function toVectorLiteral(embedding: number[]) {
