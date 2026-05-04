@@ -29,11 +29,10 @@ ASKOOSU_NOTION_PAGE_IDS=
 
 ## Sync Step
 
-After the Markdown import and integration sharing are complete, call the admin-protected RAG sync endpoint:
+After the Markdown import and integration sharing are complete, call the admin-protected RAG sync endpoint. It currently returns recursive Notion fetch metadata (`ok`, `pageId`, `blockCount`, `textLength`, `sections`, `warnings`) without writing to the database.
 
 ```bash
 curl -X POST http://localhost:3000/api/rag/sync \
   -H "Authorization: Bearer $ASKOOSU_RAG_ADMIN_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"force":true}'
+  -H "Content-Type: application/json"
 ```
