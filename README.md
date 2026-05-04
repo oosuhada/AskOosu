@@ -60,7 +60,7 @@ GROQ_KEY_QUOTA_COOLDOWN_MS=3600000
 NOTION_API_KEY=your_notion_integration_secret
 NOTION_VERSION=2026-03-11
 NOTION_PAGE_ID=355a342869018181b578d73a791356af
-ASKOOSU_NOTION_PAGE_IDS=355a342869018181b578d73a791356af
+ASKOOSU_NOTION_PAGE_IDS=
 ASKOOSU_NOTION_DATABASE_IDS=
 ASKOOSU_NOTION_DATA_SOURCE_IDS=
 ASKOOSU_RAG_STORE=memory
@@ -83,9 +83,11 @@ Open http://localhost:3000.
 
 RAG admin routes:
 
-- `GET /api/rag/sync`: recursively fetches the configured Notion wiki page, returns normalized sections, and persists chunks when `DATABASE_URL` is configured
+- `GET /api/rag/sync`: recursively fetches the configured Notion wiki page or pages, returns aggregate sync stats, and persists chunks when `DATABASE_URL` is configured
 - `POST /api/rag/sync`: same recursive Notion sync behavior
 - `GET /api/rag/search?query=...`: searches the synced knowledge base
 - `POST /api/rag/search`: searches with JSON body `{ "query": "...", "limit": 5 }`
+
+Use `NOTION_PAGE_ID` for the parent AskOosu Wiki page. If the parent sync only sees child page titles and misses imported KO/EN page content, leave `NOTION_PAGE_ID` empty and set `ASKOOSU_NOTION_PAGE_IDS` to the KO and EN child page ids.
 
 See [docs/architecture.md](docs/architecture.md) for the frontend, Grok streaming, and Notion/RAG upgrade plan.
