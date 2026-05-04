@@ -1,25 +1,82 @@
 import {
-  getPortfolioKnowledgeStatus,
-  syncPortfolioKnowledgeBase,
-} from '@/lib/rag/notion-rag';
+  fetchNotionRagPage,
+  getNotionRagConfig,
+  NotionRequestError,
+} from '@/lib/rag/notion';
 import { isRagAdminRequest, unauthorizedRagResponse } from '../auth';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 export async function GET(req: Request) {
-  if (!isRagAdminRequest(req)) return unauthorizedRagResponse();
-
-  return Response.json(await getPortfolioKnowledgeStatus());
+  return syncNotionPage(req);
 }
 
 export async function POST(req: Request) {
+  return syncNotionPage(req);
+}
+
+async function syncNotionPage(req: Request) {
   if (!isRagAdminRequest(req)) return unauthorizedRagResponse();
 
-  const body = await req.json().catch(() => ({}) as { force?: boolean });
-  const summary = await syncPortfolioKnowledgeBase({
-    force: Boolean(body.force),
-  });
+  const config = getNotionRagConfig();
+  if (!config.ok) {
+    return Response.json(
+      {
+        ok: false,
+        error: config.error,
+        warnings: config.warnings,
+      },
+      { status: config.status }
+    );
+  }
 
-  return Response.json(summary);
+  const warnings = [...config.warnings];
+
+  try {
+    const result = await fetchNotionRagPage({
+      apiKey: config.apiKey,
+      pageId: config.pageId,
+      initialWarnings: warnings,
+    });
+
+    return Response.json(result);
+  } catch (error) {
+    console.warn('Notion RAG sync failed.', getSafeErrorLog(error));
+
+    return Response.json(
+      {
+        ok: false,
+        pageId: config.pageId,
+        error:
+          error instanceof NotionRequestError
+            ? error.message
+            : 'Notion RAG sync failed.',
+        warnings,
+      },
+      {
+        status: error instanceof NotionRequestError ? error.status : 500,
+      }
+    );
+  }
+}
+
+function getSafeErrorLog(error: unknown) {
+  if (error instanceof NotionRequestError) {
+    return {
+      name: error.name,
+      status: error.status,
+      retryable: error.retryable,
+      message: error.message,
+    };
+  }
+
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+    };
+  }
+
+  return { message: 'Unknown error' };
 }
