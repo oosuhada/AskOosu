@@ -64,12 +64,16 @@ GOOGLE_VERTEX_PROJECT=
 GOOGLE_VERTEX_LOCATION=us-central1
 GOOGLE_VERTEX_MODEL=gemini-2.5-flash
 GOOGLE_APPLICATION_CREDENTIALS=
+GOOGLE_AI_ENABLED=false
+GOOGLE_AI_MAX_CALLS_PER_DAY=100
 
 # Optional Notion RAG
 NOTION_API_KEY=your_notion_integration_secret
 NOTION_VERSION=2026-03-11
 NOTION_PAGE_ID=355a342869018181b578d73a791356af
 ASKOOSU_NOTION_PAGE_IDS=
+ASKOOSU_NOTION_KO_PAGE_IDS=
+ASKOOSU_NOTION_EN_PAGE_IDS=
 ASKOOSU_NOTION_DATABASE_IDS=
 ASKOOSU_NOTION_DATA_SOURCE_IDS=
 ASKOOSU_RAG_STORE=memory
@@ -79,6 +83,8 @@ ASKOOSU_RAG_TOP_K=5
 ASKOOSU_RAG_ADMIN_TOKEN=local_or_server_secret
 ASKOOSU_WIKI_VERSION=v10
 ASKOOSU_ANSWER_CACHE_TTL_HOURS=24
+ASKOOSU_RAG_SYNC_LOCK_TTL_SECONDS=300
+ASKOOSU_CHAT_MAX_REQUEST_BYTES=32768
 
 # Optional embedding/vector search
 # ASKOOSU_RAG_RETRIEVAL=embedding
@@ -100,5 +106,7 @@ RAG admin routes:
 - `POST /api/rag/search`: searches with JSON body `{ "query": "...", "limit": 5 }`
 
 Use `NOTION_PAGE_ID` for the parent AskOosu Wiki page. If the parent sync only sees child page titles and misses imported KO/EN page content, leave `NOTION_PAGE_ID` empty and set `ASKOOSU_NOTION_PAGE_IDS` to the KO and EN child page ids.
+
+For Google Vertex fallback, run `gcloud auth application-default login` in local development, or mount credentials into the Docker container and set `GOOGLE_APPLICATION_CREDENTIALS` in production. Keep `GOOGLE_AI_ENABLED=false` until the Google project and credentials are ready.
 
 See [docs/architecture.md](docs/architecture.md) for the frontend, Grok streaming, and Notion/RAG upgrade plan.

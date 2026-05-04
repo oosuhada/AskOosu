@@ -1,5 +1,6 @@
 import { getRagTopK } from './config';
 import { searchRagChunks, type RagChunkSearchResult } from './search';
+import type { ChatLanguage } from '@/lib/i18n/detect-language';
 
 const GUARDRAIL_ENTITY_ID = 'policy.guardrail';
 
@@ -28,7 +29,8 @@ export type RagChatContext = {
 };
 
 export async function buildRagChatContext(
-  question: string
+  question: string,
+  language?: ChatLanguage
 ): Promise<RagChatContext> {
   const normalizedQuestion = question.trim();
   const warnings: string[] = [];
@@ -44,6 +46,7 @@ export async function buildRagChatContext(
       q: normalizedQuestion,
       limit: getRagTopK(),
       includeContent: true,
+      language,
     }),
     searchRagChunks({
       entityId: GUARDRAIL_ENTITY_ID,

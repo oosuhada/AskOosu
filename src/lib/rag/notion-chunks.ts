@@ -15,6 +15,7 @@ export type NotionDatabaseChunk = {
   content: string;
   contentHash: string;
   metadata: RagChunkMetadata;
+  language?: 'ko' | 'en' | null;
   visibility: string;
   freshness: string;
   hasTodo: boolean;
@@ -142,6 +143,7 @@ export function notionResultToDatabaseChunks(
     sectionToDatabaseChunks({
       pageId: result.pageId,
       pageUrl: result.pageUrl,
+      language: result.language,
       section,
       sectionIndex,
     })
@@ -170,11 +172,13 @@ export function detectEntityId(value: string) {
 function sectionToDatabaseChunks({
   pageId,
   pageUrl,
+  language,
   section,
   sectionIndex,
 }: {
   pageId: string;
   pageUrl?: string;
+  language?: 'ko' | 'en' | null;
   section: NotionRagSection;
   sectionIndex: number;
 }) {
@@ -201,6 +205,7 @@ function sectionToDatabaseChunks({
       sourceBlockIds: section.blockIds,
       sourceBlockCount: section.blockCount,
       sourceTextLength: section.textLength,
+      language: language ?? null,
       chunkPart: partIndex + 1,
       chunkPartCount: parts.length,
       visibility,
@@ -218,6 +223,7 @@ function sectionToDatabaseChunks({
       content,
       contentHash: hashString(normalizeHashContent(content)),
       metadata,
+      language: language ?? null,
       visibility,
       freshness:
         hasTodo || visibility === 'needs_review' ? 'needs_review' : 'current',

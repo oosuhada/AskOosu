@@ -8,6 +8,7 @@ type SearchBody = {
   query?: string;
   limit?: number | string;
   entityId?: string;
+  language?: string;
   includePrivate?: boolean | string;
   debug?: boolean | string;
 };
@@ -20,6 +21,7 @@ export async function GET(req: Request) {
     q: url.searchParams.get('q') ?? url.searchParams.get('query') ?? '',
     limit: parseLimit(url.searchParams.get('limit')),
     entityId: url.searchParams.get('entityId') ?? undefined,
+    language: parseLanguage(url.searchParams.get('language')),
     includePrivate: parseBoolean(url.searchParams.get('includePrivate')),
     debug: parseBoolean(url.searchParams.get('debug')),
   });
@@ -33,6 +35,7 @@ export async function POST(req: Request) {
     q: body.q ?? body.query ?? '',
     limit: parseLimit(body.limit),
     entityId: body.entityId,
+    language: parseLanguage(body.language),
     includePrivate: parseBoolean(body.includePrivate),
     debug: parseBoolean(body.debug),
   });
@@ -42,12 +45,14 @@ async function searchResponse({
   q,
   limit,
   entityId,
+  language,
   includePrivate = false,
   debug = false,
 }: {
   q: string;
   limit?: number;
   entityId?: string;
+  language?: 'ko' | 'en';
   includePrivate?: boolean;
   debug?: boolean;
 }) {
@@ -62,6 +67,7 @@ async function searchResponse({
           q: normalizedQuery,
           limit: limit ?? null,
           entityId: normalizedEntityId || undefined,
+          language,
           includePrivate,
           debug,
         },
@@ -77,11 +83,17 @@ async function searchResponse({
     q: normalizedQuery,
     limit,
     entityId: normalizedEntityId,
+    language,
     includePrivate,
     debug,
   });
 
   return Response.json(payload, { status: payload.ok ? 200 : 500 });
+}
+
+function parseLanguage(value: string | null | undefined) {
+  if (value === 'ko' || value === 'en') return value;
+  return undefined;
 }
 
 function parseLimit(value: string | number | null | undefined) {

@@ -5,10 +5,12 @@ import {
   type NotionRagSyncResult,
 } from '@/lib/rag/notion';
 import {
+  acquireRagSyncLock,
   hasPostgresDatabaseUrl,
   persistNotionRagSyncResult,
   RagSyncPersistenceError,
   recordFailedNotionRagSyncRun,
+  releaseRagSyncLock,
 } from '@/lib/rag/database';
 import { isRagAdminRequest, unauthorizedRagResponse } from '../auth';
 
@@ -54,8 +56,41 @@ async function syncNotionPages(req: Request) {
   const pageResults: SyncedNotionPage[] = [];
   let currentPageId = config.pageId;
   let currentWarnings = [...config.warnings];
+  const lockId = `notion:${config.pageIds.join(',')}`;
+  let acquiredLock = false;
 
   try {
+    if (hasPostgresDatabaseUrl()) {
+      acquiredLock = await acquireRagSyncLock({
+        lockId,
+        ttlSeconds: getRagSyncLockTtlSeconds(),
+      });
+
+      if (!acquiredLock) {
+        return Response.json(
+          {
+            ok: false,
+            pageId: config.pageId,
+            pageIds: config.pageIds,
+            sourceId: null,
+            syncRunId: null,
+            blockCount: 0,
+            chunkCount: 0,
+            inserted: 0,
+            updated: 0,
+            skipped: 0,
+            warnings: [
+              ...config.warnings,
+              'RAG sync is already running. Try again after the current sync finishes.',
+            ],
+            sources: [],
+            error: 'RAG sync is already running.',
+          },
+          { status: 409 }
+        );
+      }
+    }
+
     const notionResults: NotionRagSyncResult[] = [];
 
     for (const pageId of config.pageIds) {
@@ -187,6 +222,15 @@ async function syncNotionPages(req: Request) {
         status: error instanceof NotionRequestError ? error.status : 500,
       }
     );
+  } finally {
+    if (acquiredLock) {
+      await releaseRagSyncLock(lockId).catch((lockError) => {
+        console.warn(
+          'Failed to release RAG sync lock.',
+          getSafeErrorLog(lockError)
+        );
+      });
+    }
   }
 }
 
@@ -283,4 +327,11 @@ function mergeWarnings(...groups: string[][]) {
 
 function sum(values: number[]) {
   return values.reduce((total, value) => total + value, 0);
+}
+
+function getRagSyncLockTtlSeconds() {
+  const rawValue = process.env.ASKOOSU_RAG_SYNC_LOCK_TTL_SECONDS;
+  const parsedValue = rawValue ? Number.parseInt(rawValue, 10) : Number.NaN;
+
+  return Number.isFinite(parsedValue) && parsedValue > 0 ? parsedValue : 300;
 }

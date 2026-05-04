@@ -25,6 +25,7 @@ type RagSourceInput = {
   sourceKey: string;
   title: string;
   url?: string | null;
+  language?: 'ko' | 'en' | null;
 };
 
 type RagDatabaseChunkInput = NotionDatabaseChunk & {
@@ -89,6 +90,7 @@ export async function ensureRagDatabaseSchema() {
       source_key text NOT NULL CHECK (source_key <> ''),
       title text NOT NULL DEFAULT '',
       url text,
+      language text CHECK (language IS NULL OR language IN ('ko', 'en')),
       last_synced_at timestamptz,
       created_at timestamptz NOT NULL DEFAULT now(),
       updated_at timestamptz NOT NULL DEFAULT now(),
@@ -106,6 +108,7 @@ export async function ensureRagDatabaseSchema() {
       content text NOT NULL,
       content_hash text NOT NULL,
       metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+      language text CHECK (language IS NULL OR language IN ('ko', 'en')),
       visibility text NOT NULL DEFAULT 'public',
       freshness text NOT NULL DEFAULT 'current',
       has_todo boolean NOT NULL DEFAULT false,
@@ -132,6 +135,19 @@ export async function ensureRagDatabaseSchema() {
       finished_at timestamptz
     )
   `);
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS rag_sync_locks (
+      id text PRIMARY KEY,
+      locked_until timestamptz NOT NULL,
+      created_at timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+  await pool.query(
+    "ALTER TABLE rag_sources ADD COLUMN IF NOT EXISTS language text CHECK (language IS NULL OR language IN ('ko', 'en'))"
+  );
+  await pool.query(
+    "ALTER TABLE rag_chunks ADD COLUMN IF NOT EXISTS language text CHECK (language IS NULL OR language IN ('ko', 'en'))"
+  );
   await pool.query(
     'ALTER TABLE rag_sync_runs ADD COLUMN IF NOT EXISTS inserted_count integer NOT NULL DEFAULT 0 CHECK (inserted_count >= 0)'
   );
@@ -157,6 +173,9 @@ export async function ensureRagDatabaseSchema() {
     'CREATE INDEX IF NOT EXISTS rag_chunks_has_todo_idx ON rag_chunks (has_todo)'
   );
   await pool.query(
+    'CREATE INDEX IF NOT EXISTS rag_chunks_language_idx ON rag_chunks (language)'
+  );
+  await pool.query(
     'CREATE INDEX IF NOT EXISTS rag_chunks_metadata_idx ON rag_chunks USING gin (metadata)'
   );
   await pool.query(`
@@ -174,6 +193,9 @@ export async function ensureRagDatabaseSchema() {
     'CREATE INDEX IF NOT EXISTS rag_sources_type_source_key_idx ON rag_sources (type, source_key)'
   );
   await pool.query(
+    'CREATE INDEX IF NOT EXISTS rag_sources_language_idx ON rag_sources (language)'
+  );
+  await pool.query(
     'CREATE INDEX IF NOT EXISTS rag_sync_runs_source_id_idx ON rag_sync_runs (source_id)'
   );
   await pool.query(
@@ -181,6 +203,9 @@ export async function ensureRagDatabaseSchema() {
   );
   await pool.query(
     'CREATE INDEX IF NOT EXISTS rag_sync_runs_started_at_idx ON rag_sync_runs (started_at DESC)'
+  );
+  await pool.query(
+    'CREATE INDEX IF NOT EXISTS rag_sync_locks_locked_until_idx ON rag_sync_locks (locked_until)'
   );
   await pool.query(`
     CREATE OR REPLACE FUNCTION set_rag_updated_at()
@@ -221,6 +246,7 @@ export async function persistNotionRagSyncResult(
     sourceKey: result.pageId,
     title: result.pageTitle,
     url: result.pageUrl,
+    language: result.language ?? null,
   };
   const chunks = notionResultToDatabaseChunks(result);
 
@@ -406,6 +432,40 @@ export async function getRagDatabaseStatus(): Promise<RagStatus> {
   };
 }
 
+export async function acquireRagSyncLock({
+  lockId,
+  ttlSeconds,
+}: {
+  lockId: string;
+  ttlSeconds: number;
+}) {
+  await ensureRagDatabaseSchema();
+
+  const pool = await getPostgresPool();
+  const result = await pool.query<{ id: string }>(
+    `
+      INSERT INTO rag_sync_locks (id, locked_until, created_at)
+      VALUES ($1, now() + ($2::text || ' seconds')::interval, now())
+      ON CONFLICT (id)
+      DO UPDATE SET
+        locked_until = EXCLUDED.locked_until,
+        created_at = now()
+      WHERE rag_sync_locks.locked_until <= now()
+      RETURNING id
+    `,
+    [lockId, String(ttlSeconds)]
+  );
+
+  return (result.rowCount ?? 0) > 0;
+}
+
+export async function releaseRagSyncLock(lockId: string) {
+  if (!hasPostgresDatabaseUrl()) return;
+
+  const pool = await getPostgresPool();
+  await pool.query('DELETE FROM rag_sync_locks WHERE id = $1', [lockId]);
+}
+
 export async function searchStoredRagChunksByEmbedding(
   embedding: number[],
   limit: number
@@ -443,16 +503,23 @@ async function upsertRagSource(client: PoolClient, source: RagSourceInput) {
   const result = await client.query<{ id: string }>(
     `
       INSERT INTO rag_sources
-        (type, source_key, title, url, updated_at)
+        (type, source_key, title, url, language, updated_at)
       VALUES
-        ($1, $2, $3, $4, now())
+        ($1, $2, $3, $4, $5, now())
       ON CONFLICT (type, source_key) DO UPDATE SET
         title = EXCLUDED.title,
         url = EXCLUDED.url,
+        language = EXCLUDED.language,
         updated_at = now()
       RETURNING id
     `,
-    [source.type, source.sourceKey, source.title, source.url ?? null]
+    [
+      source.type,
+      source.sourceKey,
+      source.title,
+      source.url ?? null,
+      source.language ?? null,
+    ]
   );
 
   return result.rows[0].id;
@@ -687,6 +754,7 @@ async function insertRagChunk(
           content,
           content_hash,
           metadata,
+          language,
           visibility,
           freshness,
           has_todo,
@@ -695,7 +763,7 @@ async function insertRagChunk(
           updated_at
         )
       VALUES
-        ($1, $2, $3, $4, $5::text[], $6, $7, $8::jsonb, $9, $10, $11, $12, $13::vector, now())
+        ($1, $2, $3, $4, $5::text[], $6, $7, $8::jsonb, $9, $10, $11, $12, $13, $14::vector, now())
     `,
     [
       sourceId,
@@ -706,6 +774,7 @@ async function insertRagChunk(
       chunk.content,
       chunk.contentHash,
       JSON.stringify(chunk.metadata),
+      chunk.language ?? null,
       chunk.visibility,
       chunk.freshness,
       chunk.hasTodo,
@@ -731,11 +800,12 @@ async function updateRagChunk(
         content = $6,
         content_hash = $7,
         metadata = $8::jsonb,
-        visibility = $9,
-        freshness = $10,
-        has_todo = $11,
-        confidence = $12,
-        embedding = $13::vector,
+        language = $9,
+        visibility = $10,
+        freshness = $11,
+        has_todo = $12,
+        confidence = $13,
+        embedding = $14::vector,
         updated_at = now()
       WHERE id = $1
     `,
@@ -748,6 +818,7 @@ async function updateRagChunk(
       chunk.content,
       chunk.contentHash,
       JSON.stringify(chunk.metadata),
+      chunk.language ?? null,
       chunk.visibility,
       chunk.freshness,
       chunk.hasTodo,
@@ -795,6 +866,7 @@ function getRagChunkSource(chunk: RagChunk): RagSourceInput {
         ? `Notion source ${sourceKey.slice(0, 12)}`
         : 'Static portfolio fallback',
     url: chunk.url,
+    language: getMetadataLanguage(chunk.metadata),
   };
 }
 
@@ -821,6 +893,7 @@ function ragChunkToDatabaseChunk(chunk: RagChunk): RagDatabaseChunkInput {
     confidence:
       getMetadataNumber(chunk.metadata, 'confidence') ?? (hasTodo ? 0.6 : 1),
     embedding: chunk.embedding,
+    language: getMetadataLanguage(chunk.metadata),
   };
 }
 
@@ -860,6 +933,11 @@ function getMetadataNumber(
   return typeof value === 'number' && Number.isFinite(value)
     ? Math.min(1, Math.max(0, value))
     : undefined;
+}
+
+function getMetadataLanguage(metadata: RagChunkMetadata | undefined) {
+  const language = getMetadataString(metadata, 'language');
+  return language === 'ko' || language === 'en' ? language : null;
 }
 
 function getMetadataStringArray(

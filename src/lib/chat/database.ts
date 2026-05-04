@@ -44,6 +44,12 @@ export type AiProviderUsageInput = {
   errorCode?: string | null;
 };
 
+export type AiProviderDailyUsage = {
+  callCount: number;
+  successCount: number;
+  failureCount: number;
+};
+
 export { hasPostgresDatabaseUrl };
 
 export async function ensureChatRuntimeSchema() {
@@ -303,6 +309,44 @@ export async function recordAiProviderStatus({
   );
 }
 
+export async function getAiProviderDailyUsage(
+  provider: string
+): Promise<AiProviderDailyUsage> {
+  if (!hasPostgresDatabaseUrl()) {
+    return {
+      callCount: 0,
+      successCount: 0,
+      failureCount: 0,
+    };
+  }
+
+  await ensureChatRuntimeSchema();
+  const pool = await getPostgresPool();
+  const result = await pool.query<{
+    call_count: string;
+    success_count: string;
+    failure_count: string;
+  }>(
+    `
+      SELECT
+        COUNT(*)::text AS call_count,
+        COUNT(*) FILTER (WHERE success)::text AS success_count,
+        COUNT(*) FILTER (WHERE NOT success)::text AS failure_count
+      FROM ai_provider_usage
+      WHERE provider = $1
+        AND created_at >= date_trunc('day', now())
+    `,
+    [truncateText(provider, MAX_PROVIDER_LENGTH)]
+  );
+  const row = result.rows[0];
+
+  return {
+    callCount: parseCount(row?.call_count),
+    successCount: parseCount(row?.success_count),
+    failureCount: parseCount(row?.failure_count),
+  };
+}
+
 function getWikiVersion() {
   return process.env.ASKOOSU_WIKI_VERSION || 'v10';
 }
@@ -327,4 +371,9 @@ function normalizeInteger(value: number | null | undefined) {
   if (value === null || value === undefined) return null;
   if (!Number.isFinite(value)) return null;
   return Math.max(0, Math.floor(value));
+}
+
+function parseCount(value: string | undefined) {
+  const parsedValue = value ? Number.parseInt(value, 10) : Number.NaN;
+  return Number.isFinite(parsedValue) ? parsedValue : 0;
 }

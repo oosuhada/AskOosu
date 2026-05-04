@@ -8,6 +8,7 @@ export type RagChunkSearchInput = {
   q?: string;
   limit?: number;
   entityId?: string;
+  language?: 'ko' | 'en' | null;
   includePrivate?: boolean;
   includeContent?: boolean;
   debug?: boolean;
@@ -17,6 +18,7 @@ export type RagChunkSearchQuery = {
   q: string;
   limit: number;
   entityId?: string;
+  language?: 'ko' | 'en';
   includePrivate: boolean;
   includeContent: boolean;
   debug: boolean;
@@ -162,11 +164,16 @@ export function normalizeSearchLimit(value: number | undefined) {
 function normalizeSearchInput(input: RagChunkSearchInput): RagChunkSearchQuery {
   const q = input.q?.trim() ?? '';
   const entityId = input.entityId?.trim();
+  const language =
+    input.language === 'ko' || input.language === 'en'
+      ? input.language
+      : undefined;
 
   return {
     q,
     limit: normalizeSearchLimit(input.limit),
     entityId: entityId || undefined,
+    language,
     includePrivate: input.includePrivate ?? false,
     includeContent: input.includeContent ?? false,
     debug: input.debug ?? false,
@@ -203,6 +210,7 @@ async function searchWithPostgresFullText(query: RagChunkSearchQuery) {
         WHERE
           ($4::boolean OR c.visibility = 'public')
           AND ($5::text IS NULL OR c.entity_id = $5)
+          AND ($6::text IS NULL OR c.language IS NULL OR c.language = $6)
           AND (
             to_tsvector('simple', coalesce(c.title, '') || ' ' || array_to_string(c.section_path, ' ') || ' ' || c.content)
               @@ websearch_to_tsquery('simple', $1)
@@ -246,6 +254,7 @@ async function searchWithPostgresFullText(query: RagChunkSearchQuery) {
       query.limit,
       query.includePrivate,
       query.entityId ?? null,
+      query.language ?? null,
     ]
   );
 
@@ -279,6 +288,7 @@ async function searchWithIlikeFallback(query: RagChunkSearchQuery) {
         WHERE
           ($4::boolean OR c.visibility = 'public')
           AND ($5::text IS NULL OR c.entity_id = $5)
+          AND ($6::text IS NULL OR c.language IS NULL OR c.language = $6)
           AND (
             c.title ILIKE $2 ESCAPE '\\'
             OR array_to_string(c.section_path, ' ') ILIKE $2 ESCAPE '\\'
@@ -319,6 +329,7 @@ async function searchWithIlikeFallback(query: RagChunkSearchQuery) {
       query.limit,
       query.includePrivate,
       query.entityId ?? null,
+      query.language ?? null,
     ]
   );
 
@@ -351,6 +362,7 @@ async function searchWithEntityFilter(query: RagChunkSearchQuery) {
         WHERE
           ($2::boolean OR c.visibility = 'public')
           AND c.entity_id = $3
+          AND ($4::text IS NULL OR c.language IS NULL OR c.language = $4)
       )
       SELECT
         chunk_id,
@@ -377,7 +389,7 @@ async function searchWithEntityFilter(query: RagChunkSearchQuery) {
       ORDER BY score DESC, updated_at DESC, title ASC
       LIMIT $1
     `,
-    [query.limit, query.includePrivate, query.entityId]
+    [query.limit, query.includePrivate, query.entityId, query.language ?? null]
   );
 
   return result.rows;
