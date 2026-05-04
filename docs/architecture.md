@@ -15,7 +15,14 @@ AskOosu is intentionally chat-first. The first screen should feel like a usable 
 
 The chat API uses AI SDK 6 `streamText` and returns `toUIMessageStreamResponse()`, so the client receives streamed UI message parts that match the current `useChat` transport API.
 
-Model selection is isolated in `src/app/api/chat/model-provider.ts`:
+Chat orchestration is intentionally cache-first:
+
+1. `/api/chat` validates the request and applies rate limits.
+2. `src/lib/chat/orchestrator.ts` detects language, matches FAQ/deterministic answers, checks `answer_cache`, then builds RAG context only on cache miss.
+3. `src/lib/ai/providers.ts` selects the provider and keeps Groq key-pool/cooldown behavior isolated from the route.
+4. Generated answers are written back to `answer_cache`, while provider success/failure is logged in `ai_provider_usage` and `ai_provider_status`.
+
+Model selection is isolated in `src/lib/ai/providers.ts` with a compatibility re-export from `src/app/api/chat/model-provider.ts`:
 
 - Default provider: OpenAI with `OPENAI_MODEL` or `gpt-4o-mini`
 - Grok provider: set `ASKOOSU_AI_PROVIDER=xai`
@@ -25,10 +32,14 @@ Model selection is isolated in `src/app/api/chat/model-provider.ts`:
 - Groq provider: set `ASKOOSU_AI_PROVIDER=groq`
 - Required for Groq: `GROQ_API_KEYS` or `GROQ_API_KEY`
 - Optional for Groq: `GROQ_MODEL`, `GROQ_BASE_URL`, `GROQ_KEY_FAILURE_THRESHOLD`, `GROQ_KEY_COOLDOWN_MS`, `GROQ_KEY_QUOTA_COOLDOWN_MS`
+- Google Vertex provider/fallback: set `ASKOOSU_AI_PROVIDER=google_vertex`, or configure `GOOGLE_VERTEX_API_KEY`/`GOOGLE_APPLICATION_CREDENTIALS`/`GOOGLE_VERTEX_PROJECT` so it can be used when Groq selection is unavailable
+- Optional for Google Vertex: `GOOGLE_VERTEX_MODEL`, `GOOGLE_VERTEX_LOCATION`, `GOOGLE_VERTEX_PROJECT`
 
 The xAI path uses `@ai-sdk/xai`. `xai.responses(model)` is the default because it is the forward-looking path for agentic/tool-capable Responses features. `xai.chat(model)` is still available through `XAI_API_MODE=chat` when a model or account behaves better on the chat endpoint.
 
 The Groq path uses `@ai-sdk/groq` with a local in-process key pool. `GROQ_API_KEYS` accepts comma- or newline-separated entries in `label:key` format. Each request selects the next active key. Provider/network failures increment that key's failure count; once `GROQ_KEY_FAILURE_THRESHOLD` is reached, the key is disabled until `GROQ_KEY_COOLDOWN_MS` has elapsed. Quota and rate-limit responses disable the key immediately until `GROQ_KEY_QUOTA_COOLDOWN_MS` has elapsed. Reactivation is lazy: the next request after the cooldown resets the key and makes it eligible again.
+
+FAQ and deterministic answers return through the same AI SDK UI message stream shape but set `answerSource=faq_cache` or `deterministic_rule`, `skippedGroq=true`, and language metadata. This keeps starter-question traffic fast and nearly free.
 
 ## Stage C: Notion and RAG
 
@@ -61,7 +72,7 @@ The next Mac mini/home-server step is to run sync on a schedule, keep Postgres +
 OPENAI_API_KEY=your_openai_api_key_here
 OPENAI_MODEL=gpt-4o-mini
 
-# Optional provider mode: openai (default), xai, or groq
+# Optional provider mode: openai (default), xai, groq, or google_vertex
 ASKOOSU_AI_PROVIDER=openai
 
 # Optional Grok/xAI mode
@@ -80,6 +91,14 @@ GROQ_KEY_FAILURE_THRESHOLD=3
 GROQ_KEY_COOLDOWN_MS=900000
 GROQ_KEY_QUOTA_COOLDOWN_MS=3600000
 
+# Optional Google Vertex provider/fallback
+# ASKOOSU_AI_PROVIDER=google_vertex
+GOOGLE_VERTEX_API_KEY=
+GOOGLE_VERTEX_PROJECT=
+GOOGLE_VERTEX_LOCATION=us-central1
+GOOGLE_VERTEX_MODEL=gemini-2.5-flash
+GOOGLE_APPLICATION_CREDENTIALS=
+
 # Optional Notion RAG
 NOTION_API_KEY=your_notion_integration_secret
 NOTION_VERSION=2026-03-11
@@ -91,6 +110,8 @@ ASKOOSU_RAG_AUTO_SYNC=true
 ASKOOSU_RAG_RETRIEVAL=lexical
 ASKOOSU_RAG_TOP_K=5
 ASKOOSU_RAG_ADMIN_TOKEN=local_or_server_secret
+ASKOOSU_WIKI_VERSION=v10
+ASKOOSU_ANSWER_CACHE_TTL_HOURS=24
 ASKOOSU_EMBEDDING_MODEL=text-embedding-3-small
 ASKOOSU_EMBEDDING_DIMENSIONS=1536
 # ASKOOSU_RAG_STORE=postgres

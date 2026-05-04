@@ -10,6 +10,7 @@
     "rag:eval": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/eval-rag.ts"
   },
   "dependencies": {
+    "@ai-sdk/google-vertex": "^4.0.118",
     "@ai-sdk/groq": "^3.0.38",
     "@ai-sdk/openai": "^3.0.58",
     "@ai-sdk/react": "^3.0.176",
