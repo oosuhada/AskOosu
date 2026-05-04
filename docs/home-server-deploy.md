@@ -34,6 +34,7 @@ POSTGRES_USER=askoosu
 POSTGRES_PASSWORD=replace_with_a_strong_password
 POSTGRES_DB=askoosu
 DATABASE_URL=postgres://askoosu:replace_with_a_strong_password@postgres:5432/askoosu
+ASKOOSU_POSTGRES_HOST_PORT=5433
 NEXT_PUBLIC_APP_URL=https://oosu.dev
 
 NOTION_API_KEY=
@@ -91,7 +92,7 @@ docker compose -f ops/orbstack/compose.prod.yml ps
 docker compose -f ops/orbstack/compose.prod.yml logs -f app
 ```
 
-The app binds only to `127.0.0.1:3010:3000`. Postgres is internal to the Compose network by default, so it does not collide with the existing Instagram Postgres on `127.0.0.1:5432`.
+The app binds only to `127.0.0.1:3010:3000`. Postgres binds to `127.0.0.1:${ASKOOSU_POSTGRES_HOST_PORT:-5433}:5432` for local debugging and SSH tunneling, so it does not collide with the existing Instagram Postgres on `127.0.0.1:5432`.
 
 ## Migration
 

@@ -97,6 +97,7 @@ ASKOOSU_EMBEDDING_DIMENSIONS=1536
 # Optional pgvector storage
 # ASKOOSU_RAG_STORE=postgres
 # DATABASE_URL=postgres://user:password@host:5432/database
+# ASKOOSU_POSTGRES_HOST_PORT=5433
 ```
 
 Open http://localhost:3000.
