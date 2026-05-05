@@ -285,7 +285,9 @@ export function RagEvidencePanel({
             className="rounded-lg border-amber-300 bg-amber-50 px-2.5 py-1 text-amber-800 dark:border-amber-700/70 dark:bg-amber-950/30 dark:text-amber-200"
           >
             <AlertTriangle className="h-3.5 w-3.5" />
-            {displayLanguage === 'ko' ? 'TODO 근거' : 'TODO evidence'}
+            {displayLanguage === 'ko'
+              ? '일부 정보 정리 중'
+              : 'Needs confirmation'}
           </Badge>
         )}
 
@@ -778,9 +780,14 @@ function getConfidenceTone(confidence: number, language: 'ko' | 'en') {
 
 function getAnswerSourceLabel(metadata: RagMetadata, language: 'ko' | 'en') {
   const labels: Record<string, Record<'ko' | 'en', string>> = {
-    faq_cache: { ko: 'FAQ 캐시', en: 'FAQ cache' },
+    faq_cache: { ko: '자주 묻는 답변', en: 'Frequently asked answer' },
+    faq_rewrite: {
+      ko: '모범 답안 기반 응답',
+      en: 'Model-answer based response',
+    },
     answer_cache: { ko: '답변 캐시', en: 'Answer cache' },
     deterministic_rule: { ko: '공개 정책 규칙', en: 'Policy rule' },
+    rag_generation: { ko: 'Wiki 기준 답변', en: 'Wiki search-based answer' },
     rag_groq: { ko: 'Wiki + Groq', en: 'Wiki + Groq' },
     rag_google: { ko: 'Wiki + Google', en: 'Wiki + Google' },
     rag_openai: { ko: 'Wiki + OpenAI', en: 'Wiki + OpenAI' },
@@ -797,13 +804,7 @@ function getAnswerSourceLabel(metadata: RagMetadata, language: 'ko' | 'en') {
       : metadata.language.toUpperCase()
     : '';
   const modelLabel =
-    metadata.provider && !metadata.skippedGroq
-      ? metadata.provider
-      : metadata.skippedGroq
-        ? language === 'ko'
-          ? 'Groq 미사용'
-          : 'no Groq'
-        : '';
+    metadata.provider && !metadata.skippedGroq ? metadata.provider : '';
 
   return [sourceLabel, languageLabel, modelLabel].filter(Boolean).join(' · ');
 }

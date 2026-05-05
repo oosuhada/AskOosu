@@ -36,6 +36,7 @@ export type AiProviderUsageInput = {
   model?: string;
   route: string;
   answerSource?: ChatAnswerSource;
+  metadata?: Record<string, unknown>;
   inputTokens?: number | null;
   outputTokens?: number | null;
   totalTokens?: number | null;
@@ -96,8 +97,13 @@ export async function ensureChatRuntimeSchema() {
       latency_ms integer CHECK (latency_ms IS NULL OR latency_ms >= 0),
       success boolean NOT NULL,
       error_code text,
+      metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
       created_at timestamptz NOT NULL DEFAULT now()
     )
+  `);
+  await pool.query(`
+    ALTER TABLE ai_provider_usage
+      ADD COLUMN IF NOT EXISTS metadata jsonb NOT NULL DEFAULT '{}'::jsonb
   `);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS ai_provider_status (
@@ -253,9 +259,10 @@ export async function recordAiProviderUsage(input: AiProviderUsageInput) {
         total_tokens,
         latency_ms,
         success,
-        error_code
+        error_code,
+        metadata
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb)
     `,
     [
       truncateText(input.provider, MAX_PROVIDER_LENGTH),
@@ -270,6 +277,7 @@ export async function recordAiProviderUsage(input: AiProviderUsageInput) {
       input.errorCode
         ? truncateText(input.errorCode, MAX_ERROR_CODE_LENGTH)
         : null,
+      JSON.stringify(input.metadata ?? {}),
     ]
   );
 }

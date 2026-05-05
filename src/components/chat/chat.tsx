@@ -21,7 +21,10 @@ import { SimplifiedChatView } from '@/components/chat/simple-chat-view';
 import { getUiText } from '@/lib/i18n';
 import { useDisplayPreferences } from '@/lib/use-display-preferences';
 import { useSuggestedQuestions } from '@/hooks/use-suggested-questions';
-import { findSuggestedQuestionId } from '@/lib/suggested-questions';
+import {
+  findSuggestedQuestionId,
+  type SuggestedQuestion,
+} from '@/lib/suggested-questions';
 import {
   createConversationId,
   readStoredConversations,
@@ -219,7 +222,7 @@ const Chat = () => {
   );
 
   const submitQuery = useCallback(
-    (query: string) => {
+    (query: string, suggestedQuestion?: SuggestedQuestion) => {
       const trimmedQuery = query.trim();
       if (!trimmedQuery || isToolInProgress) return;
 
@@ -229,7 +232,9 @@ const Chat = () => {
       setLastSubmittedQuery(trimmedQuery);
       setChatErrorMessage(null);
       clearError();
-      markQueryAsked(trimmedQuery);
+      if (!suggestedQuestion) {
+        markQueryAsked(trimmedQuery);
+      }
       setLoadingSubmit(true);
       void sendMessage(
         {
@@ -237,9 +242,19 @@ const Chat = () => {
         },
         {
           body: {
+            message: trimmedQuery,
             conversationId,
             locale: language,
-            starterQuestionId: findSuggestedQuestionId(trimmedQuery) ?? null,
+            language,
+            starterQuestionId:
+              suggestedQuestion?.id ??
+              findSuggestedQuestionId(trimmedQuery) ??
+              null,
+            faqId: suggestedQuestion?.faqId,
+            intentId: suggestedQuestion?.intentId,
+            displayQuestion: suggestedQuestion?.displayQuestion,
+            originalQuickLabel: suggestedQuestion?.quickLabel,
+            source: suggestedQuestion ? 'quick_question' : 'typed_question',
           },
         }
       );
@@ -374,12 +389,12 @@ const Chat = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="container mx-auto flex h-full max-w-3xl flex-col">
+      <div className="relative container mx-auto flex h-full max-w-3xl flex-col">
         {/* Scrollable Chat Content */}
         <div
           ref={scrollContainerRef}
           onScroll={handleChatScroll}
-          className="flex-1 overflow-y-auto px-2 pt-4"
+          className="flex-1 overflow-y-auto px-2 pt-4 pb-36 md:pb-40"
         >
           <AnimatePresence mode="wait">
             {isEmptyState ? (
@@ -440,8 +455,8 @@ const Chat = () => {
         </div>
 
         {/* Fixed Bottom Bar */}
-        <div className="sticky bottom-0 px-2 pt-3 md:px-0 md:pb-4">
-          <div className="relative flex flex-col items-center gap-3">
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-40 px-2 pt-8 pb-[max(0.75rem,env(safe-area-inset-bottom))] before:pointer-events-none before:absolute before:inset-x-[-100vw] before:top-0 before:bottom-0 before:-z-10 before:bg-white/[0.025] before:backdrop-blur-2xl before:[mask-image:linear-gradient(to_bottom,transparent,black_34%,black)] md:px-0 md:pb-4 dark:before:bg-white/[0.012]">
+          <div className="pointer-events-auto relative flex flex-col items-center gap-3">
             <AnimatePresence>
               {showJumpToLatest && (
                 <motion.div
