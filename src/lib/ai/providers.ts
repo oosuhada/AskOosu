@@ -36,6 +36,10 @@ type GroqKeyPoolState = {
 };
 
 declare global {
+  // SINGLE-PROCESS ONLY: this key pool state is process-local and is acceptable
+  // for the current Mac mini Docker single-instance deployment. If AskOosu is
+  // scaled to multiple app instances or serverless, move provider status to
+  // Postgres or another shared store.
   // eslint-disable-next-line no-var
   var askOosuGroqKeyPool: GroqKeyPoolState | undefined;
 }

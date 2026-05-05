@@ -42,6 +42,7 @@ Create `.env.local` with:
 OPENAI_API_KEY=your_openai_api_key_here
 OPENAI_MODEL=gpt-4o-mini
 GITHUB_TOKEN=your_github_token_here
+NEXT_PUBLIC_ASKOOSU_DEBUG_UI_ENABLED=false
 
 # Optional Grok/xAI mode
 # ASKOOSU_AI_PROVIDER=xai
@@ -80,7 +81,12 @@ ASKOOSU_NOTION_DATABASE_IDS=
 ASKOOSU_NOTION_DATA_SOURCE_IDS=
 ASKOOSU_RAG_STORE=memory
 ASKOOSU_RAG_AUTO_SYNC=true
-ASKOOSU_RAG_RETRIEVAL=lexical
+ASKOOSU_RAG_RETRIEVAL=hybrid
+ASKOOSU_RAG_HYBRID_LEXICAL_WEIGHT=0.35
+ASKOOSU_RAG_HYBRID_VECTOR_WEIGHT=0.35
+ASKOOSU_RAG_HYBRID_ENTITY_WEIGHT=0.15
+ASKOOSU_RAG_HYBRID_INTENT_WEIGHT=0.10
+ASKOOSU_RAG_HYBRID_FRESHNESS_WEIGHT=0.05
 ASKOOSU_RAG_TOP_K=5
 ASKOOSU_RAG_SEARCH_CACHE_TTL_MS=300000
 ASKOOSU_RAG_ADMIN_TOKEN=local_or_server_secret
@@ -88,6 +94,11 @@ ASKOOSU_WIKI_VERSION=v10
 ASKOOSU_ANSWER_CACHE_TTL_HOURS=24
 ASKOOSU_RAG_SYNC_LOCK_TTL_SECONDS=300
 ASKOOSU_CHAT_MAX_REQUEST_BYTES=32768
+ASKOOSU_RATE_LIMIT_STORE=postgres
+ASKOOSU_FAQ_SEMANTIC_ROUTER_ENABLED=true
+ASKOOSU_FAQ_SEMANTIC_DIRECT_MIN=0.88
+ASKOOSU_FAQ_SEMANTIC_REWRITE_MIN=0.76
+ASKOOSU_FAQ_SEMANTIC_MARGIN_MIN=0.12
 
 # Optional embedding/vector search
 # ASKOOSU_RAG_RETRIEVAL=embedding
@@ -114,3 +125,5 @@ Use `NOTION_PAGE_ID` for the parent AskOosu Wiki page. If the parent sync only s
 For Google Vertex fallback, run `gcloud auth application-default login` in local development, then set `GOOGLE_AI_ENABLED=true` and `GOOGLE_VERTEX_PROJECT` or `GOOGLE_CLOUD_PROJECT`. In production Docker, mount credentials into the container and set `GOOGLE_APPLICATION_CREDENTIALS`, or use `GOOGLE_VERTEX_API_KEY` intentionally.
 
 See [docs/architecture.md](docs/architecture.md) for the frontend, Grok streaming, and Notion/RAG upgrade plan.
+
+Production Mac mini / Docker Compose notes live in [docs/home-server-deploy.md](docs/home-server-deploy.md), including `/api/health`, env-file permissions, backups, and Docker log checks.
