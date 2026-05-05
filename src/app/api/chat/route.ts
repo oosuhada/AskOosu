@@ -30,6 +30,7 @@ import {
 } from '@/lib/chat/output-guardrails';
 import { generateAnswerWithFallback } from '@/lib/ai/fallback';
 import { parsePreferredLanguage } from '@/lib/i18n/detect-language';
+import { buildAnswerConfidenceSignals } from '@/lib/rag/chat-context';
 import {
   checkRateLimit,
   checkRateLimitForKey,
@@ -199,12 +200,22 @@ export async function POST(req: Request) {
       const safeAnswer = buildInsufficientEvidenceAnswer(
         orchestration.language
       );
+      const confidenceSignals = buildAnswerConfidenceSignals({
+        sources: [],
+        warnings: [
+          ...orchestration.metadata.warnings,
+          PROMPT_LEAK_DETECTED_ERROR_CODE,
+        ],
+        intent: orchestration.metadata.confidenceSignals?.intent ?? 0.5,
+        usesGroundedSources: false,
+      });
       const responseMetadata = {
         ...orchestration.metadata,
         sources: [],
         matchedEntityIds: [],
         sourceChunkIds: [],
-        confidence: 0.2,
+        confidence: confidenceSignals.final,
+        confidenceSignals,
         hasTodoEvidence: false,
         warnings: [
           ...orchestration.metadata.warnings,
@@ -216,7 +227,7 @@ export async function POST(req: Request) {
         routeDecision: {
           mode: 'safe_fallback' as const,
           reason: 'prompt_leak_detected' as const,
-          confidence: 0.2,
+          confidence: confidenceSignals.final,
         },
         errorCode: PROMPT_LEAK_DETECTED_ERROR_CODE,
       };

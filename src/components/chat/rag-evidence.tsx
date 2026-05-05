@@ -25,12 +25,22 @@ type RagSource = {
   section_path: string[];
   score: number;
   visibility: string;
+  freshness?: string;
   has_todo: boolean;
+};
+
+type AnswerConfidence = {
+  retrieval: number;
+  intent: number;
+  freshness: number;
+  grounding: number;
+  final: number;
 };
 
 type RagMetadata = {
   sources: RagSource[];
   confidence: number;
+  confidenceSignals?: AnswerConfidence;
   matchedEntityIds: string[];
   hasTodoEvidence: boolean;
   warnings: string[];
@@ -287,15 +297,14 @@ export function RagEvidencePanel({
           </Badge>
         )}
 
-        {isDebugMode && (
-          <Badge
-            variant="outline"
-            className={cn('rounded-lg px-2.5 py-1', confidenceTone.className)}
-          >
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            {confidenceTone.label} {formatConfidence(ragMetadata.confidence)}
-          </Badge>
-        )}
+        <Badge
+          variant="outline"
+          className={cn('rounded-lg px-2.5 py-1', confidenceTone.className)}
+        >
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          {confidenceTone.label}
+          {isDebugMode ? ` ${formatConfidence(ragMetadata.confidence)}` : ''}
+        </Badge>
 
         {hasTodoEvidence && (
           <Badge
@@ -402,6 +411,9 @@ export function RagEvidencePanel({
             `skippedGroq: ${ragMetadata.skippedGroq === true}`,
             ragMetadata.provider ? `provider: ${ragMetadata.provider}` : null,
             ragMetadata.errorCode ? `error: ${ragMetadata.errorCode}` : null,
+            ...(ragMetadata.confidenceSignals
+              ? formatConfidenceSignals(ragMetadata.confidenceSignals)
+              : []),
           ]
             .filter((item): item is string => Boolean(item))
             .map((item) => (
@@ -768,6 +780,7 @@ function parseRagMetadata(value: unknown): RagMetadata | null {
   return {
     sources,
     confidence,
+    confidenceSignals: parseConfidenceSignals(value.confidenceSignals),
     matchedEntityIds: parseStringArray(value.matchedEntityIds),
     hasTodoEvidence: value.hasTodoEvidence === true,
     warnings: parseStringArray(value.warnings),
@@ -814,7 +827,20 @@ function parseSource(value: unknown): RagSource | null {
     section_path: parseStringArray(value.section_path),
     score: parseFiniteNumber(value.score) ?? 0,
     visibility: parseString(value.visibility) ?? 'public',
+    freshness: parseString(value.freshness) ?? undefined,
     has_todo: value.has_todo === true,
+  };
+}
+
+function parseConfidenceSignals(value: unknown): AnswerConfidence | undefined {
+  if (!isRecord(value)) return undefined;
+
+  return {
+    retrieval: normalizeConfidence(value.retrieval),
+    intent: normalizeConfidence(value.intent),
+    freshness: normalizeConfidence(value.freshness),
+    grounding: normalizeConfidence(value.grounding),
+    final: normalizeConfidence(value.final),
   };
 }
 
@@ -846,9 +872,9 @@ function normalizeProjectEntityId(entityId: string) {
 }
 
 function getConfidenceTone(confidence: number, language: 'ko' | 'en') {
-  if (confidence >= 0.75) {
+  if (confidence >= 0.78) {
     return {
-      label: language === 'ko' ? '높은 신뢰도' : 'High confidence',
+      label: language === 'ko' ? '근거 충분' : 'Well grounded',
       className:
         'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-700/70 dark:bg-emerald-950/30 dark:text-emerald-200',
     };
@@ -856,14 +882,14 @@ function getConfidenceTone(confidence: number, language: 'ko' | 'en') {
 
   if (confidence >= 0.5) {
     return {
-      label: language === 'ko' ? '중간 신뢰도' : 'Medium confidence',
+      label: language === 'ko' ? '일부 정보 확인 중' : 'Partially grounded',
       className:
         'border-blue-300 bg-blue-50 text-blue-800 dark:border-blue-700/70 dark:bg-blue-950/30 dark:text-blue-200',
     };
   }
 
   return {
-    label: language === 'ko' ? '낮은 신뢰도' : 'Low confidence',
+    label: language === 'ko' ? '근거 부족' : 'Limited evidence',
     className:
       'border-zinc-300 bg-zinc-50 text-zinc-800 dark:border-zinc-700/70 dark:bg-zinc-900/40 dark:text-zinc-200',
   };
@@ -936,6 +962,20 @@ function formatVisitorSourceTitle(source: RagSource, language: 'ko' | 'en') {
 
 function formatConfidence(confidence: number) {
   return `${Math.round(confidence * 100)}%`;
+}
+
+function formatConfidenceSignals(signals: AnswerConfidence) {
+  return [
+    `confidence.retrieval: ${formatDebugConfidence(signals.retrieval)}`,
+    `confidence.intent: ${formatDebugConfidence(signals.intent)}`,
+    `confidence.freshness: ${formatDebugConfidence(signals.freshness)}`,
+    `confidence.grounding: ${formatDebugConfidence(signals.grounding)}`,
+    `confidence.final: ${formatDebugConfidence(signals.final)}`,
+  ];
+}
+
+function formatDebugConfidence(confidence: number) {
+  return confidence.toFixed(2);
 }
 
 function formatScore(score: number) {

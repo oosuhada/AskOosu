@@ -43,6 +43,8 @@ FAQ and deterministic answers return through the same AI SDK UI message stream s
 
 FAQ routing now lives in `src/lib/faq/semantic-router.ts`. It builds canonical candidate text from FAQ ids, intent ids, entity ids, labels, display questions, alternatives, patterns, and safe short-answer summaries, then ranks those candidates with provider-agnostic embeddings. OpenAI embeddings are used only when `OPENAI_API_KEY` is present; otherwise the router falls back to a stricter token-overlap path in `src/lib/faq/match.ts`. Route metadata includes `matchedFaqId`, `intentScore`, `intentSecondScore`, `intentMargin`, and `routeDecision`.
 
+Answer confidence is stored as structured signals on `metadata.confidenceSignals`: `retrieval`, `intent`, `freshness`, `grounding`, and `final`. The legacy `metadata.confidence` field is still returned for compatibility and mirrors `confidenceSignals.final`, so answer cache policy can continue using one final number while debug tooling can inspect the contributing signals. Public UI shows only groundedness labels (`Well grounded`, `Partially grounded`, `Limited evidence`) and does not expose numeric signal values unless `debug=true` is enabled.
+
 Routing modes:
 
 - `direct`: high-confidence, unambiguous FAQ match. The direct threshold defaults to `ASKOOSU_FAQ_SEMANTIC_DIRECT_MIN=0.88`, and the top result must beat the second result by `ASKOOSU_FAQ_SEMANTIC_MARGIN_MIN=0.12`.
