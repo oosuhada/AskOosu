@@ -119,7 +119,12 @@ function buildEmptyContext(warnings: string[]): RagChatContext {
 
   return {
     contextText:
-      '## Portfolio Evidence\nNo matching public Wiki evidence was found. Do not answer the user question as fact.',
+      [
+        '## Portfolio Evidence',
+        'No matching public Wiki evidence was found for this specific question.',
+        'If this reaches generation, use only stable profile facts and the conversation history. Do not invent missing portfolio evidence.',
+        'For factual claims about Oosu, projects, links, career, private details, or metrics, use only the stable portfolio prompt facts. If the fact is not in the prompt or retrieved evidence, say the Wiki evidence is not enough instead of guessing.',
+      ].join('\n'),
     metadata: {
       sources: [],
       confidence: confidenceSignals.final,

@@ -18,15 +18,25 @@ The chat API uses AI SDK 6 `streamText` and returns `toUIMessageStreamResponse()
 Chat orchestration is intentionally cache-first:
 
 1. `/api/chat` validates the request and applies rate limits.
-2. `src/lib/chat/orchestrator.ts` detects language, routes FAQ intent semantically, checks `answer_cache`, then builds RAG context only on cache miss.
+2. `src/lib/chat/orchestrator.ts` detects language, applies a lightweight conversation intent gate, routes FAQ intent semantically, checks `answer_cache`, then builds RAG context only on cache miss.
 3. `src/lib/ai/providers.ts` selects the provider and keeps Groq key-pool/cooldown behavior isolated from the route.
 4. Generated answers are written back to `answer_cache`, while provider success/failure is logged in `ai_provider_usage` and `ai_provider_status`.
 
 Rate limits use `src/lib/rate-limit.ts` with the same `checkRateLimit` and `checkRateLimitForKey` API for request and session scopes. `ASKOOSU_RATE_LIMIT_STORE=postgres` stores counters in the `rate_limit_buckets` table using atomic Postgres upserts, so limits survive app restarts and work across future multi-instance deployments. If Postgres is unavailable or `ASKOOSU_RATE_LIMIT_STORE=memory`, the limiter falls back to in-process buckets for local development.
 
-`answer_cache` rows carry `matched_entity_ids` and `source_chunk_ids` so RAG sync can invalidate stale generated answers after Wiki changes. Cache reads require a fresh `created_at` within `ASKOOSU_ANSWER_CACHE_TTL_HOURS`, `invalidated_at IS NULL`, confidence >= `0.7`, and a non-fallback answer source. Cache writes are skipped for TODO evidence, warnings, safe fallbacks, insufficient-evidence answers, prompt-leakage guardrails, and low-confidence answers.
+`answer_cache` rows carry `matched_entity_ids` and `source_chunk_ids` so RAG sync can invalidate stale generated answers after Wiki changes. Cache reads require a fresh `created_at` within `ASKOOSU_ANSWER_CACHE_TTL_HOURS`, `invalidated_at IS NULL`, confidence >= `0.7`, and a non-fallback answer source. Cache writes are skipped for TODO evidence, warnings, safe fallbacks, insufficient-evidence answers, prompt-leakage guardrails, smalltalk, off-topic redirects, clarification answers, private guardrails, and low-confidence answers.
 
-Safe fallback behavior is explicit in `routeDecision`. If no public Wiki evidence is available, if prompt leakage is detected, or if private/TODO-only evidence would be required, `/api/chat` returns a low-confidence `safe_fallback`/`insufficient_evidence` style answer instead of guessing. Prompt leakage checks block raw prompt, hidden context, chunk id, entity id, and section path markers from reaching the visitor answer.
+Safe fallback behavior is explicit in `routeDecision`. If an explicit high-risk link request, such as a missing resume URL, needs evidence but no public Wiki evidence is available, `/api/chat` returns a low-confidence `safe_fallback`/`insufficient_evidence` style answer instead of guessing. Other factual portfolio questions may still reach generation with stable profile facts, but the prompt requires the model to say the Wiki evidence is not enough when the requested fact is unsupported. Prompt leakage and private-data requests are handled before RAG through dedicated guardrail routes. Prompt leakage checks block raw prompt, hidden context, chunk id, entity id, and section path markers from reaching the visitor answer.
+
+Conversation intent routing happens before FAQ/RAG for inputs that should not hit retrieval:
+
+- `smalltalk`: greetings and light chat get a short natural reply, then a gentle return to projects, stack, career, collaboration, contact, or AskOosu architecture.
+- `off_topic_redirect`: unrelated or playful prompts are acknowledged briefly and redirected back to portfolio topics.
+- `portfolio_clarify`: very short or ambiguous portfolio-ish inputs such as `우수`, `프로젝트`, or `기술` ask a clarifying question instead of showing "insufficient evidence".
+- `private_guardrail`: private links, exact private addresses, credentials, and similar requests are refused safely.
+- `prompt_guardrail`: prompt extraction, raw RAG context, chunk/entity id, debug metadata, and instruction-override requests are refused safely.
+
+Portfolio factual, recommendation, technical deep-dive, recruiter-evaluation, contact/link, and follow-up questions continue through FAQ, answer cache, RAG, and generation. The public evidence UI appears only for factual answers with sources; smalltalk, redirects, clarifications, private guardrails, prompt guardrails, and insufficient-evidence fallback suppress evidence and feedback chrome.
 
 Model selection is isolated in `src/lib/ai/providers.ts` with a compatibility re-export from `src/app/api/chat/model-provider.ts`:
 

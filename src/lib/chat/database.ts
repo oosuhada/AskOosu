@@ -15,6 +15,11 @@ const PROMPT_LEAK_DETECTED_ERROR_CODE = 'prompt_leak_detected';
 const UNSAFE_CACHE_ANSWER_SOURCES: ChatAnswerSource[] = [
   'fallback',
   'insufficient_evidence',
+  'smalltalk',
+  'off_topic_redirect',
+  'clarify',
+  'private_guardrail',
+  'prompt_guardrail',
 ];
 
 let chatRuntimeSchemaPromise: Promise<void> | null = null;

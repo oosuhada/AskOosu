@@ -11,6 +11,16 @@ import {
   routeFaqIntent,
   type FaqIntentRouteResult,
 } from '@/lib/faq/semantic-router';
+import {
+  buildConversationIntentAnswer,
+  classifyConversationIntent,
+  getConversationEntityHints,
+  shouldAnswerIntentDirectly,
+  shouldBypassAnswerCache,
+  shouldBypassFaqDirectAnswer,
+  shouldFallbackWhenNoEvidence,
+  type ConversationIntentResult,
+} from './conversation-intent';
 import { getCachedAnswer } from './database';
 import { buildInsufficientEvidenceAnswer } from './output-guardrails';
 import { normalizeQuestion } from './text';
@@ -32,6 +42,18 @@ export type ChatOrchestrationInput = {
   answerVariant?: string | null;
   renderSpec?: string | null;
   source?: string | null;
+};
+
+type RequestContext = {
+  requestId: string | null;
+  triggerId: string | null;
+  faqId: string | null;
+  intentId: string | null;
+  displayQuestion: string | null;
+  originalQuickLabel: string | null;
+  answerVariant: AnswerVariant | null;
+  renderSpec: string | null;
+  source: string | null;
 };
 
 export type ChatOrchestration =
@@ -79,6 +101,26 @@ export async function prepareChatOrchestration({
     renderSpec: normalizeOptionalString(renderSpec),
     source: normalizeOptionalString(source),
   };
+  const conversationIntent = classifyConversationIntent({
+    question,
+    messages,
+  });
+  const shouldBypassIntentDirectAnswer =
+    requestContext.source === 'quick_question' && Boolean(requestContext.triggerId);
+
+  if (
+    !shouldBypassIntentDirectAnswer &&
+    (shouldAnswerIntentDirectly(conversationIntent.intent) ||
+      conversationIntent.reason === 'follow_up_without_context')
+  ) {
+    return buildConversationDirectOrchestration({
+      question,
+      language,
+      normalizedQuestion,
+      conversationIntent,
+      requestContext,
+    });
+  }
 
   const faqRoute = await routeFaqIntent({
     question,
@@ -89,7 +131,8 @@ export async function prepareChatOrchestration({
 
   if (
     faqRoute.routeDecision.mode === 'direct' &&
-    faqRoute.answer?.cacheMode === 'direct_cache'
+    faqRoute.answer?.cacheMode === 'direct_cache' &&
+    !shouldBypassFaqDirectAnswer(conversationIntent)
   ) {
     const faqAnswer = faqRoute.answer;
     const confidence = Math.min(
@@ -109,6 +152,7 @@ export async function prepareChatOrchestration({
         faqAnswer,
         confidence,
       }),
+      conversationIntent,
       faqAnswer,
       requestContext,
       faqRoute,
@@ -126,7 +170,7 @@ export async function prepareChatOrchestration({
     };
   }
 
-  const cachedAnswer = normalizedQuestion
+  const cachedAnswer = !shouldBypassAnswerCache(conversationIntent) && normalizedQuestion
     ? await getCachedAnswer({
         normalizedQuestion,
         language,
@@ -148,6 +192,7 @@ export async function prepareChatOrchestration({
         confidence: cachedAnswer.confidence,
         reason: 'fresh_cache_hit',
       },
+      conversationIntent,
       requestContext,
       faqRoute,
     });
@@ -165,13 +210,30 @@ export async function prepareChatOrchestration({
   }
 
   const ragContext = await buildRagChatContext(question, language);
+  const conversationEntityHints = getConversationEntityHints(question);
 
-  if (ragContext.metadata.sources.length === 0) {
+  if (
+    ragContext.metadata.sources.length === 0 &&
+    shouldFallbackWhenNoEvidence(conversationIntent)
+  ) {
     const routeDecision: AnswerRouteDecision = {
       mode: 'safe_fallback',
       reason: 'no_public_evidence',
       confidence: 0.25,
     };
+    const metadata = buildDirectMetadata({
+      language,
+      normalizedQuestion,
+      answerSource: 'insufficient_evidence',
+      matchedEntityIds: [],
+      sourceChunkIds: [],
+      confidence: 0.25,
+      routeDecision,
+      conversationIntent,
+      showEvidence: false,
+      requestContext,
+      faqRoute,
+    });
 
     return {
       mode: 'direct',
@@ -179,18 +241,8 @@ export async function prepareChatOrchestration({
       language,
       routeDecision,
       directAnswer: {
-        answer: buildNoRagFallbackAnswer(language),
-        metadata: buildDirectMetadata({
-          language,
-          normalizedQuestion,
-          answerSource: 'insufficient_evidence',
-          matchedEntityIds: [],
-          sourceChunkIds: [],
-          confidence: 0.25,
-          routeDecision,
-          requestContext,
-          faqRoute,
-        }),
+        answer: buildInsufficientEvidenceAnswer(language),
+        metadata,
       },
     };
   }
@@ -199,16 +251,23 @@ export async function prepareChatOrchestration({
     sources: ragContext.metadata.sources,
     warnings: ragContext.metadata.warnings,
     intent: getIntentConfidenceSignal(faqRoute),
-    usesGroundedSources: true,
+    usesGroundedSources: ragContext.metadata.sources.length > 0,
   });
 
   const metadata: ChatAnswerMetadata = {
     ...ragContext.metadata,
+    matchedEntityIds: uniqueValues([
+      ...ragContext.metadata.matchedEntityIds,
+      ...conversationEntityHints,
+    ]),
     confidence: confidenceSignals.final,
     confidenceSignals,
     language,
     normalizedQuestion,
     answerSource: 'fallback',
+    conversationIntent: conversationIntent.intent,
+    conversationModifiers: conversationIntent.modifiers,
+    showEvidence: ragContext.metadata.sources.length > 0,
     skippedGroq: false,
     sourceChunkIds: ragContext.metadata.sources.map(
       (source) => source.chunk_id
@@ -229,6 +288,7 @@ export async function prepareChatOrchestration({
       faqRoute,
       ragContext,
       confidence: confidenceSignals.final,
+      entityHints: conversationEntityHints,
     }),
   };
 
@@ -243,8 +303,49 @@ export async function prepareChatOrchestration({
   };
 }
 
-function buildNoRagFallbackAnswer(language: ChatLanguage) {
-  return buildInsufficientEvidenceAnswer(language);
+function buildConversationDirectOrchestration({
+  question,
+  language,
+  normalizedQuestion,
+  conversationIntent,
+  requestContext,
+}: {
+  question: string;
+  language: ChatLanguage;
+  normalizedQuestion: string;
+  conversationIntent: ConversationIntentResult;
+  requestContext: RequestContext;
+}): Extract<ChatOrchestration, { mode: 'direct' }> {
+  const routeDecision = buildConversationRouteDecision(conversationIntent);
+  const metadata = buildDirectMetadata({
+    language,
+    normalizedQuestion,
+    answerSource: getConversationAnswerSource(conversationIntent),
+    matchedEntityIds: [],
+    sourceChunkIds: [],
+    confidence: routeDecision.confidence,
+    routeDecision,
+    conversationIntent,
+    showEvidence: false,
+    requestContext,
+  });
+
+  return {
+    mode: 'direct',
+    question,
+    language,
+    routeDecision,
+    directAnswer: {
+      answer: buildConversationIntentAnswer({
+        intent:
+          conversationIntent.reason === 'follow_up_without_context'
+            ? 'portfolio_ambiguous'
+            : conversationIntent.intent,
+        language,
+      }),
+      metadata,
+    },
+  };
 }
 
 function buildFaqDirectRouteDecision({
@@ -278,22 +379,90 @@ function getFaqDirectReason(
   return 'high_semantic_match';
 }
 
+function buildConversationRouteDecision({
+  intent,
+  reason,
+}: ConversationIntentResult): AnswerRouteDecision {
+  if (intent === 'greeting_smalltalk') {
+    return {
+      mode: 'smalltalk',
+      reason: 'greeting_or_light_smalltalk',
+      confidence: 0.35,
+    };
+  }
+
+  if (intent === 'portfolio_ambiguous' || reason === 'follow_up_without_context') {
+    return {
+      mode: 'portfolio_clarify',
+      reason:
+        reason === 'follow_up_without_context'
+          ? 'follow_up_without_context'
+          : 'short_or_ambiguous_portfolio_input',
+      confidence: 0.35,
+    };
+  }
+
+  if (intent === 'private_or_unsafe') {
+    return {
+      mode: 'private_guardrail',
+      reason: 'private_or_sensitive_request',
+      confidence: 0.2,
+    };
+  }
+
+  if (intent === 'prompt_attack') {
+    return {
+      mode: 'prompt_guardrail',
+      reason: 'prompt_or_internal_request',
+      confidence: 0.2,
+    };
+  }
+
+  return {
+    mode: 'off_topic_redirect',
+    reason:
+      intent === 'hostile_feedback'
+        ? 'hostile_or_sharp_feedback'
+        : intent === 'playful_probe'
+          ? 'playful_probe'
+          : reason === 'no_portfolio_intent_detected'
+            ? 'no_portfolio_intent_detected'
+            : 'off_topic_light',
+    confidence: 0.3,
+  };
+}
+
+function getConversationAnswerSource({
+  intent,
+  reason,
+}: ConversationIntentResult): ChatAnswerMetadata['answerSource'] {
+  if (intent === 'greeting_smalltalk') return 'smalltalk';
+  if (intent === 'portfolio_ambiguous' || reason === 'follow_up_without_context') {
+    return 'clarify';
+  }
+  if (intent === 'private_or_unsafe') return 'private_guardrail';
+  if (intent === 'prompt_attack') return 'prompt_guardrail';
+  return 'off_topic_redirect';
+}
+
 function buildRagGenerateRouteDecision({
   question,
   faqRoute,
   ragContext,
   confidence,
+  entityHints,
 }: {
   question: string;
   faqRoute: FaqIntentRouteResult;
   ragContext: RagChatContext;
   confidence: number;
+  entityHints: string[];
 }): AnswerRouteDecision {
   const isMediumIntentMatch = faqRoute.routeDecision.mode === 'rewrite';
   const expectedEntityIds =
     isMediumIntentMatch && faqRoute.answer
       ? faqRoute.answer.matchedEntityIds
-      : ragContext.metadata.matchedEntityIds;
+      : uniqueValues([...ragContext.metadata.matchedEntityIds, ...entityHints]);
 
   return {
     mode: 'rag_generate',
@@ -322,6 +491,8 @@ function buildDirectMetadata({
   faqAnswer,
   requestContext,
   faqRoute,
+  conversationIntent,
+  showEvidence,
 }: {
   language: ChatLanguage;
   normalizedQuestion: string;
@@ -335,38 +506,35 @@ function buildDirectMetadata({
   model?: string;
   faqAnswer?: FaqAnswer;
   faqRoute?: FaqIntentRouteResult;
-  requestContext?: {
-    requestId: string | null;
-    faqId: string | null;
-    triggerId: string | null;
-    intentId: string | null;
-    displayQuestion: string | null;
-    originalQuickLabel: string | null;
-    answerVariant: AnswerVariant | null;
-    renderSpec: string | null;
-    source: string | null;
-  };
+  requestContext?: RequestContext;
+  conversationIntent?: ConversationIntentResult;
+  showEvidence?: boolean;
 }): ChatAnswerMetadata {
   const mediaCounts = countMediaRefs(faqAnswer?.mediaRefs);
   const usedVisualBlocks = faqAnswer?.visualBlocks?.map((block) => block.type);
   const resolvedMatchedFaqId = matchedFaqId ?? faqRoute?.matchedFaqId;
-  const sources = sourceChunkIds.map((chunkId) => ({
-    chunk_id: chunkId,
-    entity_id: matchedEntityIds[0] ?? null,
-    title: toSourceTitle(answerSource),
-    section_path: [toSourceTitle(answerSource)],
-    score: confidence * 100,
-    visibility: 'public',
-    freshness: 'current',
-    has_todo: faqAnswer?.hasTodo ?? false,
-  }));
+  const shouldShowEvidence = showEvidence ?? sourceChunkIds.length > 0;
+  const sources = shouldShowEvidence
+    ? sourceChunkIds.map((chunkId) => ({
+        chunk_id: chunkId,
+        entity_id: matchedEntityIds[0] ?? null,
+        title: toSourceTitle(answerSource),
+        section_path: [toSourceTitle(answerSource)],
+        score: confidence * 100,
+        visibility: 'public',
+        freshness: 'current',
+        has_todo: faqAnswer?.hasTodo ?? false,
+      }))
+    : [];
   const warnings = faqAnswer?.hasTodo ? [getTodoWarning(language)] : [];
   const confidenceSignals = buildAnswerConfidenceSignals({
     sources,
     warnings,
     intent: getIntentConfidenceSignal(faqRoute, confidence),
     usesGroundedSources:
-      answerSource !== 'insufficient_evidence' && sourceChunkIds.length > 0,
+      shouldShowEvidence &&
+      answerSource !== 'insufficient_evidence' &&
+      sourceChunkIds.length > 0,
   });
 
   return {
@@ -417,6 +585,9 @@ function buildDirectMetadata({
     usedVisualBlocks,
     mediaReadyCount: mediaCounts.ready,
     mediaTodoCount: mediaCounts.todo,
+    conversationIntent: conversationIntent?.intent,
+    conversationModifiers: conversationIntent?.modifiers,
+    showEvidence: shouldShowEvidence,
     intentScore: faqRoute?.intentScore,
     intentSecondScore: faqRoute?.intentSecondScore,
     intentMargin: faqRoute?.intentMargin,
@@ -441,11 +612,20 @@ function getIntentConfidenceSignal(
     : fallback;
 }
 
+function uniqueValues(values: string[]) {
+  return Array.from(new Set(values.filter(Boolean)));
+}
+
 function toSourceTitle(answerSource: ChatAnswerMetadata['answerSource']) {
   if (answerSource === 'faq_cache') return 'Oosu Wiki';
   if (answerSource === 'faq_rewrite') return 'Portfolio answer';
   if (answerSource === 'answer_cache') return 'Portfolio answer cache';
   if (answerSource === 'deterministic_rule') return 'Portfolio policy';
+  if (answerSource === 'smalltalk') return 'Small talk';
+  if (answerSource === 'off_topic_redirect') return 'Portfolio redirect';
+  if (answerSource === 'clarify') return 'Portfolio clarification';
+  if (answerSource === 'private_guardrail') return 'Public safety policy';
+  if (answerSource === 'prompt_guardrail') return 'Prompt safety policy';
   if (answerSource === 'rag_generation') return 'Portfolio data';
   if (answerSource === 'insufficient_evidence') return 'Insufficient evidence';
   return 'Oosu portfolio data';
@@ -471,6 +651,26 @@ function getAnswerSourceBadge(
     fallback: {
       ko: '기본 포트폴리오 답변',
       en: 'Basic portfolio answer',
+    },
+    smalltalk: {
+      ko: '가벼운 대화',
+      en: 'Small talk',
+    },
+    off_topic_redirect: {
+      ko: '포트폴리오 안내',
+      en: 'Portfolio redirect',
+    },
+    clarify: {
+      ko: '질문 확인',
+      en: 'Clarifying question',
+    },
+    private_guardrail: {
+      ko: '공개 불가 안내',
+      en: 'Public safety notice',
+    },
+    prompt_guardrail: {
+      ko: '내부 정보 보호 안내',
+      en: 'Internal safety notice',
     },
     insufficient_evidence: {
       ko: '근거 부족',
