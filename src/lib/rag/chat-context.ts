@@ -61,15 +61,16 @@ export async function buildRagChatContext(
     ...primarySearch.results,
     ...guardrailSearch.results,
   ]);
+  const publicEvidence = primarySearch.results.filter(isPublicEvidenceChunk);
 
-  if (chunks.length === 0) {
+  if (publicEvidence.length === 0) {
     return buildEmptyContext(warnings);
   }
 
   const sources = chunks.map(toChatSource);
   const contextText = [
-    '## Retrieved Wiki Context',
-    'Use only these retrieved Wiki chunks as factual evidence. Treat chunks with TODO or needs_review as uncertain and do not state them as confirmed.',
+    '## Portfolio Evidence',
+    'Use only this portfolio evidence as factual grounding. Treat uncertain entries as unconfirmed and do not state them as final.',
     '',
     ...chunks.map(formatChunkForPrompt),
   ].join('\n');
@@ -91,7 +92,7 @@ export async function buildRagChatContext(
 function buildEmptyContext(warnings: string[]): RagChatContext {
   return {
     contextText:
-      '## Retrieved Wiki Context\nNo matching Wiki chunks were found. Answer only from stable portfolio prompt facts and say when the Wiki does not contain enough evidence.',
+      '## Portfolio Evidence\nNo matching public Wiki evidence was found. Do not answer the user question as fact.',
     metadata: {
       sources: [],
       confidence: 0.25,
@@ -127,15 +128,16 @@ function formatChunkForPrompt(chunk: RagChunkSearchResult, index: number) {
   const content = chunk.content ?? chunk.contentPreview;
 
   return [
-    `[${sourceId}] chunk_id=${chunk.chunk_id}`,
-    `title=${chunk.title}`,
-    `entity_id=${chunk.entity_id ?? 'none'}`,
-    `section_path=${path}`,
-    `visibility=${chunk.visibility}`,
-    `has_todo=${chunk.has_todo}`,
-    `certainty=${certainty}`,
-    content,
+    `[${sourceId}] Portfolio evidence`,
+    `Title: ${chunk.title}`,
+    `Section: ${path}`,
+    `Status: ${certainty}`,
+    `Content: ${content}`,
   ].join('\n');
+}
+
+function isPublicEvidenceChunk(chunk: RagChunkSearchResult) {
+  return chunk.visibility === 'public';
 }
 
 function toChatSource(chunk: RagChunkSearchResult): RagChatSource {

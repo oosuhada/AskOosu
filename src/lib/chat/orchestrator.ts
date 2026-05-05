@@ -11,6 +11,7 @@ import {
   type FaqIntentRouteResult,
 } from '@/lib/faq/semantic-router';
 import { getCachedAnswer } from './database';
+import { buildInsufficientEvidenceAnswer } from './output-guardrails';
 import { normalizeQuestion } from './text';
 import type {
   AnswerRouteDecision,
@@ -164,7 +165,7 @@ export async function prepareChatOrchestration({
     const routeDecision: AnswerRouteDecision = {
       mode: 'safe_fallback',
       reason: 'no_public_evidence',
-      confidence: 0.6,
+      confidence: 0.25,
     };
 
     return {
@@ -177,15 +178,10 @@ export async function prepareChatOrchestration({
         metadata: buildDirectMetadata({
           language,
           normalizedQuestion,
-          answerSource: 'fallback',
-          matchedEntityIds: ['profile.summary', 'project.askoosu.overview'],
-          sourceChunkIds: [
-            'profile.summary',
-            'project.askoosu.overview',
-            'project.askoosu.story',
-            'project.portfolio_oh.story',
-          ],
-          confidence: 0.6,
+          answerSource: 'insufficient_evidence',
+          matchedEntityIds: [],
+          sourceChunkIds: [],
+          confidence: 0.25,
           routeDecision,
           requestContext,
           faqRoute,
@@ -232,23 +228,7 @@ export async function prepareChatOrchestration({
 }
 
 function buildNoRagFallbackAnswer(language: ChatLanguage) {
-  if (language === 'ko') {
-    return [
-      '관련 Wiki chunk를 충분히 찾지는 못했지만, 포트폴리오의 기본 정보 기준으로 답변할게요.',
-      '',
-      'AskOosu는 Oosu Jang이 직접 기획하고 개발한 AI-connected conversational portfolio입니다. 방문자가 질문을 통해 프로젝트, 기술 스택, 커리어, 협업 가능성을 탐색할 수 있도록 만든 포트폴리오입니다.',
-      '',
-      '더 구체적으로는 AskOosu의 기술 구조, 대표 프로젝트, 기술 스택, 연락 방법 중 하나를 물어보면 더 정확하게 답변할 수 있어요.',
-    ].join('\n');
-  }
-
-  return [
-    'I could not find enough matching Wiki chunks for that exact question, but based on the stable portfolio facts:',
-    '',
-    'AskOosu is an AI-connected conversational portfolio planned and built by Oosu Jang. It is designed to let visitors explore projects, skills, career background, and collaboration fit through questions instead of scrolling through a static portfolio.',
-    '',
-    'For a more specific answer, you can ask about AskOosu’s architecture, representative projects, tech stack, or contact details.',
-  ].join('\n');
+  return buildInsufficientEvidenceAnswer(language);
 }
 
 function buildFaqDirectRouteDecision({
@@ -424,6 +404,7 @@ function toSourceTitle(answerSource: ChatAnswerMetadata['answerSource']) {
   if (answerSource === 'answer_cache') return 'Portfolio answer cache';
   if (answerSource === 'deterministic_rule') return 'Portfolio policy';
   if (answerSource === 'rag_generation') return 'Portfolio data';
+  if (answerSource === 'insufficient_evidence') return 'Insufficient evidence';
   return 'Oosu portfolio data';
 }
 
@@ -447,6 +428,10 @@ function getAnswerSourceBadge(
     fallback: {
       ko: '기본 포트폴리오 답변',
       en: 'Basic portfolio answer',
+    },
+    insufficient_evidence: {
+      ko: '근거 부족',
+      en: 'Insufficient evidence',
     },
   };
 

@@ -23,6 +23,11 @@ import {
 } from '@/lib/chat/orchestrator';
 import type { AnswerRouteDecision } from '@/lib/chat/types';
 import { recordAiProviderUsage, upsertCachedAnswer } from '@/lib/chat/database';
+import {
+  buildInsufficientEvidenceAnswer,
+  detectPromptLeakage,
+  PROMPT_LEAK_DETECTED_ERROR_CODE,
+} from '@/lib/chat/output-guardrails';
 import { generateAnswerWithFallback } from '@/lib/ai/fallback';
 import { parsePreferredLanguage } from '@/lib/i18n/detect-language';
 import {
@@ -118,11 +123,14 @@ export async function POST(req: Request) {
     });
 
     if (orchestration.mode === 'direct') {
+      const isCacheHit =
+        orchestration.routeDecision.mode === 'faq_direct' ||
+        orchestration.routeDecision.mode === 'answer_cache';
       logChatRouteEvent({
         triggerId: body.starterQuestionId,
         faqId: body.faqId ?? orchestration.directAnswer.metadata.faqId,
         lang: orchestration.language,
-        cacheHit: true,
+        cacheHit: isCacheHit,
         skippedGroq: true,
         renderSpec:
           body.renderSpec ?? orchestration.directAnswer.metadata.renderSpecKey,
@@ -130,7 +138,7 @@ export async function POST(req: Request) {
       });
 
       void recordAiProviderUsage({
-        provider: 'cache',
+        provider: isCacheHit ? 'cache' : 'guardrail',
         model: orchestration.directAnswer.metadata.answerSource,
         route: 'api/chat',
         answerSource: orchestration.directAnswer.metadata.answerSource,
@@ -186,6 +194,51 @@ export async function POST(req: Request) {
       tools,
       stopWhen: stepCountIs(2),
     });
+
+    if (detectPromptLeakage(generation.answer)) {
+      const safeAnswer = buildInsufficientEvidenceAnswer(
+        orchestration.language
+      );
+      const responseMetadata = {
+        ...orchestration.metadata,
+        sources: [],
+        matchedEntityIds: [],
+        sourceChunkIds: [],
+        confidence: 0.2,
+        hasTodoEvidence: false,
+        warnings: [
+          ...orchestration.metadata.warnings,
+          PROMPT_LEAK_DETECTED_ERROR_CODE,
+        ],
+        answerSource: 'insufficient_evidence' as const,
+        skippedGroq: true,
+        answer: safeAnswer,
+        routeDecision: {
+          mode: 'safe_fallback' as const,
+          reason: 'prompt_leak_detected' as const,
+          confidence: 0.2,
+        },
+        errorCode: PROMPT_LEAK_DETECTED_ERROR_CODE,
+      };
+
+      logChatRouteEvent({
+        triggerId: body.starterQuestionId,
+        faqId: body.faqId ?? orchestration.metadata.faqId,
+        lang: orchestration.language,
+        cacheHit: false,
+        skippedGroq: true,
+        renderSpec: body.renderSpec ?? orchestration.metadata.renderSpecKey,
+        routeDecision: responseMetadata.routeDecision,
+        errorCode: PROMPT_LEAK_DETECTED_ERROR_CODE,
+      });
+
+      return createDirectAnswerResponse({
+        messages,
+        answer: safeAnswer,
+        metadata: responseMetadata,
+      });
+    }
+
     const responseMetadata = {
       ...orchestration.metadata,
       answerSource: generation.answerSource,
@@ -386,8 +439,8 @@ function toUsageMetadata(metadata: unknown): Record<string, unknown> {
 
 const RAG_CHAT_SYSTEM_PROMPT = `
 ## Wiki Grounding Rules
-- Answer from the retrieved Wiki context whenever it is available.
-- Do not guess facts that are not present in the Wiki context or the stable portfolio prompt.
+- Answer from the portfolio evidence whenever it is available.
+- Do not guess facts that are not present in the portfolio evidence or the stable portfolio prompt.
 - Treat TODO, needs_review, private, or uncertain chunks as unconfirmed. Mention uncertainty instead of stating them as final.
 - Be natural, warm, and helpful for a portfolio visitor.
 - Answer in Korean when the user asks in Korean, and in English when the user asks in English.
