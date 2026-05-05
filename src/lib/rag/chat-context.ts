@@ -57,15 +57,18 @@ export async function buildRagChatContext(
 
   warnings.push(...primarySearch.warnings, ...guardrailSearch.warnings);
 
-  const chunks = dedupeChunks([
-    ...primarySearch.results,
-    ...guardrailSearch.results,
-  ]);
   const publicEvidence = primarySearch.results.filter(isPublicEvidenceChunk);
 
   if (publicEvidence.length === 0) {
     return buildEmptyContext(warnings);
   }
+
+  const guardrailLimit = Math.min(
+    2,
+    Math.max(1, Math.floor(publicEvidence.length / 2))
+  );
+  const guardrailEvidence = guardrailSearch.results.slice(0, guardrailLimit);
+  const chunks = dedupeChunks([...primarySearch.results, ...guardrailEvidence]);
 
   const sources = chunks.map(toChatSource);
   const contextText = [

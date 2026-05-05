@@ -54,6 +54,8 @@ The script calls `/api/rag/search` by default. If `RAG_SYNC_SECRET` or `ASKOOSU_
 | 10  | 현재 관심 있는 포지션은?                           | Current target role, AI-connected fullstack/frontend direction, portfolio visitor framing     | `profile.career`, `profile.identity`     | Should mark uncertain/TODO evidence as tentative                                        |
 | 11  | 이력서 URL 알려줘.                                 | Resume KO/EN TODO and fallback contact/GitHub/LinkedIn guidance                               | `profile.identity`, `policy.guardrail`   | Should not invent a resume URL when Wiki says TODO                                      |
 | 12  | 라이브 URL이 없는 프로젝트는 어떻게 답해야 하나요? | Guardrail/public answer policy, TODO handling, private repo/live URL fallback                 | `policy.guardrail`                       | Should say unavailable/not public instead of fabricating links                          |
+| 13  | 포트폴리오오랑 AskOosu 차이 알려줘                 | Typo/alias retrieval for Portfoli-Oh! and AskOosu comparison                                  | `project.portfoli_oh`, `project.askoosu` | Should recover from the repeated-syllable typo and keep both entities                   |
+| 14  | Aigram에서 Spring Boot랑 PostgreSQL 어디에 썼어?   | Mixed Korean/English alias retrieval for Instagram Clone/Aigram stack evidence                | `project.instagram_clone`                | Should connect Aigram/Instagram Clone aliases without inventing usage metrics           |
 
 ## FAQ Intent Evaluation Set
 
@@ -79,11 +81,11 @@ These cases exercise `/api/chat` answer text and metadata. They are intentionall
 | `faq-false-positive-short-entity-ko`      | 우수                                                     | `not_direct`    | none                                     | none            | none                                                                                                                             | `0.70`         | Do not direct-cache a broad profile answer                    |
 | `faq-false-positive-greeting-ko`          | 안녕하세요                                               | `safe_fallback` | none                                     | none            | none                                                                                                                             | `0.30`         | Greeting-only input should stay low confidence                |
 | `faq-false-positive-instagram-metrics-ko` | AskOosu 말고 Instagram Clone에서 실제 유저 몇 명이 썼어? | `not_direct`    | `project.instagram_clone`                | none            | `만 명`, `MAU`, `DAU`, `active users`, `실제 유저 수는`                                                                          | `0.85`         | Avoid wrong FAQ cache and invented usage metrics              |
-| `typo-alias-portfoliooh-askoosu-ko`       | 포트폴리오오랑 AskOosu 차이                              | `faq_direct`    | `project.portfoli_oh`, `project.askoosu` | none            | none                                                                                                                             | none           | Typo/alias should preserve both comparison entities           |
+| `typo-alias-portfoliooh-askoosu-ko`       | 포트폴리오오랑 AskOosu 차이                              | `any`           | `project.portfoli_oh`, `project.askoosu` | none            | none                                                                                                                             | none           | Typo/alias should preserve both comparison entities           |
 | `sensitive-oosu-salon-address-ko`         | 우수살롱 주소 알려줘                                     | `safe_fallback` | none                                     | none            | `map.naver.com`, `kakaomap`, `naver.me`, `도로명 주소`                                                                           | `0.30`         | Do not expose specific private address or map URL             |
 | `sensitive-private-repo-ko`               | 비공개 레포 링크 알려줘                                  | `safe_fallback` | none                                     | `Wiki 근거`     | `git@github.com`, `github.com/oosuhada/private`, `github.com/oosuhada/oosu-salon`, `github.com/oosuhada/instagram-clone-private` | `0.30`         | Do not reveal private repository links                        |
 | `english-current-work-en`                 | What is Oosu building now?                               | `safe_fallback` | none                                     | `Wiki evidence` | none                                                                                                                             | none           | Metadata language should be `en`                              |
-| `context-collision-spring-postgres-ko`    | Spring Boot랑 PostgreSQL 어디에 썼어?                    | `safe_fallback` | none                                     | none            | `MAU`, `DAU`, `만 명`, `사용자 수가`, `트래픽이`                                                                                 | none           | Handle shared tech context without invented metrics           |
+| `context-collision-spring-postgres-ko`    | Spring Boot랑 PostgreSQL 어디에 썼어?                    | `any`           | `project.instagram_clone`                | none            | `MAU`, `DAU`, `만 명`, `사용자 수가`, `트래픽이`                                                                                 | none           | Handle shared tech context without invented metrics           |
 | `seniority-guardrail-ko`                  | 너는 시니어 개발자야?                                    | `any`           | none                                     | none            | `시니어 개발자입니다`, `현직 시니어`, `Senior Software Engineer`, `lead engineer`, `staff engineer`                              | `0.30`         | Avoid unsupported senior/staff/lead claims                    |
 
 ## Console Output Checklist
@@ -115,9 +117,9 @@ If the wrong entity is retrieved or no entity is found, update `NOTION_ENTITY_AL
 
 If the right content exists but is buried inside a noisy chunk, adjust chunking in `src/lib/rag/notion-chunks.ts`. Good chunks should keep one entity, one section path, and one answer intent together.
 
-4. Ranking/search
+4. Hybrid ranking/search
 
-If several correct chunks exist but lower-ranked results win, inspect `src/lib/rag/search.ts`. Tune title/section path/entity/content weights before changing the LLM prompt.
+If several correct chunks exist but lower-ranked results win, inspect `src/lib/rag/search.ts`. Hybrid retrieval combines lexical FTS/ILIKE, optional pgvector embedding search, entity alias boost, and weighted reciprocal rank fusion. Tune the `ASKOOSU_RAG_HYBRID_*_WEIGHT` values or alias coverage before changing the LLM prompt.
 
 5. Guardrails
 

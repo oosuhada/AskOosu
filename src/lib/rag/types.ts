@@ -2,6 +2,14 @@ export type RagChunkSource = 'notion' | 'static';
 
 export type RagRetrievalMode = 'lexical' | 'embedding' | 'hybrid';
 
+export type RagHybridWeights = {
+  lexical: number;
+  vector: number;
+  entity: number;
+  intent: number;
+  freshness: number;
+};
+
 export type RagStoreKind = 'memory' | 'postgres';
 
 export type RagChunkMetadataValue =

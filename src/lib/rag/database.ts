@@ -32,6 +32,22 @@ type RagDatabaseChunkInput = NotionDatabaseChunk & {
   embedding?: number[];
 };
 
+export type StoredRagChunkEmbeddingSearchRow = {
+  chunk_id: string;
+  entity_id: string | null;
+  title: string;
+  section_path: string[] | null;
+  content: string;
+  metadata: RagChunkMetadata | null;
+  has_todo: boolean;
+  visibility: string;
+  freshness: string;
+  confidence: number | string;
+  updated_at: Date;
+  embedding_score: number | string;
+  score: number | string;
+};
+
 type RagChunkGroup = RagSourceInput & {
   chunks: RagChunk[];
 };
@@ -497,6 +513,64 @@ export async function searchStoredRagChunksByEmbedding(
     chunk: rowToChunk(row),
     score: Number(row.score),
   }));
+}
+
+export async function searchStoredRagChunkRowsByEmbedding({
+  embedding,
+  limit,
+  includePrivate = false,
+  entityId,
+  language,
+}: {
+  embedding: number[];
+  limit: number;
+  includePrivate?: boolean;
+  entityId?: string | null;
+  language?: 'ko' | 'en' | null;
+}): Promise<StoredRagChunkEmbeddingSearchRow[]> {
+  await ensureRagDatabaseSchema();
+
+  const pool = await getPostgresPool();
+  const result = await pool.query<StoredRagChunkEmbeddingSearchRow>(
+    `
+      SELECT
+        c.chunk_id,
+        c.entity_id,
+        c.title,
+        c.section_path,
+        c.content,
+        c.metadata,
+        c.has_todo,
+        c.visibility,
+        c.freshness,
+        c.confidence,
+        c.updated_at,
+        (1 - (c.embedding <=> $1::vector))::double precision AS embedding_score,
+        (
+          (1 - (c.embedding <=> $1::vector)) * 20
+          + CASE WHEN c.visibility = 'public' THEN 1.5 ELSE 0 END
+          + CASE WHEN c.freshness = 'current' THEN 1 ELSE 0 END
+          + CASE WHEN c.has_todo THEN -2 ELSE 0 END
+        )::double precision AS score
+      FROM rag_chunks c
+      WHERE
+        c.embedding IS NOT NULL
+        AND ($3::boolean OR c.visibility = 'public')
+        AND ($4::text IS NULL OR c.entity_id = $4)
+        AND ($5::text IS NULL OR c.language IS NULL OR c.language = $5)
+      ORDER BY c.embedding <=> $1::vector, c.updated_at DESC, c.title ASC
+      LIMIT $2
+    `,
+    [
+      toVectorLiteral(embedding),
+      limit,
+      includePrivate,
+      entityId ?? null,
+      language ?? null,
+    ]
+  );
+
+  return result.rows;
 }
 
 async function upsertRagSource(client: PoolClient, source: RagSourceInput) {
