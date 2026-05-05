@@ -11,6 +11,7 @@
 5. Share the parent `AskOosu Wiki` page and both child pages with that integration.
 6. Use the parent page id as the sync target.
 7. Run `/api/rag/sync` after the page and environment variables are ready.
+8. If the parent page sync returns only the child page titles and not the KO/EN page body, switch to direct child-page mode with `ASKOOSU_NOTION_PAGE_IDS`.
 
 ## Environment Variables
 
@@ -19,12 +20,26 @@ Use real values only in `.env.local` or the deployment environment. Do not commi
 ```env
 NOTION_API_KEY=
 NOTION_PAGE_ID=355a342869018181b578d73a791356af
-ASKOOSU_NOTION_PAGE_IDS=355a342869018181b578d73a791356af
+ASKOOSU_NOTION_PAGE_IDS=
 GROQ_API_KEY=
 DATABASE_URL=
 ```
 
-The sync route reads `NOTION_PAGE_ID` first and falls back to the first value in `ASKOOSU_NOTION_PAGE_IDS`.
+The sync route recursively reads every configured page id. Preferred production mode is the parent page only:
+
+```env
+NOTION_PAGE_ID=355a342869018181b578d73a791356af
+ASKOOSU_NOTION_PAGE_IDS=
+```
+
+Fallback direct child-page mode is available if Notion does not expose imported child page bodies through the parent block tree:
+
+```env
+NOTION_PAGE_ID=
+ASKOOSU_NOTION_PAGE_IDS=356a34286901807aa0c1f993a495c59d,356a34286901801583aff1822dac7f28
+```
+
+Avoid setting both the parent and the direct KO/EN child page ids at the same time unless you intentionally want to sync both sources, because duplicate wiki content can reduce search quality.
 
 ## Database Migration
 
@@ -54,7 +69,7 @@ It also adds PostgreSQL indexes for `chunk_id`, `entity_id`, `source_id`, `has_t
 
 ## Sync Step
 
-After the Markdown import and integration sharing are complete, call the admin-protected RAG sync endpoint. It returns recursive Notion fetch metadata (`ok`, `pageId`, `blockCount`, `textLength`, `sections`, `warnings`) and writes chunks to the database when `DATABASE_URL` is configured.
+After the Markdown import and integration sharing are complete, call the admin-protected RAG sync endpoint. It returns aggregate metadata (`ok`, `pageId`, `pageIds`, `sourceId`, `syncRunId`, `blockCount`, `chunkCount`, `inserted`, `updated`, `skipped`, `warnings`) plus a `sources` array with per-page sync results.
 
 ```bash
 curl -X POST http://localhost:3000/api/rag/sync \

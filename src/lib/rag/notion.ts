@@ -33,6 +33,7 @@ export type NotionRagConfig =
       ok: true;
       apiKey: string;
       pageId: string;
+      pageIds: string[];
       warnings: string[];
     }
   | {
@@ -83,10 +84,10 @@ export class NotionRequestError extends Error {
 export function getNotionRagConfig(): NotionRagConfig {
   const warnings: string[] = [];
   const apiKey = process.env.NOTION_API_KEY?.trim();
-  const rawPageId =
-    process.env.NOTION_PAGE_ID?.trim() ||
-    getListEnv('ASKOOSU_NOTION_PAGE_IDS')[0];
-  const pageId = rawPageId ? parseNotionId(rawPageId) : '';
+  const rawPageId = process.env.NOTION_PAGE_ID?.trim();
+  const extraPageIds = getListEnv('ASKOOSU_NOTION_PAGE_IDS');
+  const pageIds = uniqueNotionPageIds([rawPageId, ...extraPageIds]);
+  const pageId = pageIds[0] ?? '';
 
   if (!apiKey) {
     return {
@@ -101,14 +102,21 @@ export function getNotionRagConfig(): NotionRagConfig {
     return {
       ok: false,
       status: 400,
-      error: 'NOTION_PAGE_ID is required for RAG sync.',
+      error:
+        'NOTION_PAGE_ID or ASKOOSU_NOTION_PAGE_IDS is required for RAG sync.',
       warnings,
     };
   }
 
-  if (!process.env.NOTION_PAGE_ID && rawPageId) {
+  if (!rawPageId && pageIds.length > 0) {
     warnings.push(
       'Using ASKOOSU_NOTION_PAGE_IDS because NOTION_PAGE_ID is not set.'
+    );
+  }
+
+  if (extraPageIds.length > 0 && pageIds.length > 1) {
+    warnings.push(
+      'Syncing multiple Notion page ids from NOTION_PAGE_ID and ASKOOSU_NOTION_PAGE_IDS.'
     );
   }
 
@@ -116,8 +124,21 @@ export function getNotionRagConfig(): NotionRagConfig {
     ok: true,
     apiKey,
     pageId,
+    pageIds,
     warnings,
   };
+}
+
+function uniqueNotionPageIds(rawValues: Array<string | undefined>) {
+  const ids: string[] = [];
+
+  for (const rawValue of rawValues) {
+    if (!rawValue) continue;
+    const pageId = parseNotionId(rawValue);
+    if (pageId && !ids.includes(pageId)) ids.push(pageId);
+  }
+
+  return ids;
 }
 
 export async function fetchNotionRagPage({

@@ -37,7 +37,7 @@ DATABASE_URL=postgres://askoosu:replace_with_a_strong_password@postgres:5432/ask
 NEXT_PUBLIC_APP_URL=https://oosu.dev
 
 NOTION_API_KEY=
-NOTION_PAGE_ID=
+NOTION_PAGE_ID=355a342869018181b578d73a791356af
 ASKOOSU_NOTION_PAGE_IDS=
 
 ASKOOSU_AI_PROVIDER=groq
@@ -51,6 +51,13 @@ ASKOOSU_RAG_AUTO_SYNC=false
 ```
 
 Use real values only in `.env.production` or the shell environment. Do not commit secrets.
+
+Use the parent `AskOosu Wiki` page in `NOTION_PAGE_ID` first. If `/api/rag/sync` reports only a small block count or only the KO/EN child page titles, switch to direct child-page mode:
+
+```env
+NOTION_PAGE_ID=
+ASKOOSU_NOTION_PAGE_IDS=356a34286901807aa0c1f993a495c59d,356a34286901801583aff1822dac7f28
+```
 
 ## Deploy With Compose
 
