@@ -1,9 +1,9 @@
 // src/components/chat/chat-bottombar.tsx
 'use client';
 
-import { ChatRequestOptions } from 'ai';
+import type { ChatRequestOptions } from 'ai';
 import { motion } from 'framer-motion';
-import { ArrowUp } from 'lucide-react';
+import { ArrowUp, Square } from 'lucide-react';
 import React, { useEffect } from 'react';
 
 interface ChatBottombarProps {
@@ -67,8 +67,13 @@ export default function ChatBottombar({
             onChange={handleInputChange}
             onKeyDown={handleKeyPress}
             placeholder={
-              disabled ? '' : isToolInProgress ? thinkingLabel : placeholder
+              disabled
+                ? ''
+                : isToolInProgress || isLoading
+                  ? thinkingLabel
+                  : placeholder
             }
+            aria-label={placeholder}
             className={`text-md w-full border-none bg-transparent placeholder:text-gray-500 focus:outline-none ${
               disabled ? 'text-muted-foreground font-medium' : 'text-foreground'
             }`}
@@ -78,9 +83,10 @@ export default function ChatBottombar({
           <button
             type="submit"
             disabled={
-              isLoading || !input.trim() || isToolInProgress || disabled
+              !isLoading && (!input.trim() || isToolInProgress || disabled)
             }
-            className="flex items-center justify-center rounded-full bg-[#0171E3] p-2 text-white disabled:opacity-50"
+            aria-label={isLoading ? 'Stop response' : 'Send message'}
+            className="focus-visible:ring-ring/50 flex items-center justify-center rounded-full bg-[#0171E3] p-2 text-white outline-none focus-visible:ring-[3px] disabled:opacity-50"
             onClick={(e) => {
               if (isLoading) {
                 e.preventDefault();
@@ -88,7 +94,11 @@ export default function ChatBottombar({
               }
             }}
           >
-            <ArrowUp className="h-6 w-6" />
+            {isLoading ? (
+              <Square className="h-6 w-6 fill-current" />
+            ) : (
+              <ArrowUp className="h-6 w-6" />
+            )}
           </button>
         </div>
       </form>

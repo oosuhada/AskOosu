@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
+import { RagEvidencePanel } from './rag-evidence';
 
 export type ChatMessageContentProps = {
   message: UIMessage;
@@ -127,5 +128,12 @@ export default function ChatMessageContent({
     });
   };
 
-  return <div className="w-full">{renderContent()}</div>;
+  return (
+    <div className="w-full">
+      {renderContent()}
+      {message.role === 'assistant' && (
+        <RagEvidencePanel metadata={message.metadata} />
+      )}
+    </div>
+  );
 }
