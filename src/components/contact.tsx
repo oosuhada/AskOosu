@@ -1,7 +1,5 @@
 'use client';
 
-import React from 'react';
-import { motion } from 'framer-motion';
 import { ChevronRight } from 'lucide-react';
 import { getUiText } from '@/lib/i18n';
 import { oosuProfile } from '@/lib/oosu-profile';

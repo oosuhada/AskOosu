@@ -46,6 +46,7 @@ type MediaRef = {
   assetKey: string;
   kind: string;
   src: string;
+  mobileSrc?: string;
   alt: string;
   caption?: string;
   status: 'ready' | 'todo' | 'optional';
@@ -687,6 +688,11 @@ function MediaPreview({
     media?.status === 'ready' && media.src && media.src !== 'TODO_ASSET';
 
   if (canRenderImage) {
+    const mobileSrc =
+      media.mobileSrc && media.mobileSrc !== 'TODO_ASSET'
+        ? media.mobileSrc
+        : null;
+
     return (
       <div
         className={cn(
@@ -695,7 +701,32 @@ function MediaPreview({
           className
         )}
       >
-        <Image src={media.src} alt={media.alt} fill className="object-cover" />
+        {mobileSrc ? (
+          <>
+            <Image
+              src={mobileSrc}
+              alt={media.alt}
+              fill
+              sizes="(max-width: 640px) 100vw, 0px"
+              className="object-cover sm:hidden"
+            />
+            <Image
+              src={media.src}
+              alt={media.alt}
+              fill
+              sizes="(max-width: 640px) 0px, 50vw"
+              className="hidden object-cover sm:block"
+            />
+          </>
+        ) : (
+          <Image
+            src={media.src}
+            alt={media.alt}
+            fill
+            sizes="(max-width: 640px) 100vw, 50vw"
+            className="object-cover"
+          />
+        )}
       </div>
     );
   }
@@ -879,6 +910,7 @@ function parseMediaRef(value: unknown): MediaRef | null {
     assetKey,
     kind,
     src,
+    mobileSrc: parseString(value.mobileSrc) ?? undefined,
     alt,
     caption: parseString(value.caption) ?? undefined,
     status,

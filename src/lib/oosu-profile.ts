@@ -72,21 +72,17 @@ export const oosuProjects = [
     ],
     images: [
       {
-        src: '/oosu-avatar/hover-23.webp',
-        alt: 'AskOosu animated profile avatar frame',
-      },
-      {
-        src: '/oosu-avatar/hover-01.webp',
-        alt: 'Oosu avatar frame',
+        src: '/images/projects/askoosu-cover-desktop.webp',
+        alt: 'AskOosu project preview',
       },
     ],
   },
   {
-    title: 'Instagram Clone',
+    title: 'Aigram',
     category: 'Fullstack',
     date: '2026',
     description:
-      'A fullstack project implementing core SNS features including feeds, follows, comments, and backend API flows. It is built to practice the full product loop from database schema and API design to React UI deployment.',
+      'A fullstack SNS project inspired by Instagram Clone, implementing feeds, follows, comments, and backend API flows. It is built to practice the full product loop from database schema and API design to React UI deployment.',
     techStack: ['Spring Boot', 'React', 'PostgreSQL', 'Fullstack', 'REST API'],
     links: [
       {
@@ -96,8 +92,8 @@ export const oosuProjects = [
     ],
     images: [
       {
-        src: '/oosu-avatar/hover-03.webp',
-        alt: 'Instagram clone placeholder preview',
+        src: '/images/projects/aigram-cover-desktop.webp',
+        alt: 'Aigram project preview',
       },
     ],
   },
@@ -116,8 +112,8 @@ export const oosuProjects = [
     ],
     images: [
       {
-        src: '/oosu-avatar/hover-05.webp',
-        alt: 'Sticks and Stones project placeholder preview',
+        src: '/images/projects/sticks-stones-cover-desktop.webp',
+        alt: 'Sticks and Stones project preview',
       },
     ],
   },
@@ -140,7 +136,7 @@ export const oosuProjects = [
     ],
     images: [
       {
-        src: '/oosu-projects/portfoli-oh-2025.webp',
+        src: '/images/projects/portfolio-oh-cover-desktop.webp',
         alt: 'Portfoli-Oh 2025 portfolio preview',
       },
     ],
