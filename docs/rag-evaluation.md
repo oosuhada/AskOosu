@@ -16,7 +16,7 @@ Then run the search-only evaluation:
 pnpm rag:eval
 ```
 
-`pnpm rag:eval` also checks the FAQ semantic intent router through `/api/chat` by default. To run only those FAQ intent checks:
+`pnpm rag:eval` stays search-only by default, so it can run without Groq/LLM provider credentials. Chat-backed FAQ and failure-mode checks run only when `--chat` is passed and a supported provider key is available. To run only FAQ intent checks:
 
 ```bash
 pnpm faq:eval
@@ -28,6 +28,7 @@ Useful options:
 pnpm rag:eval -- --base-url http://localhost:3001
 pnpm rag:eval -- --limit 8
 pnpm rag:eval -- --chat
+pnpm rag:eval -- --fixture data/evals/rag-failure-cases.jsonl
 pnpm rag:eval -- --no-faq
 pnpm rag:eval -- --no-failures
 pnpm rag:eval -- --faq-only
@@ -36,7 +37,28 @@ pnpm rag:eval -- --json
 pnpm rag:eval -- --strict
 ```
 
-The script calls `/api/rag/search` by default. If `RAG_SYNC_SECRET` or `ASKOOSU_RAG_ADMIN_TOKEN` is present in the shell or `.env.local`, it sends the token as a Bearer header. `--chat` also asks `/api/chat` for answer previews only when a Groq key is configured. FAQ intent checks and failure-mode checks always call `/api/chat` and read route metadata; use `--no-faq` or `--no-failures` to skip those suites.
+The script calls `/api/rag/search` by default. If `RAG_SYNC_SECRET` or `ASKOOSU_RAG_ADMIN_TOKEN` is present in the shell or `.env.local`, it sends the token as a Bearer header. Search-only mode validates expected entity ids in the top K results, prints top source entity ids and scores, and marks no-result cases clearly.
+
+`--chat` also calls `/api/chat` when a supported provider credential is configured (`OPENAI_API_KEY`, `GROQ_API_KEY`, `GROQ_API_KEYS`, `XAI_API_KEY`, `GOOGLE_VERTEX_API_KEY`, or `GOOGLE_APPLICATION_CREDENTIALS`). If no provider key is available, chat evals are skipped with a clear message and search-only mode still runs. FAQ intent checks and failure-mode checks read answer text plus route metadata; use `--no-faq` or `--no-failures` to skip those suites.
+
+`--strict` exits non-zero when search assertions, FAQ route checks, or failure-mode checks fail. `--json` preserves the human-readable behavior by default and emits machine-readable case ids, pass/fail state, failed assertions, top entities, route decisions, confidence, and answer source when requested.
+
+## Failure Fixture Schema
+
+Failure-mode cases are loaded from `data/evals/rag-failure-cases.jsonl` by default, with the embedded cases in `scripts/eval-rag.ts` as a fallback. Each line is one JSON object:
+
+- `id`: stable case id
+- `question`: user question sent to `/api/chat`
+- `language`: expected answer metadata language, `ko` or `en`
+- `expectedRoute`: `faq_direct`, `faq_rewrite`, `answer_cache`, `rag_generate`, `safe_fallback`, `not_direct`, or `any`
+- `expectedEntityIds`: entity ids expected in metadata source/entity fields
+- `expectedEntityMatch`: `any` by default, or `all` when every listed entity must appear
+- `expectedAnswerSource`: optional `metadata.answerSource` assertion
+- `mustInclude`: answer text fragments that must appear
+- `mustNotInclude`: answer text fragments that must not appear
+- `minConfidence` / `maxConfidence`: optional confidence bounds
+- `notes`: why the case exists
+- `watchFor`: human debugging hint when the case fails
 
 ## Evaluation Set
 
@@ -71,7 +93,7 @@ These cases check `src/lib/faq/semantic-router.ts` routing metadata rather than 
 
 ## Failure-Mode Evaluation Set
 
-These cases exercise `/api/chat` answer text and metadata. They are intentionally guardrail-heavy and should not require runtime routing changes to add new cases. `expectedRoute` accepts `faq_direct`, `faq_rewrite`, `answer_cache`, `rag_generate`, `safe_fallback`, `not_direct`, or `any`; `expectedEntityIds` passes when any listed entity appears unless the case notes require all.
+These cases exercise `/api/chat` answer text and metadata. They are intentionally guardrail-heavy and should not require runtime routing changes to add new cases. `expectedRoute` accepts `faq_direct`, `faq_rewrite`, `answer_cache`, `rag_generate`, `safe_fallback`, `not_direct`, or `any`; `expectedEntityIds` passes when any listed entity appears unless `expectedEntityMatch` is set to `all`.
 
 Keep this suite focused on failure modes as the Wiki and FAQ cache evolve:
 
