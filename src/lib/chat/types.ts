@@ -16,6 +16,7 @@ export type ChatAnswerSource =
 export type ChatAnswerMetadata = RagChatMetadata & {
   language: ChatLanguage;
   answerSource: ChatAnswerSource;
+  triggerId?: string;
   faqId?: string;
   intentId?: string;
   quickLabel?: string;
@@ -39,6 +40,7 @@ export type ChatAnswerMetadata = RagChatMetadata & {
   skippedGroq: boolean;
   provider?: string;
   model?: string;
+  errorCode?: string;
   sourceChunkIds: string[];
 };
 

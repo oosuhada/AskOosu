@@ -3,6 +3,7 @@
 import Image from 'next/image';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { useMemo, useState } from 'react';
 import { oosuProfile } from '@/lib/oosu-profile';
 import { cn } from '@/lib/utils';
 import type { QuestionSurface } from '@/data/question-surfaces.shared';
@@ -76,8 +77,13 @@ type ProjectItem = {
 
 type SkillGroup = {
   group: string;
-  skills: string[];
+  skills: SkillItem[];
   evidence: string[];
+};
+
+type SkillItem = {
+  name: string;
+  proficiency?: string;
 };
 
 type ContactAction = {
@@ -309,17 +315,29 @@ function ProjectShowcaseCards({
 }) {
   const projects = block.items.map(parseProjectItem).filter(isDefined);
   if (projects.length === 0) return null;
+  const isMoreProjectsRail =
+    block.dataKey === 'projects.more' ||
+    block.title?.toLowerCase().includes('more project');
 
   return (
     <section className="space-y-2" aria-label={block.title ?? 'Projects'}>
       {block.title && (
         <h3 className="text-sm font-semibold tracking-normal">{block.title}</h3>
       )}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div
+        className={
+          isMoreProjectsRail
+            ? 'flex snap-x gap-3 overflow-x-auto pb-1'
+            : 'grid grid-cols-1 gap-3 sm:grid-cols-3'
+        }
+      >
         {projects.map((project) => (
           <article
             key={project.id}
-            className="overflow-hidden rounded-lg border bg-white/70 shadow-sm dark:bg-white/[0.05]"
+            className={cn(
+              'overflow-hidden rounded-lg border bg-white/70 shadow-sm dark:bg-white/[0.05]',
+              isMoreProjectsRail && 'w-64 shrink-0 snap-start'
+            )}
           >
             <MediaPreview
               assetKey={project.image}
@@ -456,10 +474,15 @@ function SkillChipGroup({ block }: { block: VisualBlock }) {
             <div className="flex flex-wrap gap-1.5">
               {group.skills.map((skill) => (
                 <span
-                  key={skill}
-                  className="rounded-md border border-sky-200 bg-white px-2 py-1 text-xs text-slate-700 dark:border-sky-800/70 dark:bg-slate-950/50 dark:text-slate-200"
+                  key={`${group.group}-${skill.name}`}
+                  className="inline-flex items-center gap-1 rounded-md border border-sky-200 bg-white px-2 py-1 text-xs text-slate-700 dark:border-sky-800/70 dark:bg-slate-950/50 dark:text-slate-200"
                 >
-                  {skill}
+                  <span>{skill.name}</span>
+                  {skill.proficiency && (
+                    <span className="rounded bg-slate-100 px-1 text-[10px] text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+                      {skill.proficiency}
+                    </span>
+                  )}
                 </span>
               ))}
             </div>
@@ -745,7 +768,39 @@ function MediaPreview({
 }
 
 function SourceBadgeList({ sourceChunkIds }: { sourceChunkIds: string[] }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const isDebugMode = useMemo(isDebugModeEnabled, []);
+
   if (sourceChunkIds.length === 0) return null;
+
+  if (!isDebugMode) {
+    return (
+      <div className="space-y-2">
+        <button
+          type="button"
+          className="bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition"
+          aria-expanded={isOpen}
+          onClick={() => setIsOpen((current) => !current)}
+        >
+          <BookOpenCheck className="h-3.5 w-3.5" />
+          {isOpen ? 'Hide sources' : 'View sources'}
+        </button>
+        {isOpen && (
+          <div className="flex flex-wrap gap-2" aria-label="Portfolio sources">
+            {sourceChunkIds.map((chunkId, index) => (
+              <span
+                key={`${chunkId}-${index}`}
+                className="bg-background text-muted-foreground inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs"
+              >
+                <BookOpenCheck className="text-foreground h-3.5 w-3.5 shrink-0" />
+                <span>{formatVisitorSourceLabel(chunkId)}</span>
+              </span>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-wrap gap-2" aria-label="Source chunk badges">
@@ -778,8 +833,8 @@ function findVisualBlock(part: RichAnswerPart, blocks: VisualBlock[]) {
   if (part.type !== 'component') return null;
 
   return (
-    blocks.find((block) => block.type === part.blockType) ??
     blocks.find((block) => block.dataKey && block.dataKey === part.dataKey) ??
+    blocks.find((block) => block.type === part.blockType) ??
     blocks.find(
       (block) => componentNameForBlock(block.type) === part.component
     ) ??
@@ -941,8 +996,26 @@ function parseSkillGroup(value: unknown): SkillGroup | null {
 
   return {
     group,
-    skills: parseStringArray(value.skills),
+    skills: Array.isArray(value.skills)
+      ? value.skills.map(parseSkillItem).filter(isDefined)
+      : [],
     evidence: parseStringArray(value.evidence),
+  };
+}
+
+function parseSkillItem(value: unknown): SkillItem | null {
+  if (typeof value === 'string') {
+    const name = value.trim();
+    return name ? { name } : null;
+  }
+
+  if (!isRecord(value)) return null;
+  const name = parseString(value.name);
+  if (!name) return null;
+
+  return {
+    name,
+    proficiency: parseString(value.proficiency) ?? undefined,
   };
 }
 
@@ -1043,6 +1116,20 @@ function findMediaRef(mediaRefs: MediaRef[], assetKey: string) {
 
 function parseString(value: unknown) {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function isDebugModeEnabled() {
+  if (typeof window === 'undefined') return false;
+  return new URLSearchParams(window.location.search).get('debug') === 'true';
+}
+
+function formatVisitorSourceLabel(chunkId: string) {
+  if (chunkId.startsWith('project.')) return 'Project data';
+  if (chunkId.startsWith('profile.')) return 'Profile data';
+  if (chunkId.startsWith('skills.')) return 'Skills data';
+  if (chunkId.startsWith('ai.')) return 'AI workflow data';
+  if (chunkId.startsWith('career.')) return 'Career data';
+  return 'Portfolio data';
 }
 
 function parseStringArray(value: unknown) {

@@ -60,6 +60,7 @@ export async function prepareChatOrchestration({
   const normalizedQuestion = normalizeQuestion(question);
   const language = detectLanguage(question, preferredLanguage);
   const requestContext = {
+    triggerId: normalizeOptionalString(starterQuestionId),
     faqId: normalizeOptionalString(faqId),
     intentId: normalizeOptionalString(intentId),
     displayQuestion: normalizeOptionalString(displayQuestion),
@@ -97,11 +98,15 @@ export async function prepareChatOrchestration({
     }
   }
 
-  const faqMatch = matchFaqAnswer({
-    question,
-    language,
-    starterQuestionId,
-  });
+  const shouldSkipFuzzyFaqMatch =
+    requestContext.source === 'quick_question' && Boolean(requestContext.faqId);
+  const faqMatch = shouldSkipFuzzyFaqMatch
+    ? null
+    : matchFaqAnswer({
+        question,
+        language,
+        starterQuestionId,
+      });
 
   if (faqMatch?.answer.cacheMode === 'direct_cache') {
     const metadata = buildDirectMetadata({
@@ -210,6 +215,7 @@ function buildDirectMetadata({
   faqAnswer?: FaqAnswer;
   requestContext?: {
     faqId: string | null;
+    triggerId: string | null;
     intentId: string | null;
     displayQuestion: string | null;
     originalQuickLabel: string | null;
@@ -239,6 +245,7 @@ function buildDirectMetadata({
     answerSource,
     matchedFaqId,
     faqId: faqAnswer?.id ?? requestContext?.faqId ?? matchedFaqId,
+    triggerId: requestContext?.triggerId ?? undefined,
     intentId: getResolvedIntentId({
       requestIntentId: requestContext?.intentId,
       requestFaqId: requestContext?.faqId,
@@ -283,12 +290,12 @@ function buildDirectMetadata({
 }
 
 function toSourceTitle(answerSource: ChatAnswerMetadata['answerSource']) {
-  if (answerSource === 'faq_cache') return 'FAQ answer bank';
-  if (answerSource === 'faq_rewrite') return 'Model answer bank';
-  if (answerSource === 'answer_cache') return 'Answer cache';
-  if (answerSource === 'deterministic_rule') return 'Public policy rule';
-  if (answerSource === 'rag_generation') return 'Wiki search answer';
-  return 'AskOosu answer source';
+  if (answerSource === 'faq_cache') return 'Oosu Wiki';
+  if (answerSource === 'faq_rewrite') return 'Portfolio answer';
+  if (answerSource === 'answer_cache') return 'Portfolio answer cache';
+  if (answerSource === 'deterministic_rule') return 'Portfolio policy';
+  if (answerSource === 'rag_generation') return 'Portfolio data';
+  return 'Oosu portfolio data';
 }
 
 function getAnswerSourceBadge(
@@ -297,20 +304,20 @@ function getAnswerSourceBadge(
 ) {
   const labels: Record<string, Record<ChatLanguage, string>> = {
     faq_cache: {
-      ko: '자주 묻는 답변',
-      en: 'Frequently asked answer',
+      ko: 'Oosu Wiki 기반',
+      en: 'From Oosu Wiki',
     },
     faq_rewrite: {
-      ko: '모범 답안 기반 응답',
-      en: 'Model-answer based response',
+      ko: '포트폴리오 답변',
+      en: 'Portfolio answer',
     },
     rag_generation: {
-      ko: 'Wiki 기준 답변',
-      en: 'Wiki search-based answer',
+      ko: '포트폴리오 데이터 기반',
+      en: 'Based on portfolio data',
     },
     fallback: {
-      ko: '기본 프로필 기준 답변',
-      en: 'Basic profile-based response',
+      ko: '기본 포트폴리오 답변',
+      en: 'Basic portfolio answer',
     },
   };
 

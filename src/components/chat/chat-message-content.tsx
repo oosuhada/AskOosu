@@ -9,7 +9,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { useState } from 'react';
+import { Component, useState, type ReactNode } from 'react';
 import { RagEvidencePanel } from './rag-evidence';
 import {
   hasRichAnswerPayload,
@@ -91,10 +91,14 @@ export default function ChatMessageContent({
   const renderContent = () => {
     if (hasRichAnswer) {
       return (
-        <RichAnswerRenderer
-          metadata={message.metadata}
-          markdownContent={messageText}
-        />
+        <RichAnswerErrorBoundary
+          fallback={<PlainMarkdownContent content={messageText} />}
+        >
+          <RichAnswerRenderer
+            metadata={message.metadata}
+            markdownContent={messageText}
+          />
+        </RichAnswerErrorBoundary>
       );
     }
 
@@ -109,37 +113,7 @@ export default function ChatMessageContent({
           {contentParts.map((content, i) =>
             i % 2 === 0 ? (
               // Regular text content
-              <div key={`text-${i}`} className="prose dark:prose-invert w-full">
-                <Markdown
-                  remarkPlugins={[remarkGfm]}
-                  components={{
-                    p: ({ children }) => (
-                      <p className="break-words whitespace-pre-wrap">
-                        {children}
-                      </p>
-                    ),
-                    ul: ({ children }) => (
-                      <ul className="my-4 list-disc pl-6">{children}</ul>
-                    ),
-                    ol: ({ children }) => (
-                      <ol className="my-4 list-decimal pl-6">{children}</ol>
-                    ),
-                    li: ({ children }) => <li className="my-1">{children}</li>,
-                    a: ({ href, children }) => (
-                      <a
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-500 hover:underline"
-                      >
-                        {children}
-                      </a>
-                    ),
-                  }}
-                >
-                  {content}
-                </Markdown>
-              </div>
+              <PlainMarkdownContent key={`text-${i}`} content={content} />
             ) : (
               // Code block content
               <CodeBlock key={`code-${i}`} content={content} />
@@ -166,6 +140,60 @@ export default function ChatMessageContent({
       )}
     </div>
   );
+}
+
+function PlainMarkdownContent({ content }: { content: string }) {
+  return (
+    <div className="prose dark:prose-invert w-full">
+      <Markdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          p: ({ children }) => (
+            <p className="break-words whitespace-pre-wrap">{children}</p>
+          ),
+          ul: ({ children }) => (
+            <ul className="my-4 list-disc pl-6">{children}</ul>
+          ),
+          ol: ({ children }) => (
+            <ol className="my-4 list-decimal pl-6">{children}</ol>
+          ),
+          li: ({ children }) => <li className="my-1">{children}</li>,
+          a: ({ href, children }) => (
+            <a
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-500 hover:underline"
+            >
+              {children}
+            </a>
+          ),
+        }}
+      >
+        {content}
+      </Markdown>
+    </div>
+  );
+}
+
+class RichAnswerErrorBoundary extends Component<
+  { children: ReactNode; fallback: ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false };
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.warn('Rich answer render failed. Showing plain answer.', error);
+  }
+
+  render() {
+    if (this.state.hasError) return this.props.fallback;
+    return this.props.children;
+  }
 }
 
 function getMessageText(message: UIMessage) {

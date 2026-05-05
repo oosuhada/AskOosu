@@ -34,11 +34,15 @@ type RagMetadata = {
   matchedEntityIds: string[];
   hasTodoEvidence: boolean;
   warnings: string[];
+  faqId?: string;
+  matchedFaqId?: string;
+  renderSpecKey?: string;
   answerSource?: string;
   language?: 'ko' | 'en';
   skippedGroq?: boolean;
   provider?: string;
   model?: string;
+  errorCode?: string;
 };
 
 type ProjectCardInfo = {
@@ -222,6 +226,7 @@ export function RagEvidencePanel({
     FeedbackReasonKey[]
   >([]);
   const [sourcesExpanded, setSourcesExpanded] = useState(false);
+  const isDebugMode = useMemo(isDebugModeEnabled, []);
 
   if (!ragMetadata) return null;
 
@@ -246,22 +251,29 @@ export function RagEvidencePanel({
     displayLanguage
   );
   const answerSourceLabel = getAnswerSourceLabel(ragMetadata, displayLanguage);
+  const shouldShowSources = isDebugMode || sourcesExpanded;
 
   return (
     <section
       className="mt-5 space-y-3 border-t pt-4"
       aria-label={
-        displayLanguage === 'ko' ? 'RAG 답변 근거' : 'RAG answer evidence'
+        displayLanguage === 'ko'
+          ? '포트폴리오 답변 근거'
+          : 'Portfolio answer evidence'
       }
     >
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="outline" className="rounded-lg px-2.5 py-1">
           <BookOpenCheck className="h-3.5 w-3.5" />
-          {ragMetadata.sources.length > 0
-            ? formatSourceCount(ragMetadata.sources.length, displayLanguage)
+          {isDebugMode
+            ? ragMetadata.sources.length > 0
+              ? formatSourceCount(ragMetadata.sources.length, displayLanguage)
+              : displayLanguage === 'ko'
+                ? 'Wiki 근거 없음'
+                : 'Wiki source not found'
             : displayLanguage === 'ko'
-              ? 'Wiki 근거 없음'
-              : 'Wiki source not found'}
+              ? 'Oosu Wiki 기반'
+              : 'From Oosu Wiki'}
         </Badge>
 
         {answerSourceLabel && (
@@ -271,13 +283,15 @@ export function RagEvidencePanel({
           </Badge>
         )}
 
-        <Badge
-          variant="outline"
-          className={cn('rounded-lg px-2.5 py-1', confidenceTone.className)}
-        >
-          <CheckCircle2 className="h-3.5 w-3.5" />
-          {confidenceTone.label} {formatConfidence(ragMetadata.confidence)}
-        </Badge>
+        {isDebugMode && (
+          <Badge
+            variant="outline"
+            className={cn('rounded-lg px-2.5 py-1', confidenceTone.className)}
+          >
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            {confidenceTone.label} {formatConfidence(ragMetadata.confidence)}
+          </Badge>
+        )}
 
         {hasTodoEvidence && (
           <Badge
@@ -311,7 +325,7 @@ export function RagEvidencePanel({
         )}
       </div>
 
-      {projectCards.length > 0 && (
+      {isDebugMode && projectCards.length > 0 && (
         <div
           className="grid grid-cols-1 gap-2 sm:grid-cols-2"
           aria-label="Matched project cards"
@@ -352,7 +366,7 @@ export function RagEvidencePanel({
         </div>
       )}
 
-      {ragMetadata.matchedEntityIds.length > 0 && (
+      {isDebugMode && ragMetadata.matchedEntityIds.length > 0 && (
         <div className="flex flex-wrap gap-1.5" aria-label="Matched entity IDs">
           {ragMetadata.matchedEntityIds.map((entityId) => (
             <span
@@ -365,25 +379,77 @@ export function RagEvidencePanel({
         </div>
       )}
 
-      {displayedSources.length > 0 && (
+      {isDebugMode && (
+        <div className="flex flex-wrap gap-1.5" aria-label="Debug metadata">
+          {[
+            ragMetadata.faqId ? `faqId: ${ragMetadata.faqId}` : null,
+            ragMetadata.matchedFaqId
+              ? `matchedFaqId: ${ragMetadata.matchedFaqId}`
+              : null,
+            ragMetadata.renderSpecKey
+              ? `renderSpec: ${ragMetadata.renderSpecKey}`
+              : null,
+            `skippedGroq: ${ragMetadata.skippedGroq === true}`,
+            ragMetadata.provider ? `provider: ${ragMetadata.provider}` : null,
+            ragMetadata.errorCode ? `error: ${ragMetadata.errorCode}` : null,
+          ]
+            .filter((item): item is string => Boolean(item))
+            .map((item) => (
+              <span
+                key={item}
+                className="bg-background text-muted-foreground rounded-md border px-2 py-0.5 font-mono text-[11px]"
+              >
+                {item}
+              </span>
+            ))}
+        </div>
+      )}
+
+      {!isDebugMode && ragMetadata.sources.length > 0 && (
+        <button
+          type="button"
+          className="bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring/50 inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs outline-none focus-visible:ring-[3px]"
+          aria-expanded={sourcesExpanded}
+          onClick={() => setSourcesExpanded((current) => !current)}
+        >
+          {displayLanguage === 'ko'
+            ? sourcesExpanded
+              ? '근거 접기'
+              : '근거 보기'
+            : sourcesExpanded
+              ? 'Hide sources'
+              : 'View sources'}
+          {sourcesExpanded ? (
+            <ChevronUp className="h-3.5 w-3.5" />
+          ) : (
+            <ChevronDown className="h-3.5 w-3.5" />
+          )}
+        </button>
+      )}
+
+      {shouldShowSources && displayedSources.length > 0 && (
         <div className="flex flex-wrap gap-2" aria-label="Source badges">
           {displayedSources.map((source, index) => (
             <span
               key={source.chunk_id}
-              title={formatSourceTitle(source)}
+              title={isDebugMode ? formatSourceTitle(source) : undefined}
               className="bg-background text-muted-foreground inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs"
             >
               <BookOpenCheck className="text-foreground h-3.5 w-3.5 shrink-0" />
               <span className="min-w-0 truncate">
-                S{index + 1}. {formatSourceBadgeTitle(source, displayLanguage)}
+                {isDebugMode
+                  ? `S${index + 1}. ${source.chunk_id}`
+                  : formatVisitorSourceTitle(source, displayLanguage)}
               </span>
-              <span className="shrink-0 text-[11px]">
-                {formatScore(source.score)}
-              </span>
+              {isDebugMode && (
+                <span className="shrink-0 text-[11px]">
+                  {formatScore(source.score)}
+                </span>
+              )}
             </span>
           ))}
 
-          {hiddenSourceCount > 0 && (
+          {isDebugMode && hiddenSourceCount > 0 && (
             <button
               type="button"
               className="bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring/50 inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs outline-none focus-visible:ring-[3px]"
@@ -695,6 +761,9 @@ function parseRagMetadata(value: unknown): RagMetadata | null {
     matchedEntityIds: parseStringArray(value.matchedEntityIds),
     hasTodoEvidence: value.hasTodoEvidence === true,
     warnings: parseStringArray(value.warnings),
+    faqId: parseString(value.faqId) ?? undefined,
+    matchedFaqId: parseString(value.matchedFaqId) ?? undefined,
+    renderSpecKey: parseString(value.renderSpecKey) ?? undefined,
     answerSource: parseString(value.answerSource) ?? undefined,
     language:
       value.language === 'en'
@@ -705,6 +774,7 @@ function parseRagMetadata(value: unknown): RagMetadata | null {
     skippedGroq: value.skippedGroq === true,
     provider: parseString(value.provider) ?? undefined,
     model: parseString(value.model) ?? undefined,
+    errorCode: parseString(value.errorCode) ?? undefined,
   };
 }
 
@@ -780,33 +850,29 @@ function getConfidenceTone(confidence: number, language: 'ko' | 'en') {
 
 function getAnswerSourceLabel(metadata: RagMetadata, language: 'ko' | 'en') {
   const labels: Record<string, Record<'ko' | 'en', string>> = {
-    faq_cache: { ko: '자주 묻는 답변', en: 'Frequently asked answer' },
+    faq_cache: { ko: '포트폴리오 답변', en: 'Portfolio answer' },
     faq_rewrite: {
-      ko: '모범 답안 기반 응답',
-      en: 'Model-answer based response',
+      ko: '포트폴리오 답변',
+      en: 'Portfolio answer',
     },
-    answer_cache: { ko: '답변 캐시', en: 'Answer cache' },
-    deterministic_rule: { ko: '공개 정책 규칙', en: 'Policy rule' },
-    rag_generation: { ko: 'Wiki 기준 답변', en: 'Wiki search-based answer' },
-    rag_groq: { ko: 'Wiki + Groq', en: 'Wiki + Groq' },
-    rag_google: { ko: 'Wiki + Google', en: 'Wiki + Google' },
-    rag_openai: { ko: 'Wiki + OpenAI', en: 'Wiki + OpenAI' },
-    rag_xai: { ko: 'Wiki + xAI', en: 'Wiki + xAI' },
-    fallback: { ko: '안전 fallback', en: 'Safe fallback' },
+    answer_cache: {
+      ko: '캐시된 포트폴리오 답변',
+      en: 'Cached portfolio answer',
+    },
+    deterministic_rule: { ko: '포트폴리오 정책', en: 'Portfolio policy' },
+    rag_generation: {
+      ko: '포트폴리오 데이터 기반',
+      en: 'Based on portfolio data',
+    },
+    rag_groq: { ko: '포트폴리오 데이터 기반', en: 'Based on portfolio data' },
+    rag_google: { ko: '포트폴리오 데이터 기반', en: 'Based on portfolio data' },
+    rag_openai: { ko: '포트폴리오 데이터 기반', en: 'Based on portfolio data' },
+    rag_xai: { ko: '포트폴리오 데이터 기반', en: 'Based on portfolio data' },
+    fallback: { ko: '기본 포트폴리오 답변', en: 'Basic portfolio answer' },
   };
 
   if (!metadata.answerSource) return null;
-  const sourceLabel =
-    labels[metadata.answerSource]?.[language] ?? metadata.answerSource;
-  const languageLabel = metadata.language
-    ? language === 'ko' && metadata.language === 'ko'
-      ? '한국어'
-      : metadata.language.toUpperCase()
-    : '';
-  const modelLabel =
-    metadata.provider && !metadata.skippedGroq ? metadata.provider : '';
-
-  return [sourceLabel, languageLabel, modelLabel].filter(Boolean).join(' · ');
+  return labels[metadata.answerSource]?.[language] ?? metadata.answerSource;
 }
 
 function formatSourceCount(count: number, language: 'ko' | 'en') {
@@ -838,9 +904,25 @@ function formatSourceBadgeTitle(source: RagSource, language: 'ko' | 'en') {
     'FAQ answer bank': { ko: 'FAQ 답변 뱅크', en: 'FAQ answer bank' },
     'Answer cache': { ko: '답변 캐시', en: 'Answer cache' },
     'Public policy rule': { ko: '공개 정책 규칙', en: 'Public policy rule' },
+    'Oosu Wiki': { ko: 'Oosu Wiki', en: 'Oosu Wiki' },
+    'Portfolio data': { ko: '포트폴리오 데이터', en: 'Portfolio data' },
+    'Portfolio answer cache': {
+      ko: '포트폴리오 답변 캐시',
+      en: 'Portfolio answer cache',
+    },
   };
 
   return titleMap[source.title]?.[language] ?? source.title;
+}
+
+function formatVisitorSourceTitle(source: RagSource, language: 'ko' | 'en') {
+  const entityLabel = source.entity_id
+    ? formatEntityLabel(source.entity_id, language)
+    : null;
+  if (entityLabel && entityLabel !== source.entity_id) return entityLabel;
+
+  if (source.title === 'Oosu Wiki') return 'Oosu Wiki';
+  return language === 'ko' ? '포트폴리오 데이터' : 'Portfolio data';
 }
 
 function formatConfidence(confidence: number) {
@@ -876,6 +958,11 @@ function normalizeConfidence(value: unknown) {
 
 function parseString(value: unknown) {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function isDebugModeEnabled() {
+  if (typeof window === 'undefined') return false;
+  return new URLSearchParams(window.location.search).get('debug') === 'true';
 }
 
 function parseStringArray(value: unknown) {

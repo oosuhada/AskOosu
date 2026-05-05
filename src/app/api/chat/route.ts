@@ -3,6 +3,7 @@ import type { UIMessage } from 'ai';
 import {
   getChatModel,
   getFallbackChatModel,
+  getChatProviderErrorCode,
   isChatModelRateLimitError,
 } from './model-provider';
 import { SYSTEM_PROMPT_TEXT } from './prompt';
@@ -52,12 +53,13 @@ const DEFAULT_MAX_CHAT_REQUEST_BYTES = 32 * 1024;
 
 export async function POST(req: Request) {
   let messages: UIMessage[] = [];
+  let body: ChatRequestBody = {};
 
   try {
     const rateLimit = checkRateLimit(req, {
       scope: 'api:chat',
       windowMs: 60 * 1000,
-      max: 20,
+      max: getPositiveIntegerEnv('ASKOOSU_CHAT_RATE_LIMIT_PER_MINUTE', 60),
     });
 
     if (!rateLimit.allowed) {
@@ -71,13 +73,16 @@ export async function POST(req: Request) {
       );
     }
 
-    const body = await readChatRequestBody(req);
+    body = await readChatRequestBody(req);
     messages = Array.isArray(body.messages) ? body.messages : [];
     const sessionRateLimit = body.conversationId
       ? checkRateLimitForKey(body.conversationId, {
           scope: 'api:chat:session',
           windowMs: 60 * 1000,
-          max: 10,
+          max: getPositiveIntegerEnv(
+            'ASKOOSU_CHAT_SESSION_RATE_LIMIT_PER_MINUTE',
+            30
+          ),
         })
       : null;
 
@@ -112,6 +117,16 @@ export async function POST(req: Request) {
     });
 
     if (orchestration.mode === 'direct') {
+      logChatRouteEvent({
+        triggerId: body.starterQuestionId,
+        faqId: body.faqId ?? orchestration.directAnswer.metadata.faqId,
+        lang: orchestration.language,
+        cacheHit: true,
+        skippedGroq: true,
+        renderSpec:
+          body.renderSpec ?? orchestration.directAnswer.metadata.renderSpecKey,
+      });
+
       void recordAiProviderUsage({
         provider: 'cache',
         model: orchestration.directAnswer.metadata.answerSource,
@@ -130,6 +145,15 @@ export async function POST(req: Request) {
         metadata: orchestration.directAnswer.metadata,
       });
     }
+
+    logChatRouteEvent({
+      triggerId: body.starterQuestionId,
+      faqId: body.faqId ?? orchestration.metadata.faqId,
+      lang: orchestration.language,
+      cacheHit: false,
+      skippedGroq: false,
+      renderSpec: body.renderSpec ?? orchestration.metadata.renderSpecKey,
+    });
 
     const tools = {
       getProjects,
@@ -198,10 +222,42 @@ export async function POST(req: Request) {
       );
     }
 
+    const errorCode = getChatProviderErrorCode(err);
+    logChatRouteEvent({
+      triggerId: body.starterQuestionId,
+      faqId: body.faqId,
+      cacheHit: false,
+      skippedGroq: true,
+      renderSpec: body.renderSpec,
+      errorCode,
+    });
     console.error('Global error:', err);
+
+    const cachedFaqResponse = await createCachedFaqRecoveryResponse({
+      body,
+      messages,
+      errorCode,
+    }).catch((recoveryError) => {
+      console.warn('Unable to recover direct FAQ answer:', recoveryError);
+      return null;
+    });
+
+    if (cachedFaqResponse) return cachedFaqResponse;
+
     const latestUserText = getLatestUserText(messages);
     const orchestration = await prepareChatOrchestration({
       messages,
+      preferredLanguage:
+        parsePreferredLanguage(body.language) ??
+        parsePreferredLanguage(body.locale),
+      starterQuestionId: body.starterQuestionId,
+      faqId: body.faqId,
+      intentId: body.intentId,
+      displayQuestion: body.displayQuestion,
+      originalQuickLabel: body.originalQuickLabel,
+      answerVariant: body.answerVariant,
+      renderSpec: body.renderSpec,
+      source: body.source,
     });
     const retrievedContext =
       orchestration.mode === 'generate'
@@ -223,9 +279,60 @@ export async function POST(req: Request) {
         ...metadata,
         answerSource: 'fallback',
         skippedGroq: true,
+        errorCode,
       },
     });
   }
+}
+
+async function createCachedFaqRecoveryResponse({
+  body,
+  messages,
+  errorCode,
+}: {
+  body: ChatRequestBody;
+  messages: UIMessage[];
+  errorCode: string;
+}) {
+  if (!body.faqId) return null;
+
+  const orchestration = await prepareChatOrchestration({
+    messages,
+    preferredLanguage:
+      parsePreferredLanguage(body.language) ??
+      parsePreferredLanguage(body.locale),
+    starterQuestionId: body.starterQuestionId,
+    faqId: body.faqId,
+    intentId: body.intentId,
+    displayQuestion: body.displayQuestion,
+    originalQuickLabel: body.originalQuickLabel,
+    answerVariant: body.answerVariant,
+    renderSpec: body.renderSpec,
+    source: body.source,
+  });
+
+  if (orchestration.mode !== 'direct') return null;
+
+  logChatRouteEvent({
+    triggerId: body.starterQuestionId,
+    faqId: body.faqId ?? orchestration.directAnswer.metadata.faqId,
+    lang: orchestration.language,
+    cacheHit: true,
+    skippedGroq: true,
+    renderSpec:
+      body.renderSpec ?? orchestration.directAnswer.metadata.renderSpecKey,
+    errorCode,
+  });
+
+  return createDirectAnswerResponse({
+    messages,
+    answer: orchestration.directAnswer.answer,
+    metadata: {
+      ...orchestration.directAnswer.metadata,
+      skippedGroq: true,
+      errorCode,
+    },
+  });
 }
 
 function toUsageMetadata(metadata: unknown): Record<string, unknown> {
@@ -236,6 +343,7 @@ function toUsageMetadata(metadata: unknown): Record<string, unknown> {
   const record = metadata as Record<string, unknown>;
   const allowedKeys = [
     'faqId',
+    'triggerId',
     'matchedFaqId',
     'intentId',
     'quickLabel',
@@ -246,6 +354,7 @@ function toUsageMetadata(metadata: unknown): Record<string, unknown> {
     'language',
     'answerSource',
     'skippedGroq',
+    'errorCode',
     'usedVisualBlocks',
     'mediaReadyCount',
     'mediaTodoCount',
@@ -313,4 +422,42 @@ function getPrimaryChatModelWithSelectionFallback() {
     if (!fallbackModel) throw error;
     return fallbackModel;
   }
+}
+
+function getPositiveIntegerEnv(name: string, fallback: number) {
+  const value = process.env[name];
+  if (!value) return fallback;
+
+  const parsedValue = Number.parseInt(value, 10);
+  return Number.isFinite(parsedValue) && parsedValue > 0
+    ? parsedValue
+    : fallback;
+}
+
+function logChatRouteEvent({
+  triggerId,
+  faqId,
+  lang,
+  cacheHit,
+  skippedGroq,
+  renderSpec,
+  errorCode,
+}: {
+  triggerId?: string | null;
+  faqId?: string | null;
+  lang?: string | null;
+  cacheHit: boolean;
+  skippedGroq: boolean;
+  renderSpec?: string | null;
+  errorCode?: string | null;
+}) {
+  console.info('[api/chat]', {
+    triggerId: triggerId ?? null,
+    faqId: faqId ?? null,
+    lang: lang ?? null,
+    cacheHit,
+    skippedGroq,
+    renderSpec: renderSpec ?? null,
+    errorCode: errorCode ?? null,
+  });
 }

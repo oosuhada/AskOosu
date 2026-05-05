@@ -27,10 +27,7 @@ import { useRouter } from 'next/navigation';
 import type { ElementType } from 'react';
 import { Suspense, useRef, useState } from 'react';
 
-const questionConfig: Record<
-  string,
-  { color: string; icon: ElementType }
-> = {
+const questionConfig: Record<string, { color: string; icon: ElementType }> = {
   'home.profile.intro': { color: '#188B75', icon: MessageSquareText },
   'home.projects.top3': { color: '#246BFE', icon: BriefcaseBusiness },
   'home.skills.level': { color: '#6E57C9', icon: Layers },
@@ -149,6 +146,19 @@ function HomeContent() {
                 color: '#64748B',
                 icon: Sparkles,
               };
+              const chatHref = buildChatHref({
+                query: question.displayQuestion,
+                language,
+                theme,
+                starterQuestionId: question.id,
+                faqId: question.faqId,
+                intentId: question.intentId,
+                displayQuestion: question.displayQuestion,
+                originalQuickLabel: question.quickLabel,
+                answerVariant: question.answerVariant,
+                renderSpec: question.renderSpec,
+                source: 'quick_question',
+              });
 
               return (
                 <Button
@@ -158,20 +168,12 @@ function HomeContent() {
                   className="bg-background/35 hover:bg-background/60 text-foreground/90 min-h-12 w-fit max-w-[82vw] shrink-0 cursor-pointer snap-center justify-start gap-2.5 rounded-2xl border border-white/55 px-3.5 py-2.5 text-left whitespace-normal shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_30px_rgba(15,23,42,0.1)] backdrop-blur-xl active:scale-[0.98] md:max-w-[25rem] md:px-4 md:py-3 dark:border-white/15 dark:bg-white/[0.11] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_10px_30px_rgba(0,0,0,0.28)] dark:hover:bg-white/[0.16]"
                 >
                   <Link
-                    href={buildChatHref({
-                      query: question.displayQuestion,
-                      language,
-                      theme,
-                      starterQuestionId: question.id,
-                      faqId: question.faqId,
-                      intentId: question.intentId,
-                      displayQuestion: question.displayQuestion,
-                      originalQuickLabel: question.quickLabel,
-                      answerVariant: question.answerVariant,
-                      renderSpec: question.renderSpec,
-                      source: 'quick_question',
-                    })}
-                    onClick={() => markQuestionAsked(question.id)}
+                    href={chatHref}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      markQuestionAsked(question.id);
+                      router.push(chatHref);
+                    }}
                     aria-label={`Ask starter question: ${question.displayQuestion}`}
                   >
                     <Icon
