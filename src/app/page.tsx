@@ -89,7 +89,7 @@ function HomeContent() {
   };
 
   return (
-    <div className="relative flex min-h-dvh flex-col items-center justify-start overflow-x-hidden px-4 pt-20 pb-32 md:min-h-screen md:px-8 md:pt-12 md:pb-44 md:pl-24">
+    <div className="relative flex min-h-dvh flex-col items-center justify-start overflow-x-hidden px-4 pt-20 pb-32 md:min-h-screen md:px-8 md:pt-12 md:pb-44">
       <PortfolioSidebar onNewChat={startNewChat} />
 
       {/* big blurred footer word */}
@@ -133,12 +133,12 @@ function HomeContent() {
         variants={bottomElementVariants}
         initial={false}
         animate="visible"
-        className="fixed inset-x-0 bottom-[calc(max(1rem,env(safe-area-inset-bottom))+4.75rem)] z-30 flex w-full flex-col items-center px-4 md:relative md:inset-auto md:mt-8 md:max-w-3xl md:px-0"
+        className="fixed inset-x-0 bottom-[calc(max(1rem,env(safe-area-inset-bottom))+4.75rem)] z-30 flex w-full flex-col items-center px-4 md:px-[calc(72px+2rem)]"
       >
         {isQuickQuestionsVisible && (
           <div
             id="home-quick-questions"
-            className="flex w-full snap-x gap-2 overflow-x-auto pb-1 md:grid md:grid-cols-2 md:overflow-visible lg:grid-cols-3"
+            className="flex w-full max-w-5xl snap-x gap-2 overflow-x-auto pb-1 md:flex-wrap md:justify-center md:gap-3 md:overflow-visible md:pb-0"
           >
             {visibleQuestions.map((question) => {
               const { color, icon: Icon } = questionConfig[question.id];
@@ -148,7 +148,7 @@ function HomeContent() {
                   key={question.id}
                   asChild
                   variant="outline"
-                  className="bg-background/35 hover:bg-background/60 text-foreground/90 min-h-12 w-[78vw] max-w-[23rem] shrink-0 cursor-pointer snap-center justify-start gap-2.5 rounded-2xl border border-white/55 px-3.5 py-2.5 text-left whitespace-normal shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_30px_rgba(15,23,42,0.1)] backdrop-blur-xl active:scale-[0.98] md:w-full md:max-w-none dark:border-white/15 dark:bg-white/[0.11] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_10px_30px_rgba(0,0,0,0.28)] dark:hover:bg-white/[0.16]"
+                  className="bg-background/35 hover:bg-background/60 text-foreground/90 min-h-12 w-fit max-w-[82vw] shrink-0 cursor-pointer snap-center justify-start gap-2.5 rounded-2xl border border-white/55 px-3.5 py-2.5 text-left whitespace-normal shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_30px_rgba(15,23,42,0.1)] backdrop-blur-xl active:scale-[0.98] md:max-w-[25rem] md:px-4 md:py-3 dark:border-white/15 dark:bg-white/[0.11] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_10px_30px_rgba(0,0,0,0.28)] dark:hover:bg-white/[0.16]"
                 >
                   <Link
                     href={buildChatHref({
@@ -164,7 +164,7 @@ function HomeContent() {
                       strokeWidth={2}
                       color={color}
                     />
-                    <span className="text-foreground text-sm leading-snug font-medium">
+                    <span className="text-foreground line-clamp-2 min-w-0 text-sm leading-snug font-medium md:text-base">
                       {question.text}
                     </span>
                   </Link>
@@ -202,7 +202,7 @@ function HomeContent() {
         variants={bottomElementVariants}
         initial={false}
         animate="visible"
-        className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 md:right-8 md:left-24"
+        className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 md:inset-x-[calc(72px+2rem)]"
       >
         <form
           onSubmit={(e) => {
