@@ -12,7 +12,11 @@ import {
 } from '@/lib/faq/semantic-router';
 import { getCachedAnswer } from './database';
 import { normalizeQuestion } from './text';
-import type { ChatAnswerMetadata, DirectChatAnswer } from './types';
+import type {
+  AnswerRouteDecision,
+  ChatAnswerMetadata,
+  DirectChatAnswer,
+} from './types';
 
 export type ChatOrchestrationInput = {
   messages: UIMessage[];
@@ -32,12 +36,14 @@ export type ChatOrchestration =
       mode: 'direct';
       question: string;
       language: ChatLanguage;
+      routeDecision: AnswerRouteDecision;
       directAnswer: DirectChatAnswer;
     }
   | {
       mode: 'generate';
       question: string;
       language: ChatLanguage;
+      routeDecision: AnswerRouteDecision;
       normalizedQuestion: string;
       ragContext: RagChatContext;
       metadata: ChatAnswerMetadata;
@@ -81,6 +87,10 @@ export async function prepareChatOrchestration({
     faqRoute.answer?.cacheMode === 'direct_cache'
   ) {
     const faqAnswer = faqRoute.answer;
+    const confidence = Math.min(
+      faqAnswer.confidence,
+      faqRoute.intentScore || 1
+    );
     const metadata = buildDirectMetadata({
       language,
       normalizedQuestion,
@@ -88,7 +98,12 @@ export async function prepareChatOrchestration({
       matchedFaqId: faqAnswer.id,
       matchedEntityIds: faqAnswer.matchedEntityIds,
       sourceChunkIds: faqAnswer.sourceChunkIds,
-      confidence: Math.min(faqAnswer.confidence, faqRoute.intentScore || 1),
+      confidence,
+      routeDecision: buildFaqDirectRouteDecision({
+        faqRoute,
+        faqAnswer,
+        confidence,
+      }),
       faqAnswer,
       requestContext,
       faqRoute,
@@ -98,6 +113,7 @@ export async function prepareChatOrchestration({
       mode: 'direct',
       question,
       language,
+      routeDecision: metadata.routeDecision,
       directAnswer: {
         answer: getFaqAnswerText(faqAnswer, requestContext.answerVariant),
         metadata,
@@ -122,6 +138,11 @@ export async function prepareChatOrchestration({
       confidence: cachedAnswer.confidence,
       provider: cachedAnswer.provider ?? undefined,
       model: cachedAnswer.model ?? undefined,
+      routeDecision: {
+        mode: 'answer_cache',
+        confidence: cachedAnswer.confidence,
+        reason: 'fresh_cache_hit',
+      },
       faqRoute,
     });
 
@@ -129,6 +150,7 @@ export async function prepareChatOrchestration({
       mode: 'direct',
       question,
       language,
+      routeDecision: metadata.routeDecision,
       directAnswer: {
         answer: cachedAnswer.answer,
         metadata,
@@ -139,10 +161,17 @@ export async function prepareChatOrchestration({
   const ragContext = await buildRagChatContext(question, language);
 
   if (ragContext.metadata.sources.length === 0) {
+    const routeDecision: AnswerRouteDecision = {
+      mode: 'safe_fallback',
+      reason: 'no_public_evidence',
+      confidence: 0.6,
+    };
+
     return {
       mode: 'direct',
       question,
       language,
+      routeDecision,
       directAnswer: {
         answer: buildNoRagFallbackAnswer(language),
         metadata: buildDirectMetadata({
@@ -157,6 +186,7 @@ export async function prepareChatOrchestration({
             'project.portfolio_oh.story',
           ],
           confidence: 0.6,
+          routeDecision,
           requestContext,
           faqRoute,
         }),
@@ -183,13 +213,18 @@ export async function prepareChatOrchestration({
     intentScore: faqRoute.intentScore,
     intentSecondScore: faqRoute.intentSecondScore,
     intentMargin: faqRoute.intentMargin,
-    routeDecision: faqRoute.routeDecision,
+    routeDecision: buildRagGenerateRouteDecision({
+      question,
+      faqRoute,
+      ragContext,
+    }),
   };
 
   return {
     mode: 'generate',
     question,
     language,
+    routeDecision: metadata.routeDecision,
     normalizedQuestion,
     ragContext,
     metadata,
@@ -216,6 +251,65 @@ function buildNoRagFallbackAnswer(language: ChatLanguage) {
   ].join('\n');
 }
 
+function buildFaqDirectRouteDecision({
+  faqRoute,
+  faqAnswer,
+  confidence,
+}: {
+  faqRoute: FaqIntentRouteResult;
+  faqAnswer: FaqAnswer;
+  confidence: number;
+}): AnswerRouteDecision {
+  return {
+    mode: 'faq_direct',
+    faqId: faqAnswer.id,
+    confidence,
+    reason: getFaqDirectReason(faqRoute),
+  };
+}
+
+function getFaqDirectReason(
+  faqRoute: FaqIntentRouteResult
+): Extract<AnswerRouteDecision, { mode: 'faq_direct' }>['reason'] {
+  if (faqRoute.routeDecision.router === 'quick_question') {
+    return 'verified_quick_question';
+  }
+
+  if (faqRoute.routeDecision.router === 'token_fallback') {
+    return 'legacy_exact_match';
+  }
+
+  return 'high_semantic_match';
+}
+
+function buildRagGenerateRouteDecision({
+  question,
+  faqRoute,
+  ragContext,
+}: {
+  question: string;
+  faqRoute: FaqIntentRouteResult;
+  ragContext: RagChatContext;
+}): AnswerRouteDecision {
+  const isMediumIntentMatch = faqRoute.routeDecision.mode === 'rewrite';
+  const expectedEntityIds =
+    isMediumIntentMatch && faqRoute.answer
+      ? faqRoute.answer.matchedEntityIds
+      : ragContext.metadata.matchedEntityIds;
+
+  return {
+    mode: 'rag_generate',
+    query: question,
+    expectedEntityIds,
+    confidence: ragContext.metadata.confidence,
+    reason: isMediumIntentMatch
+      ? 'medium_intent_match'
+      : faqRoute.matchedFaqId
+        ? 'no_direct_faq'
+        : 'custom_question',
+  };
+}
+
 function buildDirectMetadata({
   language,
   normalizedQuestion,
@@ -224,6 +318,7 @@ function buildDirectMetadata({
   matchedEntityIds,
   sourceChunkIds,
   confidence,
+  routeDecision,
   provider,
   model,
   faqAnswer,
@@ -237,6 +332,7 @@ function buildDirectMetadata({
   matchedEntityIds: string[];
   sourceChunkIds: string[];
   confidence: number;
+  routeDecision: AnswerRouteDecision;
   provider?: string;
   model?: string;
   faqAnswer?: FaqAnswer;
@@ -313,7 +409,7 @@ function buildDirectMetadata({
     intentScore: faqRoute?.intentScore,
     intentSecondScore: faqRoute?.intentSecondScore,
     intentMargin: faqRoute?.intentMargin,
-    routeDecision: faqRoute?.routeDecision,
+    routeDecision,
     normalizedQuestion,
     skippedGroq: true,
     provider,

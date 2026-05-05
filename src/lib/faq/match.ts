@@ -4,6 +4,7 @@ import {
   type SuggestedQuestionId,
 } from '@/lib/suggested-questions';
 import type { ChatLanguage } from '@/lib/i18n/detect-language';
+import type { AnswerRouteDecision } from '@/lib/chat/types';
 import { normalizeQuestionForMatch } from '@/lib/chat/text';
 import { FAQ_ANSWERS, findFaqAnswerById, type FaqAnswer } from './answers';
 
@@ -14,11 +15,7 @@ export type FaqMatch = {
   intentScore?: number;
   intentSecondScore?: number;
   intentMargin?: number;
-  routeDecision?: {
-    mode: 'direct' | 'rewrite' | 'rag_required';
-    reason: string;
-    router: 'quick_question' | 'semantic' | 'token_fallback';
-  };
+  routeDecision?: AnswerRouteDecision;
 };
 
 const MIN_TOKEN_REWRITE_SCORE = 0.76;
@@ -52,9 +49,10 @@ export function matchFaqAnswer({
         intentSecondScore: 0,
         intentMargin: 1,
         routeDecision: {
-          mode: 'direct',
-          reason: 'trusted_suggested_question',
-          router: 'token_fallback',
+          mode: 'faq_direct',
+          faqId: exactIntentMatch.id,
+          confidence: 1,
+          reason: 'legacy_exact_match',
         },
       };
     }
@@ -105,13 +103,19 @@ export function matchFaqAnswer({
     intentScore: topScore,
     intentSecondScore: secondScore,
     intentMargin: margin,
-    routeDecision: {
-      mode: direct ? 'direct' : 'rewrite',
-      reason: direct
-        ? 'token_fallback_high_confidence'
-        : 'token_fallback_medium_confidence',
-      router: 'token_fallback',
-    },
+    routeDecision: direct
+      ? {
+          mode: 'faq_direct',
+          faqId: topMatch.answer.id,
+          confidence: topScore,
+          reason: 'legacy_exact_match',
+        }
+      : {
+          mode: 'faq_rewrite',
+          faqId: topMatch.answer.id,
+          confidence: topScore,
+          reason: 'legacy_medium_match',
+        },
   };
 }
 
