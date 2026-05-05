@@ -222,6 +222,47 @@ const PROJECT_ENTITY_ALIASES: Record<string, keyof typeof PROJECT_CARDS> = {
   'project.uncorked': 'uncorked',
 };
 
+const SOURCE_SEGMENT_LABELS: Record<string, string> = {
+  askoosu: 'AskOosu',
+  'project.askoosu': 'AskOosu',
+  aigram: 'Aigram',
+  'project.aigram': 'Aigram',
+  instagram_clone: 'Instagram Clone',
+  'project.instagram_clone': 'Instagram Clone',
+  sticks_and_stones: 'Sticks & Stones',
+  sticks_stones: 'Sticks & Stones',
+  'project.sticks_and_stones': 'Sticks & Stones',
+  portfoli_oh: 'Portfoli-Oh!',
+  portfolioh: 'Portfoli-Oh!',
+  'project.portfoli_oh': 'Portfoli-Oh!',
+  ez_air: 'EZ Air',
+  'project.ez_air': 'EZ Air',
+  uncorked: 'Uncorked',
+  'project.uncorked': 'Uncorked',
+  'policy.guardrail': 'Answer policy',
+  'profile.identity': 'Profile',
+  'profile.career': 'Career',
+  'career.oosu_salon': 'Oosu Salon',
+};
+
+const SOURCE_WORD_LABELS: Record<string, string> = {
+  ai: 'AI',
+  api: 'API',
+  db: 'DB',
+  faq: 'FAQ',
+  github: 'GitHub',
+  groq: 'Groq',
+  rag: 'RAG',
+  ui: 'UI',
+  url: 'URL',
+  ux: 'UX',
+  wiki: 'Wiki',
+  nextjs: 'Next.js',
+  postgresql: 'PostgreSQL',
+  askoosu: 'AskOosu',
+  oosu: 'Oosu',
+};
+
 export function RagEvidencePanel({
   metadata,
   feedbackContext,
@@ -240,17 +281,24 @@ export function RagEvidencePanel({
     FeedbackReasonKey[]
   >([]);
   const [sourcesExpanded, setSourcesExpanded] = useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const isDebugMode = useMemo(isDebugModeEnabled, []);
 
   if (!ragMetadata) return null;
 
-  const hiddenSourceCount = Math.max(
-    0,
-    ragMetadata.sources.length - MAX_VISIBLE_SOURCES
-  );
-  const displayedSources = sourcesExpanded
-    ? ragMetadata.sources
-    : ragMetadata.sources.slice(0, MAX_VISIBLE_SOURCES);
+  const sourceCount = ragMetadata.sources.length;
+  const publicRemainingSourceCount = Math.max(0, sourceCount - 1);
+  const debugHiddenSourceCount = Math.max(0, sourceCount - MAX_VISIBLE_SOURCES);
+  const hiddenSourceCount = isDebugMode
+    ? debugHiddenSourceCount
+    : publicRemainingSourceCount;
+  const displayedSources = isDebugMode
+    ? sourcesExpanded
+      ? ragMetadata.sources
+      : ragMetadata.sources.slice(0, MAX_VISIBLE_SOURCES)
+    : sourcesExpanded
+      ? ragMetadata.sources
+      : ragMetadata.sources.slice(0, 1);
   const hasReviewEvidence = ragMetadata.sources.some(
     (source) => source.visibility && source.visibility !== 'public'
   );
@@ -264,8 +312,15 @@ export function RagEvidencePanel({
     ragMetadata.confidence,
     displayLanguage
   );
-  const answerSourceLabel = getAnswerSourceLabel(ragMetadata, displayLanguage);
-  const shouldShowSources = isDebugMode || sourcesExpanded;
+  const answerSourceLabel = isDebugMode
+    ? getAnswerSourceLabel(ragMetadata, displayLanguage)
+    : null;
+  const shouldShowSources = sourceCount > 0;
+  const feedbackStatusText = getFeedbackStatusText(
+    feedbackState,
+    feedbackRating,
+    displayLanguage
+  );
 
   return (
     <section
@@ -276,21 +331,25 @@ export function RagEvidencePanel({
           : 'Portfolio answer evidence'
       }
     >
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="outline" className="rounded-lg px-2.5 py-1">
+      <div className="flex min-w-0 flex-wrap items-center gap-2">
+        <Badge variant="outline" className="max-w-full rounded-lg px-2.5 py-1">
           <BookOpenCheck className="h-3.5 w-3.5" />
-          {isDebugMode
-            ? ragMetadata.sources.length > 0
-              ? formatSourceCount(ragMetadata.sources.length, displayLanguage)
-              : displayLanguage === 'ko'
-                ? 'Wiki 근거 없음'
-                : 'Wiki source not found'
-            : displayLanguage === 'ko'
-              ? 'Oosu Wiki 기반'
-              : 'From Oosu Wiki'}
+          <span className="min-w-0 truncate">
+            {getPublicSourceBadgeText(sourceCount, displayLanguage)}
+          </span>
         </Badge>
 
-        {answerSourceLabel && (
+        {isDebugMode && (
+          <Badge
+            variant="outline"
+            className="rounded-lg border-violet-300 bg-violet-50 px-2.5 py-1 text-violet-800 dark:border-violet-700/70 dark:bg-violet-950/30 dark:text-violet-200"
+          >
+            <BrainCircuit className="h-3.5 w-3.5" />
+            Debug
+          </Badge>
+        )}
+
+        {isDebugMode && answerSourceLabel && (
           <Badge variant="outline" className="rounded-lg px-2.5 py-1">
             <BrainCircuit className="h-3.5 w-3.5" />
             {answerSourceLabel}
@@ -306,7 +365,7 @@ export function RagEvidencePanel({
           {isDebugMode ? ` ${formatConfidence(ragMetadata.confidence)}` : ''}
         </Badge>
 
-        {hasTodoEvidence && (
+        {isDebugMode && hasTodoEvidence && (
           <Badge
             variant="outline"
             className="rounded-lg border-amber-300 bg-amber-50 px-2.5 py-1 text-amber-800 dark:border-amber-700/70 dark:bg-amber-950/30 dark:text-amber-200"
@@ -318,7 +377,7 @@ export function RagEvidencePanel({
           </Badge>
         )}
 
-        {hasReviewEvidence && (
+        {isDebugMode && hasReviewEvidence && (
           <Badge
             variant="outline"
             className="rounded-lg border-rose-300 bg-rose-50 px-2.5 py-1 text-rose-800 dark:border-rose-700/70 dark:bg-rose-950/30 dark:text-rose-200"
@@ -427,64 +486,35 @@ export function RagEvidencePanel({
         </div>
       )}
 
-      {!isDebugMode && ragMetadata.sources.length > 0 && (
-        <button
-          type="button"
-          className="bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring/50 inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs outline-none focus-visible:ring-[3px]"
-          aria-expanded={sourcesExpanded}
-          onClick={() => setSourcesExpanded((current) => !current)}
-        >
-          {displayLanguage === 'ko'
-            ? sourcesExpanded
-              ? '근거 접기'
-              : '근거 보기'
-            : sourcesExpanded
-              ? 'Hide sources'
-              : 'View sources'}
-          {sourcesExpanded ? (
-            <ChevronUp className="h-3.5 w-3.5" />
-          ) : (
-            <ChevronDown className="h-3.5 w-3.5" />
-          )}
-        </button>
-      )}
-
       {shouldShowSources && displayedSources.length > 0 && (
-        <div className="flex flex-wrap gap-2" aria-label="Source badges">
-          {displayedSources.map((source, index) => (
-            <span
-              key={source.chunk_id}
-              title={isDebugMode ? formatSourceTitle(source) : undefined}
-              className="bg-background text-muted-foreground inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs"
-            >
-              <BookOpenCheck className="text-foreground h-3.5 w-3.5 shrink-0" />
-              <span className="min-w-0 truncate">
-                {isDebugMode
-                  ? `S${index + 1}. ${source.chunk_id}`
-                  : formatVisitorSourceTitle(source, displayLanguage)}
-              </span>
-              {isDebugMode && (
-                <span className="shrink-0 text-[11px]">
-                  {formatScore(source.score)}
-                </span>
-              )}
-            </span>
-          ))}
+        <div className="space-y-2" aria-label="Portfolio sources">
+          <div className="grid grid-cols-1 gap-2">
+            {displayedSources.map((source, index) => (
+              <SourceEvidenceCard
+                key={source.chunk_id}
+                source={source}
+                index={index}
+                language={displayLanguage}
+                debug={isDebugMode}
+              />
+            ))}
+          </div>
 
-          {isDebugMode && hiddenSourceCount > 0 && (
+          {hiddenSourceCount > 0 && (
             <button
               type="button"
-              className="bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring/50 inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs outline-none focus-visible:ring-[3px]"
+              className="bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring/50 inline-flex max-w-full items-center gap-1 rounded-lg border px-2.5 py-1 text-xs outline-none focus-visible:ring-[3px]"
               aria-expanded={sourcesExpanded}
               onClick={() => setSourcesExpanded((current) => !current)}
             >
-              {displayLanguage === 'ko'
-                ? sourcesExpanded
-                  ? '접기'
-                  : `+${hiddenSourceCount}개 더`
-                : sourcesExpanded
-                  ? 'Collapse'
-                  : `+${hiddenSourceCount} more`}
+              <span className="min-w-0 truncate">
+                {getRemainingSourcesButtonLabel({
+                  count: hiddenSourceCount,
+                  expanded: sourcesExpanded,
+                  language: displayLanguage,
+                  debug: isDebugMode,
+                })}
+              </span>
               {sourcesExpanded ? (
                 <ChevronUp className="h-3.5 w-3.5" />
               ) : (
@@ -495,158 +525,250 @@ export function RagEvidencePanel({
         </div>
       )}
 
-      <div className="text-muted-foreground flex flex-col gap-2 border-t pt-3 text-xs sm:flex-row sm:items-center sm:justify-between">
-        <span aria-live="polite">
-          {getFeedbackStatusText(
-            feedbackState,
-            feedbackRating,
-            displayLanguage
+      {!isDebugMode && hasTodoEvidence && (
+        <p className="text-muted-foreground text-xs">
+          {displayLanguage === 'ko'
+            ? '일부 정보가 아직 업데이트 중이에요.'
+            : 'Some details are still being updated.'}
+        </p>
+      )}
+
+      <div className="border-t pt-3">
+        <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+          {(isFeedbackOpen ||
+            feedbackState !== 'idle' ||
+            feedbackRating !== null) && (
+            <span
+              className="text-muted-foreground min-w-0 text-xs"
+              aria-live="polite"
+            >
+              {feedbackStatusText}
+            </span>
           )}
-        </span>
-        <div className="flex items-center gap-2">
           <Button
             type="button"
             size="sm"
-            variant={feedbackRating === 'up' ? 'secondary' : 'outline'}
-            aria-pressed={feedbackRating === 'up'}
-            aria-label={
-              displayLanguage === 'ko'
-                ? '이 답변을 좋음으로 평가'
-                : 'Mark this answer as helpful'
-            }
-            className="h-8 rounded-lg"
-            disabled={feedbackState === 'saving'}
-            onClick={() => {
-              setFeedbackReason('');
-              setSelectedFeedbackReasons([]);
-              void submitFeedback({
-                rating: 'up',
-                reason: null,
-                metadata: ragMetadata,
-                context: feedbackContext,
-                setFeedbackRating,
-                setFeedbackState,
-              });
-            }}
+            variant="ghost"
+            aria-expanded={isFeedbackOpen}
+            className="text-muted-foreground hover:text-foreground h-8 rounded-lg px-2 text-xs"
+            onClick={() => setIsFeedbackOpen((current) => !current)}
           >
-            <ThumbsUp className="h-4 w-4" />
-            {displayLanguage === 'ko' ? '좋아요' : 'Helpful'}
+            {displayLanguage === 'ko'
+              ? '답변 수정 제안'
+              : 'Suggest an improvement'}
+            {isFeedbackOpen ? (
+              <ChevronUp className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5" />
+            )}
           </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={feedbackRating === 'down' ? 'secondary' : 'outline'}
-            aria-pressed={feedbackRating === 'down'}
-            aria-label={
-              displayLanguage === 'ko'
-                ? '이 답변을 개선 필요로 평가'
-                : 'Mark this answer as needing improvement'
-            }
-            className="h-8 rounded-lg"
-            disabled={feedbackState === 'saving'}
-            onClick={() => {
-              setFeedbackRating('down');
-              setFeedbackState('editing-down');
-              setFeedbackReason('');
-              setSelectedFeedbackReasons([]);
-            }}
-          >
-            <ThumbsDown className="h-4 w-4" />
-            {displayLanguage === 'ko' ? '개선 필요' : 'Improve'}
-          </Button>
+        </div>
+
+        {isFeedbackOpen && (
+          <div className="bg-muted/20 mt-2 space-y-3 rounded-lg border p-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={feedbackRating === 'up' ? 'secondary' : 'outline'}
+                aria-pressed={feedbackRating === 'up'}
+                aria-label={
+                  displayLanguage === 'ko'
+                    ? '이 답변을 도움됨으로 평가'
+                    : 'Mark this answer as helpful'
+                }
+                className="h-8 rounded-lg"
+                disabled={feedbackState === 'saving'}
+                onClick={() => {
+                  setFeedbackReason('');
+                  setSelectedFeedbackReasons([]);
+                  void submitFeedback({
+                    rating: 'up',
+                    reason: null,
+                    metadata: ragMetadata,
+                    context: feedbackContext,
+                    setFeedbackRating,
+                    setFeedbackState,
+                  });
+                }}
+              >
+                <ThumbsUp className="h-4 w-4" />
+                {displayLanguage === 'ko' ? '도움됐어요' : 'Helpful'}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={feedbackRating === 'down' ? 'secondary' : 'outline'}
+                aria-pressed={feedbackRating === 'down'}
+                aria-label={
+                  displayLanguage === 'ko'
+                    ? '이 답변을 아쉬움으로 평가'
+                    : 'Mark this answer as not quite right'
+                }
+                className="h-8 rounded-lg"
+                disabled={feedbackState === 'saving'}
+                onClick={() => {
+                  setFeedbackRating('down');
+                  setFeedbackState('editing-down');
+                  setFeedbackReason('');
+                  setSelectedFeedbackReasons([]);
+                }}
+              >
+                <ThumbsDown className="h-4 w-4" />
+                {displayLanguage === 'ko' ? '아쉬워요' : 'Not quite'}
+              </Button>
+            </div>
+
+            {feedbackState === 'editing-down' && (
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {FEEDBACK_REASON_OPTIONS.map((option) => {
+                    const selected = selectedFeedbackReasons.includes(
+                      option.key
+                    );
+
+                    return (
+                      <button
+                        key={option.key}
+                        type="button"
+                        aria-pressed={selected}
+                        className={cn(
+                          'focus-visible:ring-ring/50 rounded-lg border px-2.5 py-1 text-xs transition outline-none focus-visible:ring-[3px]',
+                          selected
+                            ? 'bg-foreground text-background border-foreground'
+                            : 'bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                        )}
+                        onClick={() => {
+                          setSelectedFeedbackReasons((currentReasons) =>
+                            currentReasons.includes(option.key)
+                              ? currentReasons.filter(
+                                  (key) => key !== option.key
+                                )
+                              : [...currentReasons, option.key]
+                          );
+                        }}
+                      >
+                        {option.label[displayLanguage]}
+                      </button>
+                    );
+                  })}
+                </div>
+                <label
+                  className="text-muted-foreground text-xs"
+                  htmlFor={feedbackReasonId}
+                >
+                  {displayLanguage === 'ko' ? '추가 메모' : 'Optional note'}
+                </label>
+                <textarea
+                  id={feedbackReasonId}
+                  value={feedbackReason}
+                  maxLength={MAX_CLIENT_REASON_LENGTH}
+                  onChange={(event) => setFeedbackReason(event.target.value)}
+                  placeholder={
+                    displayLanguage === 'ko'
+                      ? '부족하거나 부정확했던 부분이 있나요?'
+                      : 'What felt missing or inaccurate?'
+                  }
+                  className="border-input bg-background focus-visible:ring-ring/50 min-h-20 w-full resize-y rounded-lg border px-3 py-2 text-sm outline-none focus-visible:ring-[3px]"
+                />
+                <div className="flex justify-end gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="h-8 rounded-lg"
+                    onClick={() => {
+                      setFeedbackRating(null);
+                      setFeedbackState('idle');
+                      setFeedbackReason('');
+                      setSelectedFeedbackReasons([]);
+                      setIsFeedbackOpen(false);
+                    }}
+                  >
+                    {displayLanguage === 'ko' ? '취소' : 'Cancel'}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    className="h-8 rounded-lg"
+                    onClick={() => {
+                      void submitFeedback({
+                        rating: 'down',
+                        reason: buildDownFeedbackReason({
+                          reasonKeys: selectedFeedbackReasons,
+                          note: feedbackReason,
+                          language: displayLanguage,
+                        }),
+                        metadata: ragMetadata,
+                        context: feedbackContext,
+                        setFeedbackRating,
+                        setFeedbackState,
+                      });
+                    }}
+                  >
+                    <Send className="h-4 w-4" />
+                    {displayLanguage === 'ko' ? '피드백 저장' : 'Save feedback'}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function SourceEvidenceCard({
+  source,
+  index,
+  language,
+  debug,
+}: {
+  source: RagSource;
+  index: number;
+  language: 'ko' | 'en';
+  debug: boolean;
+}) {
+  const sourceTitle = debug
+    ? `S${index + 1}. ${source.chunk_id}`
+    : formatPublicSourceTitle(source, language);
+  const sectionPath = formatSectionPathLabel(source, language);
+
+  return (
+    <article
+      title={debug ? formatSourceTitle(source) : undefined}
+      className="bg-background/70 min-w-0 rounded-lg border px-3 py-2"
+    >
+      <div className="flex min-w-0 items-start gap-2">
+        <BookOpenCheck className="text-foreground mt-0.5 h-3.5 w-3.5 shrink-0" />
+        <div className="min-w-0 flex-1 space-y-0.5">
+          <p className="truncate text-xs font-medium">{sourceTitle}</p>
+          {sectionPath && (
+            <p className="text-muted-foreground truncate text-[11px]">
+              {sectionPath}
+            </p>
+          )}
         </div>
       </div>
 
-      {feedbackState === 'editing-down' && (
-        <div className="bg-muted/20 space-y-3 rounded-lg border p-3">
-          <div className="flex flex-wrap gap-2">
-            {FEEDBACK_REASON_OPTIONS.map((option) => {
-              const selected = selectedFeedbackReasons.includes(option.key);
-
-              return (
-                <button
-                  key={option.key}
-                  type="button"
-                  aria-pressed={selected}
-                  className={cn(
-                    'focus-visible:ring-ring/50 rounded-lg border px-2.5 py-1 text-xs transition outline-none focus-visible:ring-[3px]',
-                    selected
-                      ? 'bg-foreground text-background border-foreground'
-                      : 'bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                  )}
-                  onClick={() => {
-                    setSelectedFeedbackReasons((currentReasons) =>
-                      currentReasons.includes(option.key)
-                        ? currentReasons.filter((key) => key !== option.key)
-                        : [...currentReasons, option.key]
-                    );
-                  }}
-                >
-                  {option.label[displayLanguage]}
-                </button>
-              );
-            })}
-          </div>
-          <label
-            className="text-muted-foreground text-xs"
-            htmlFor={feedbackReasonId}
-          >
-            {displayLanguage === 'ko' ? '추가 메모' : 'Optional note'}
-          </label>
-          <textarea
-            id={feedbackReasonId}
-            value={feedbackReason}
-            maxLength={MAX_CLIENT_REASON_LENGTH}
-            onChange={(event) => setFeedbackReason(event.target.value)}
-            placeholder={
-              displayLanguage === 'ko'
-                ? '부족하거나 부정확했던 부분이 있나요?'
-                : 'What felt missing or inaccurate?'
-            }
-            className="border-input bg-background focus-visible:ring-ring/50 min-h-20 w-full resize-y rounded-lg border px-3 py-2 text-sm outline-none focus-visible:ring-[3px]"
-          />
-          <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="ghost"
-              className="h-8 rounded-lg"
-              onClick={() => {
-                setFeedbackRating(null);
-                setFeedbackState('idle');
-                setFeedbackReason('');
-                setSelectedFeedbackReasons([]);
-              }}
-            >
-              {displayLanguage === 'ko' ? '취소' : 'Cancel'}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="secondary"
-              className="h-8 rounded-lg"
-              onClick={() => {
-                void submitFeedback({
-                  rating: 'down',
-                  reason: buildDownFeedbackReason({
-                    reasonKeys: selectedFeedbackReasons,
-                    note: feedbackReason,
-                    language: displayLanguage,
-                  }),
-                  metadata: ragMetadata,
-                  context: feedbackContext,
-                  setFeedbackRating,
-                  setFeedbackState,
-                });
-              }}
-            >
-              <Send className="h-4 w-4" />
-              {displayLanguage === 'ko' ? '피드백 저장' : 'Save feedback'}
-            </Button>
-          </div>
+      {debug && (
+        <div className="mt-2 flex min-w-0 flex-wrap gap-1.5">
+          {source.entity_id && (
+            <span className="bg-muted text-muted-foreground rounded-md border px-2 py-0.5 font-mono text-[11px]">
+              entity_id: {source.entity_id}
+            </span>
+          )}
+          <span className="bg-muted text-muted-foreground rounded-md border px-2 py-0.5 font-mono text-[11px]">
+            score: {formatScore(source.score)}
+          </span>
+          <span className="bg-muted text-muted-foreground rounded-md border px-2 py-0.5 font-mono text-[11px]">
+            visibility: {source.visibility}
+          </span>
         </div>
       )}
-    </section>
+    </article>
   );
 }
 
@@ -926,9 +1048,37 @@ function getAnswerSourceLabel(metadata: RagMetadata, language: 'ko' | 'en') {
   return labels[metadata.answerSource]?.[language] ?? metadata.answerSource;
 }
 
-function formatSourceCount(count: number, language: 'ko' | 'en') {
-  if (language === 'ko') return `근거 ${count}개`;
-  return `${count} source${count === 1 ? '' : 's'}`;
+function getPublicSourceBadgeText(count: number, language: 'ko' | 'en') {
+  if (count === 0) {
+    return language === 'ko' ? '근거 부족' : 'Limited evidence';
+  }
+
+  if (language === 'ko') return `Oosu Wiki 기반 · ${count}개 출처`;
+  return `From Oosu Wiki · ${count} source${count === 1 ? '' : 's'}`;
+}
+
+function getRemainingSourcesButtonLabel({
+  count,
+  expanded,
+  language,
+  debug,
+}: {
+  count: number;
+  expanded: boolean;
+  language: 'ko' | 'en';
+  debug: boolean;
+}) {
+  if (debug) {
+    if (language === 'ko') return expanded ? '접기' : `+${count}개 더`;
+    return expanded ? 'Collapse' : `+${count} more`;
+  }
+
+  if (expanded) {
+    return language === 'ko' ? '나머지 근거 접기' : 'Hide remaining sources';
+  }
+
+  if (language === 'ko') return `나머지 ${count}개 근거 보기`;
+  return `View ${count} more source${count === 1 ? '' : 's'}`;
 }
 
 function formatWarningCount(count: number, language: 'ko' | 'en') {
@@ -950,14 +1100,58 @@ function formatEntityLabel(entityId: string, language: 'ko' | 'en') {
   return labels[entityId]?.[language] ?? entityId;
 }
 
-function formatVisitorSourceTitle(source: RagSource, language: 'ko' | 'en') {
+function formatPublicSourceTitle(source: RagSource, language: 'ko' | 'en') {
   const entityLabel = source.entity_id
     ? formatEntityLabel(source.entity_id, language)
     : null;
   if (entityLabel && entityLabel !== source.entity_id) return entityLabel;
 
-  if (source.title === 'Oosu Wiki') return 'Oosu Wiki';
-  return language === 'ko' ? '포트폴리오 데이터' : 'Portfolio data';
+  if (source.section_path.length > 0) {
+    return humanizeSourcePathSegment(source.section_path[0]);
+  }
+
+  if (source.title && source.title !== 'Oosu Wiki') {
+    return humanizeSourcePathSegment(source.title);
+  }
+
+  return language === 'ko' ? 'Oosu Wiki' : 'Oosu Wiki';
+}
+
+function formatSectionPathLabel(source: RagSource, language: 'ko' | 'en') {
+  const path =
+    source.section_path.length > 0
+      ? source.section_path
+      : source.title
+        ? [source.title]
+        : [];
+  const label = path.map(humanizeSourcePathSegment).filter(Boolean).join(' > ');
+
+  if (label) return label;
+  return language === 'ko' ? 'Oosu Wiki' : 'Oosu Wiki';
+}
+
+function humanizeSourcePathSegment(segment: string) {
+  const trimmedSegment = segment.trim();
+  if (!trimmedSegment) return '';
+
+  const projectId = normalizeProjectEntityId(trimmedSegment);
+  if (projectId) return PROJECT_CARDS[projectId].title;
+
+  const knownLabel = SOURCE_SEGMENT_LABELS[trimmedSegment.toLowerCase()];
+  if (knownLabel) return knownLabel;
+
+  return trimmedSegment
+    .replace(/[-_./]+/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => {
+      const lowerWord = word.toLowerCase();
+      const knownWord = SOURCE_WORD_LABELS[lowerWord];
+      if (knownWord) return knownWord;
+
+      return `${lowerWord.charAt(0).toUpperCase()}${lowerWord.slice(1)}`;
+    })
+    .join(' ');
 }
 
 function formatConfidence(confidence: number) {
