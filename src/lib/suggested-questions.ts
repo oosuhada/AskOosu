@@ -115,6 +115,20 @@ export function getSuggestedQuestionMeta(
   return null;
 }
 
+export function getSuggestedQuestionRoutingMeta(
+  id: string | null | undefined,
+  language?: DisplayLanguage
+) {
+  const question = getSuggestedQuestionMeta(id, language);
+  if (!question) return null;
+
+  return {
+    ...question,
+    intentId: faqIntentIds[question.faqId] ?? question.faqId,
+    text: question.quickLabel,
+  };
+}
+
 export function findSuggestedQuestionId(query: string) {
   const normalizedQuery = normalizeQuestion(query);
 

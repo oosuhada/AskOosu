@@ -56,6 +56,7 @@ export type AnswerRouteDecision =
     };
 
 export type ChatAnswerMetadata = RagChatMetadata & {
+  requestId?: string;
   language: ChatLanguage;
   answerSource: ChatAnswerSource;
   triggerId?: string;

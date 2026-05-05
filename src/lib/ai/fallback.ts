@@ -35,12 +35,14 @@ export async function generateAnswerWithFallback({
   messages,
   tools,
   stopWhen,
+  usageMetadata,
 }: {
   primaryModel: ChatModelSelection;
   system: string;
   messages: ModelMessage[];
   tools: GenerateTextOptions['tools'];
   stopWhen: GenerateTextOptions['stopWhen'];
+  usageMetadata?: Record<string, unknown>;
 }): Promise<AiAnswerResult> {
   if (await isProviderCoolingDown(primaryModel.provider)) {
     const fallbackModel = await getUsableFallbackModel(primaryModel);
@@ -51,6 +53,7 @@ export async function generateAnswerWithFallback({
         messages,
         tools,
         stopWhen,
+        usageMetadata,
       });
     }
   }
@@ -62,9 +65,10 @@ export async function generateAnswerWithFallback({
       messages,
       tools,
       stopWhen,
+      usageMetadata,
     });
   } catch (error) {
-    await recordProviderFailure(primaryModel, error);
+    await recordProviderFailure(primaryModel, error, usageMetadata);
 
     const fallbackModel = await getUsableFallbackModel(primaryModel);
     if (!fallbackModel) throw error;
@@ -76,9 +80,10 @@ export async function generateAnswerWithFallback({
         messages,
         tools,
         stopWhen,
+        usageMetadata,
       });
     } catch (fallbackError) {
-      await recordProviderFailure(fallbackModel, fallbackError);
+      await recordProviderFailure(fallbackModel, fallbackError, usageMetadata);
       throw fallbackError;
     }
   }
@@ -90,12 +95,14 @@ async function generateWithModel({
   messages,
   tools,
   stopWhen,
+  usageMetadata,
 }: {
   selection: ChatModelSelection;
   system: string;
   messages: ModelMessage[];
   tools: GenerateTextOptions['tools'];
   stopWhen: GenerateTextOptions['stopWhen'];
+  usageMetadata?: Record<string, unknown>;
 }) {
   const startedAt = Date.now();
   const result = await generateText({
@@ -122,6 +129,7 @@ async function generateWithModel({
       totalTokens: usage.totalTokens,
       latencyMs,
       success: true,
+      metadata: usageMetadata,
     }),
     recordAiProviderStatus({
       provider: selection.provider,
@@ -141,7 +149,8 @@ async function generateWithModel({
 
 async function recordProviderFailure(
   selection: ChatModelSelection,
-  error: unknown
+  error: unknown,
+  usageMetadata?: Record<string, unknown>
 ) {
   recordChatModelFailure(selection, error);
   const errorCode = getChatProviderErrorCode(error);
@@ -155,6 +164,7 @@ async function recordProviderFailure(
       answerSource: getGeneratedAnswerSource(selection.provider),
       success: false,
       errorCode,
+      metadata: usageMetadata,
     }),
     recordAiProviderStatus({
       provider: selection.provider,
