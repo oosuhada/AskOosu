@@ -19,6 +19,7 @@ import { PortfolioSidebar } from '@/components/portfolio-sidebar';
 import { OosuAvatar } from '@/components/oosu-avatar';
 import { SimplifiedChatView } from '@/components/chat/simple-chat-view';
 import { getUiText } from '@/lib/i18n';
+import { isAskOosuDebugUiEnabled } from '@/lib/debug-ui';
 import type {
   AnswerVariant,
   QuestionSurface,
@@ -70,7 +71,7 @@ const Chat = () => {
   const router = useRouter();
   const initialQuery = searchParams.get('query');
   const initialConversationId = searchParams.get('conversationId');
-  const isDebugMode = searchParams.get('debug') === 'true';
+  const isDebugMode = isAskOosuDebugUiEnabled(searchParams);
   const [autoSubmitted, setAutoSubmitted] = useState(false);
   const [loadingSubmit, setLoadingSubmit] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<
@@ -93,6 +94,7 @@ const Chat = () => {
   const { language, theme } = useDisplayPreferences();
   const { markQueryAsked } = useSuggestedQuestions(5);
   const text = getUiText(language);
+  const loadingLabel = text.chatLoadingMessages[0];
   const chatTransport = useMemo(
     () =>
       new DefaultChatTransport({
@@ -430,7 +432,7 @@ const Chat = () => {
   ]);
 
   return (
-    <div className="relative h-screen overflow-hidden md:pl-[72px]">
+    <div className="relative h-dvh overflow-hidden md:pl-[72px]">
       <PortfolioSidebar
         conversations={conversations}
         activeConversationId={activeConversationId}
@@ -489,6 +491,7 @@ const Chat = () => {
                       regenerate={regenerate}
                       sessionId={activeConversationId}
                       question={getPreviousUserText(messages, index)}
+                      loadingLabel={loadingLabel}
                     />
                   ) : null
                 )}
@@ -500,7 +503,11 @@ const Chat = () => {
                   ) ? (
                   <div className="px-4 pt-4">
                     <ChatBubble variant="received">
-                      <ChatBubbleMessage isLoading />
+                      <ChatBubbleMessage
+                        isLoading
+                        loadingLabel={loadingLabel}
+                        className="bg-background/85 min-h-[5.75rem] w-full rounded-2xl border px-4 py-3 shadow-sm backdrop-blur-sm"
+                      />
                     </ChatBubble>
                   </div>
                 ) : null}
@@ -741,7 +748,7 @@ function buildChatErrorNotice(
         ? 'network'
         : 'api';
 
-  const copy = getChatErrorCopy(kind, language);
+  const copy = getChatErrorCopy(language);
 
   return {
     ...copy,
@@ -749,70 +756,30 @@ function buildChatErrorNotice(
     reportLabel: language === 'ko' ? '오류 리포트 보내기' : 'Report this issue',
     reportHref: buildErrorReportHref({
       kind,
-      message,
       language,
     }),
   };
 }
 
-function getChatErrorCopy(
-  kind: 'network' | 'limit' | 'api',
-  language: 'ko' | 'en'
-) {
+function getChatErrorCopy(language: 'ko' | 'en') {
   if (language === 'ko') {
-    if (kind === 'network') {
-      return {
-        title: '인터넷 연결을 확인해 주세요.',
-        message:
-          '브라우저가 AskOosu API에 닿지 못했어요. 네트워크가 돌아오면 다시 시도할 수 있습니다.',
-      };
-    }
-
-    if (kind === 'limit') {
-      return {
-        title: 'API 사용량 한도에 가까워졌어요.',
-        message:
-          '일시적인 rate limit 또는 provider quota 문제로 보입니다. 캐시된 포트폴리오 답변은 우선 표시되도록 처리되어 있고, 잠시 뒤 다시 시도할 수 있습니다.',
-      };
-    }
-
     return {
-      title: 'AI API 연결이 불안정해요.',
-      message:
-        'Groq 또는 fallback provider 연결에서 문제가 생겼습니다. 직접 FAQ 답변은 API 없이 표시되며, 생성형 답변만 영향을 받을 수 있습니다.',
-    };
-  }
-
-  if (kind === 'network') {
-    return {
-      title: 'Please check your internet connection.',
-      message:
-        'The browser could not reach the AskOosu API. Once the network is back, you can retry.',
-    };
-  }
-
-  if (kind === 'limit') {
-    return {
-      title: 'The API usage limit may have been reached.',
-      message:
-        'This looks like a temporary rate limit or provider quota issue. Cached portfolio answers are still designed to return first, and you can retry shortly.',
+      title: '잠시 후 다시 시도해 주세요.',
+      message: '답변 엔진이 잠깐 쉬는 중이에요. 잠시 후 다시 시도해 주세요.',
     };
   }
 
   return {
-    title: 'The AI API connection is unstable.',
-    message:
-      'The Groq or fallback provider connection had a problem. Direct FAQ answers can still return without model generation.',
+    title: 'Please try again soon.',
+    message: 'The answer engine is taking a short break. Please try again soon.',
   };
 }
 
 function buildErrorReportHref({
   kind,
-  message,
   language,
 }: {
   kind: string;
-  message: string;
   language: 'ko' | 'en';
 }) {
   const subject = `[AskOosu] Chat error report: ${kind}`;
@@ -824,7 +791,7 @@ function buildErrorReportHref({
     `Kind: ${kind}`,
     `Language: ${language}`,
     `URL: ${currentUrl}`,
-    `Message: ${message}`,
+    'Raw provider details are omitted from the public UI.',
   ].join('\n');
 
   return `mailto:${ERROR_REPORT_EMAIL}?subject=${encodeURIComponent(

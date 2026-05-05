@@ -3,6 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { isAskOosuDebugUiEnabled } from '@/lib/debug-ui';
 import {
   AlertTriangle,
   BookOpenCheck,
@@ -282,7 +283,7 @@ export function RagEvidencePanel({
   >([]);
   const [sourcesExpanded, setSourcesExpanded] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
-  const isDebugMode = useMemo(isDebugModeEnabled, []);
+  const isDebugMode = useMemo(isAskOosuDebugUiEnabled, []);
 
   if (!ragMetadata) return null;
 
@@ -1074,11 +1075,10 @@ function getRemainingSourcesButtonLabel({
   }
 
   if (expanded) {
-    return language === 'ko' ? '나머지 근거 접기' : 'Hide remaining sources';
+    return language === 'ko' ? '근거 접기' : 'Hide sources';
   }
 
-  if (language === 'ko') return `나머지 ${count}개 근거 보기`;
-  return `View ${count} more source${count === 1 ? '' : 's'}`;
+  return language === 'ko' ? '근거 보기' : 'View sources';
 }
 
 function formatWarningCount(count: number, language: 'ko' | 'en') {
@@ -1201,11 +1201,6 @@ function normalizeConfidence(value: unknown) {
 
 function parseString(value: unknown) {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
-}
-
-function isDebugModeEnabled() {
-  if (typeof window === 'undefined') return false;
-  return new URLSearchParams(window.location.search).get('debug') === 'true';
 }
 
 function parseStringArray(value: unknown) {

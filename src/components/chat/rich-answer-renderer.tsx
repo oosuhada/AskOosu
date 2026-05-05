@@ -3,9 +3,10 @@
 import Image from 'next/image';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { oosuProfile } from '@/lib/oosu-profile';
 import { cn } from '@/lib/utils';
+import { isAskOosuDebugUiEnabled } from '@/lib/debug-ui';
 import type { QuestionSurface } from '@/data/question-surfaces.shared';
 import {
   BookOpenCheck,
@@ -63,6 +64,7 @@ type RichPayload = {
   visualBlocks: VisualBlock[];
   mediaRefs: MediaRef[];
   sourceChunkIds: string[];
+  hasCanonicalEvidence: boolean;
 };
 
 type ProjectItem = {
@@ -188,6 +190,8 @@ function renderPart({
       <SourceBadgeList
         key={`sources-${index}`}
         sourceChunkIds={part.sourceChunkIds ?? payload.sourceChunkIds}
+        language={payload.language}
+        showPublicSources={!payload.hasCanonicalEvidence}
       />
     );
   }
@@ -229,6 +233,8 @@ function renderPart({
       <SourceBadgeList
         key={`${block.type}-${index}`}
         sourceChunkIds={payload.sourceChunkIds}
+        language={payload.language}
+        showPublicSources={!payload.hasCanonicalEvidence}
       />
     );
   }
@@ -263,6 +269,7 @@ function renderPart({
       <ProfileHeroCard
         key={`${block.type}-${index}`}
         mediaRefs={payload.mediaRefs}
+        language={payload.language}
       />
     );
   }
@@ -343,10 +350,11 @@ function ProjectShowcaseCards({
               assetKey={project.image}
               mediaRefs={mediaRefs}
               className="aspect-[16/9]"
+              language={language}
             />
             <div className="space-y-2 p-3">
               <div className="space-y-1">
-                <h4 className="text-sm font-semibold break-words">
+                <h4 className="min-w-0 text-sm font-semibold break-words">
                   {project.title}
                 </h4>
                 {project.subtitle && (
@@ -364,9 +372,9 @@ function ProjectShowcaseCards({
                 {project.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="bg-background text-muted-foreground rounded-md border px-2 py-0.5 text-[11px]"
+                    className="bg-background text-muted-foreground inline-flex max-w-full min-w-0 rounded-md border px-2 py-0.5 text-[11px]"
                   >
-                    {tag}
+                    <span className="min-w-0 truncate">{tag}</span>
                   </span>
                 ))}
               </div>
@@ -375,10 +383,12 @@ function ProjectShowcaseCards({
                   <button
                     type="button"
                     onClick={() => switchQuestionSurface(project.id)}
-                    className="bg-background hover:bg-accent hover:text-accent-foreground inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition"
+                    className="bg-background hover:bg-accent hover:text-accent-foreground inline-flex h-8 max-w-full min-w-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition"
                   >
                     <MessageSquareText className="h-3.5 w-3.5" />
-                    {language === 'ko' ? '관련 질문' : 'Questions'}
+                    <span className="min-w-0 truncate">
+                      {language === 'ko' ? '관련 질문' : 'Questions'}
+                    </span>
                   </button>
                 )}
                 {project.href && (
@@ -386,9 +396,11 @@ function ProjectShowcaseCards({
                     href={project.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="bg-background hover:bg-accent hover:text-accent-foreground inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition"
+                    className="bg-background hover:bg-accent hover:text-accent-foreground inline-flex h-8 max-w-full min-w-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition"
                   >
-                    {language === 'ko' ? '열기' : 'Open'}
+                    <span className="min-w-0 truncate">
+                      {language === 'ko' ? '열기' : 'Open'}
+                    </span>
                     <ExternalLink className="h-3.5 w-3.5" />
                   </a>
                 )}
@@ -426,21 +438,25 @@ function ComparisonGrid({
               <div className="px-3 py-2 text-slate-500 dark:text-slate-400">
                 {language === 'ko' ? '기준' : 'Criteria'}
               </div>
-              <div className="border-l px-3 py-2">{table.leftTitle}</div>
-              <div className="border-l px-3 py-2">{table.rightTitle}</div>
+              <div className="min-w-0 truncate border-l px-3 py-2">
+                {table.leftTitle}
+              </div>
+              <div className="min-w-0 truncate border-l px-3 py-2">
+                {table.rightTitle}
+              </div>
             </div>
             {table.rows.map((row) => (
               <div
                 key={row.label}
                 className="grid grid-cols-[0.72fr_1fr_1fr] border-b last:border-b-0"
               >
-                <div className="bg-slate-50/70 px-3 py-2 text-xs font-medium text-slate-600 dark:bg-slate-900/25 dark:text-slate-300">
+                <div className="min-w-0 bg-slate-50/70 px-3 py-2 text-xs font-medium break-words text-slate-600 dark:bg-slate-900/25 dark:text-slate-300">
                   {row.label}
                 </div>
-                <div className="border-l px-3 py-2 text-xs leading-relaxed">
+                <div className="min-w-0 border-l px-3 py-2 text-xs leading-relaxed break-words">
                   {row.left}
                 </div>
-                <div className="border-l px-3 py-2 text-xs leading-relaxed">
+                <div className="min-w-0 border-l px-3 py-2 text-xs leading-relaxed break-words">
                   {row.right}
                 </div>
               </div>
@@ -469,17 +485,19 @@ function SkillChipGroup({ block }: { block: VisualBlock }) {
           >
             <div className="mb-2 flex items-center gap-2">
               <Code2 className="h-4 w-4 text-sky-600 dark:text-sky-300" />
-              <h4 className="text-sm font-semibold">{group.group}</h4>
+              <h4 className="min-w-0 text-sm font-semibold break-words">
+                {group.group}
+              </h4>
             </div>
             <div className="flex flex-wrap gap-1.5">
               {group.skills.map((skill) => (
                 <span
                   key={`${group.group}-${skill.name}`}
-                  className="inline-flex items-center gap-1 rounded-md border border-sky-200 bg-white px-2 py-1 text-xs text-slate-700 dark:border-sky-800/70 dark:bg-slate-950/50 dark:text-slate-200"
+                  className="inline-flex max-w-full min-w-0 items-center gap-1 rounded-md border border-sky-200 bg-white px-2 py-1 text-xs text-slate-700 dark:border-sky-800/70 dark:bg-slate-950/50 dark:text-slate-200"
                 >
-                  <span>{skill.name}</span>
+                  <span className="min-w-0 truncate">{skill.name}</span>
                   {skill.proficiency && (
-                    <span className="rounded bg-slate-100 px-1 text-[10px] text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+                    <span className="shrink-0 rounded bg-slate-100 px-1 text-[10px] text-slate-500 dark:bg-slate-800 dark:text-slate-300">
                       {skill.proficiency}
                     </span>
                   )}
@@ -564,10 +582,10 @@ function CtaButtons({ block }: { block: VisualBlock }) {
                 ? undefined
                 : 'noopener noreferrer'
             }
-            className="bg-background hover:bg-accent hover:text-accent-foreground inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition"
+            className="bg-background hover:bg-accent hover:text-accent-foreground inline-flex h-9 max-w-full min-w-0 items-center gap-2 rounded-lg border px-3 text-sm font-medium transition"
           >
-            <Icon className="h-4 w-4" />
-            {action.label}
+            <Icon className="h-4 w-4 shrink-0" />
+            <span className="min-w-0 truncate">{action.label}</span>
           </a>
         );
       })}
@@ -594,7 +612,7 @@ function WorkflowSteps({ block }: { block: VisualBlock }) {
               <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-indigo-600 text-xs font-semibold text-white dark:bg-indigo-500">
                 {index + 1}
               </span>
-              <h4 className="text-sm font-semibold break-words">
+              <h4 className="min-w-0 text-sm font-semibold break-words">
                 {step.title}
               </h4>
             </div>
@@ -643,13 +661,14 @@ function ImageFallbackCards({
               <MediaPreview
                 assetKey={assetKey ?? undefined}
                 mediaRefs={mediaRefs}
+                language={language}
               />
               <p className="text-muted-foreground p-3 text-xs leading-relaxed">
                 {media?.status === 'ready'
                   ? caption
                   : language === 'ko'
-                    ? '이미지 asset은 아직 준비 중입니다.'
-                    : 'Image asset is still pending.'}
+                    ? '미리보기 준비 중'
+                    : 'Preview asset pending'}
               </p>
             </div>
           );
@@ -659,7 +678,13 @@ function ImageFallbackCards({
   );
 }
 
-function ProfileHeroCard({ mediaRefs }: { mediaRefs: MediaRef[] }) {
+function ProfileHeroCard({
+  mediaRefs,
+  language,
+}: {
+  mediaRefs: MediaRef[];
+  language: 'ko' | 'en';
+}) {
   return (
     <section className="rounded-lg border bg-white/70 p-4 dark:bg-white/[0.05]">
       <div className="flex items-start gap-3">
@@ -669,6 +694,7 @@ function ProfileHeroCard({ mediaRefs }: { mediaRefs: MediaRef[] }) {
             mediaRefs={mediaRefs}
             className="h-full w-full"
             compact
+            language={language}
           />
         </div>
         <div className="min-w-0 space-y-1">
@@ -700,11 +726,13 @@ function MediaPreview({
   mediaRefs,
   className,
   compact = false,
+  language,
 }: {
   assetKey?: string;
   mediaRefs: MediaRef[];
   className?: string;
   compact?: boolean;
+  language: 'ko' | 'en';
 }) {
   const media = assetKey ? findMediaRef(mediaRefs, assetKey) : null;
   const canRenderImage =
@@ -762,35 +790,96 @@ function MediaPreview({
         className
       )}
     >
-      <span>{compact ? 'Pending' : 'Preview asset pending'}</span>
+      <span>{getPendingAssetLabel(language, compact)}</span>
     </div>
   );
 }
 
-function SourceBadgeList({ sourceChunkIds }: { sourceChunkIds: string[] }) {
-  const isDebugMode = useMemo(isDebugModeEnabled, []);
+function SourceBadgeList({
+  sourceChunkIds,
+  language,
+  showPublicSources,
+}: {
+  sourceChunkIds: string[];
+  language: 'ko' | 'en';
+  showPublicSources: boolean;
+}) {
+  const isDebugMode = useMemo(isAskOosuDebugUiEnabled, []);
+  const [isExpanded, setIsExpanded] = useState(false);
 
-  if (sourceChunkIds.length === 0 || !isDebugMode) return null;
+  if (sourceChunkIds.length === 0) return null;
+
+  const copy = getSourceBadgeCopy(language);
+
+  if (!isDebugMode && !showPublicSources) return null;
 
   return (
-    <div className="space-y-2" aria-label="Source chunk debug metadata">
-      <span className="inline-flex items-center gap-1.5 rounded-lg border border-violet-300 bg-violet-50 px-2.5 py-1 text-xs font-medium text-violet-800 dark:border-violet-700/70 dark:bg-violet-950/30 dark:text-violet-200">
-        <BookOpenCheck className="h-3.5 w-3.5" />
-        Debug sources
-      </span>
-      <div className="flex flex-wrap gap-2">
-        {sourceChunkIds.map((chunkId) => (
-          <span
-            key={chunkId}
-            className="bg-background text-muted-foreground inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs"
-          >
-            <BookOpenCheck className="text-foreground h-3.5 w-3.5 shrink-0" />
-            <span className="min-w-0 truncate">{chunkId}</span>
-          </span>
-        ))}
-      </div>
+    <div
+      className="space-y-2"
+      aria-label={isDebugMode ? copy.debugAriaLabel : copy.publicAriaLabel}
+    >
+      <button
+        type="button"
+        className={cn(
+          'focus-visible:ring-ring/50 inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-medium outline-none focus-visible:ring-[3px]',
+          isDebugMode
+            ? 'border-violet-300 bg-violet-50 text-violet-800 dark:border-violet-700/70 dark:bg-violet-950/30 dark:text-violet-200'
+            : 'bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+        )}
+        aria-expanded={isExpanded}
+        onClick={() => setIsExpanded((current) => !current)}
+      >
+        <BookOpenCheck className="h-3.5 w-3.5 shrink-0" />
+        <span className="min-w-0 truncate">
+          {isExpanded ? copy.hideSources : copy.viewSources}
+        </span>
+        <span className="bg-background/80 rounded-md px-1.5 py-0.5 text-[10px]">
+          {sourceChunkIds.length}
+        </span>
+      </button>
+
+      {isExpanded && (
+        <div className="flex flex-wrap gap-2">
+          {sourceChunkIds.map((chunkId, index) => (
+            <span
+              key={chunkId}
+              className="bg-background text-muted-foreground inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs"
+            >
+              <BookOpenCheck className="text-foreground h-3.5 w-3.5 shrink-0" />
+              <span className="min-w-0 truncate">
+                {isDebugMode ? chunkId : copy.sourceLabel(index + 1)}
+              </span>
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
+}
+
+function getPendingAssetLabel(language: 'ko' | 'en', compact: boolean) {
+  if (language === 'ko') return compact ? '준비 중' : '미리보기 준비 중';
+  return compact ? 'Pending' : 'Preview asset pending';
+}
+
+function getSourceBadgeCopy(language: 'ko' | 'en') {
+  if (language === 'ko') {
+    return {
+      viewSources: '근거 보기',
+      hideSources: '근거 접기',
+      publicAriaLabel: '답변 근거',
+      debugAriaLabel: '근거 디버그 정보',
+      sourceLabel: (index: number) => `Oosu Wiki 근거 ${index}`,
+    };
+  }
+
+  return {
+    viewSources: 'View sources',
+    hideSources: 'Hide sources',
+    publicAriaLabel: 'Answer sources',
+    debugAriaLabel: 'Source chunk debug metadata',
+    sourceLabel: (index: number) => `Oosu Wiki source ${index}`,
+  };
 }
 
 function buildFallbackParts(payload: RichPayload): RichAnswerPart[] {
@@ -875,6 +964,8 @@ function parseRichPayload(metadata: unknown): RichPayload | null {
     visualBlocks,
     mediaRefs: mediaRefSource.map(parseMediaRef).filter(isDefined),
     sourceChunkIds: parseStringArray(sourceChunkIdsSource),
+    hasCanonicalEvidence:
+      Array.isArray(metadata.sources) && metadata.sources.length > 0,
   };
 }
 
@@ -1092,11 +1183,6 @@ function findMediaRef(mediaRefs: MediaRef[], assetKey: string) {
 
 function parseString(value: unknown) {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
-}
-
-function isDebugModeEnabled() {
-  if (typeof window === 'undefined') return false;
-  return new URLSearchParams(window.location.search).get('debug') === 'true';
 }
 
 function parseStringArray(value: unknown) {

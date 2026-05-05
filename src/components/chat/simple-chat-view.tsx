@@ -8,6 +8,7 @@ import type { UIMessage } from 'ai';
 import { motion } from 'framer-motion';
 import ChatMessageContent from './chat-message-content';
 import ToolRenderer from './tool-renderer';
+import { cn } from '@/lib/utils';
 
 type CompletedToolPart = {
   type: string;
@@ -23,6 +24,7 @@ interface SimplifiedChatViewProps {
   regenerate: () => Promise<void>;
   sessionId?: string | null;
   question?: string | null;
+  loadingLabel?: string;
 }
 
 const MOTION_CONFIG = {
@@ -41,6 +43,7 @@ export function SimplifiedChatView({
   regenerate,
   sessionId,
   question,
+  loadingLabel,
 }: SimplifiedChatViewProps) {
   if (message.role !== 'assistant') return null;
 
@@ -68,7 +71,11 @@ export function SimplifiedChatView({
             <ChatBubble variant="received" className="w-full">
               <ChatBubbleMessage
                 isLoading={!hasTextContent && isLoading}
-                className="bg-background/85 w-full rounded-2xl border px-4 py-3 shadow-sm backdrop-blur-sm"
+                loadingLabel={loadingLabel}
+                className={cn(
+                  'bg-background/85 w-full rounded-2xl border px-4 py-3 shadow-sm backdrop-blur-sm',
+                  isLoading && 'min-h-[5.75rem]'
+                )}
               >
                 {hasTextContent ? (
                   <ChatMessageContent
