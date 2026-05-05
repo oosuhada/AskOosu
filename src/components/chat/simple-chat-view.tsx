@@ -21,6 +21,8 @@ interface SimplifiedChatViewProps {
   message: UIMessage;
   isLoading: boolean;
   regenerate: () => Promise<void>;
+  sessionId?: string | null;
+  question?: string | null;
 }
 
 const MOTION_CONFIG = {
@@ -37,6 +39,8 @@ export function SimplifiedChatView({
   message,
   isLoading,
   regenerate,
+  sessionId,
+  question,
 }: SimplifiedChatViewProps) {
   if (message.role !== 'assistant') return null;
 
@@ -70,6 +74,10 @@ export function SimplifiedChatView({
                   isLoading={isLoading}
                   regenerate={regenerate}
                   skipToolRendering={true}
+                  feedbackContext={{
+                    sessionId,
+                    question,
+                  }}
                 />
               </ChatBubbleMessage>
             </ChatBubble>

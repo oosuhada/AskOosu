@@ -354,6 +354,8 @@ const Chat = () => {
                     message={currentAIMessage}
                     isLoading={isLoading}
                     regenerate={regenerate}
+                    sessionId={activeConversationId}
+                    question={latestUserText}
                   />
                 ) : loadingSubmit ? (
                   <div className="px-4 pt-4">

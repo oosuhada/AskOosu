@@ -33,6 +33,7 @@ AskOosu uses raw SQL with `pg` for the RAG database path. Apply the migration af
 
 ```bash
 psql "$DATABASE_URL" -f db/migrations/001_create_rag_database_schema.sql
+psql "$DATABASE_URL" -f db/migrations/002_create_answer_feedback.sql
 ```
 
 The migration creates:
@@ -40,8 +41,11 @@ The migration creates:
 - `rag_sources`
 - `rag_chunks`
 - `rag_sync_runs`
+- `answer_feedback`
 
 It also adds PostgreSQL indexes for `chunk_id`, `entity_id`, `source_id`, `has_todo`, metadata JSON, full-text search, and pgvector embedding search.
+
+`answer_feedback` stores lightweight answer quality signals from the chat UI: session/message ids, truncated question and answer text, up/down rating, optional reason, matched entity ids, source chunk ids, confidence, and creation time. It intentionally does not store IP addresses, user agents, or authenticated user identity.
 
 ## Sync Step
 

@@ -9,10 +9,11 @@ import {
   CheckCircle2,
   FolderKanban,
   ShieldAlert,
+  Send,
   ThumbsDown,
   ThumbsUp,
 } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useId, useMemo, useState } from 'react';
 
 type RagSource = {
   chunk_id: string;
@@ -40,9 +41,20 @@ type ProjectCardInfo = {
   tags: string[];
 };
 
-type FeedbackValue = 'helpful' | 'needs-work' | null;
+type FeedbackRating = 'up' | 'down';
+type FeedbackState = 'idle' | 'editing-down' | 'saving' | 'saved' | 'error';
+
+type FeedbackContext = {
+  sessionId?: string | null;
+  messageId: string;
+  question?: string | null;
+  answer?: string;
+};
 
 const MAX_VISIBLE_SOURCES = 4;
+const MAX_CLIENT_TEXT_LENGTH = 4000;
+const MAX_CLIENT_QUESTION_LENGTH = 1000;
+const MAX_CLIENT_REASON_LENGTH = 1000;
 
 const PROJECT_CARDS: Record<string, ProjectCardInfo> = {
   askoosu: {
@@ -116,9 +128,20 @@ const PROJECT_ENTITY_ALIASES: Record<string, keyof typeof PROJECT_CARDS> = {
   'project.uncorked': 'uncorked',
 };
 
-export function RagEvidencePanel({ metadata }: { metadata?: unknown }) {
+export function RagEvidencePanel({
+  metadata,
+  feedbackContext,
+}: {
+  metadata?: unknown;
+  feedbackContext?: FeedbackContext;
+}) {
   const ragMetadata = useMemo(() => parseRagMetadata(metadata), [metadata]);
-  const [feedback, setFeedback] = useState<FeedbackValue>(null);
+  const feedbackReasonId = useId();
+  const [feedbackRating, setFeedbackRating] = useState<FeedbackRating | null>(
+    null
+  );
+  const [feedbackState, setFeedbackState] = useState<FeedbackState>('idle');
+  const [feedbackReason, setFeedbackReason] = useState('');
 
   if (!ragMetadata) return null;
 
@@ -271,21 +294,27 @@ export function RagEvidencePanel({ metadata }: { metadata?: unknown }) {
 
       <div className="text-muted-foreground flex flex-col gap-2 border-t pt-3 text-xs sm:flex-row sm:items-center sm:justify-between">
         <span aria-live="polite">
-          {feedback
-            ? feedback === 'helpful'
-              ? 'Thanks for the feedback.'
-              : 'Thanks. This answer can be improved.'
-            : 'Was this answer helpful?'}
+          {getFeedbackStatusText(feedbackState, feedbackRating)}
         </span>
         <div className="flex items-center gap-2">
           <Button
             type="button"
             size="sm"
-            variant={feedback === 'helpful' ? 'secondary' : 'outline'}
-            aria-pressed={feedback === 'helpful'}
+            variant={feedbackRating === 'up' ? 'secondary' : 'outline'}
+            aria-pressed={feedbackRating === 'up'}
             aria-label="Mark this answer as helpful"
             className="h-8 rounded-lg"
-            onClick={() => setFeedback('helpful')}
+            disabled={feedbackState === 'saving'}
+            onClick={() => {
+              void submitFeedback({
+                rating: 'up',
+                reason: null,
+                metadata: ragMetadata,
+                context: feedbackContext,
+                setFeedbackRating,
+                setFeedbackState,
+              });
+            }}
           >
             <ThumbsUp className="h-4 w-4" />
             Helpful
@@ -293,19 +322,139 @@ export function RagEvidencePanel({ metadata }: { metadata?: unknown }) {
           <Button
             type="button"
             size="sm"
-            variant={feedback === 'needs-work' ? 'secondary' : 'outline'}
-            aria-pressed={feedback === 'needs-work'}
+            variant={feedbackRating === 'down' ? 'secondary' : 'outline'}
+            aria-pressed={feedbackRating === 'down'}
             aria-label="Mark this answer as needing improvement"
             className="h-8 rounded-lg"
-            onClick={() => setFeedback('needs-work')}
+            disabled={feedbackState === 'saving'}
+            onClick={() => {
+              setFeedbackRating('down');
+              setFeedbackState('editing-down');
+            }}
           >
             <ThumbsDown className="h-4 w-4" />
             Improve
           </Button>
         </div>
       </div>
+
+      {feedbackState === 'editing-down' && (
+        <div className="space-y-2">
+          <label
+            className="text-muted-foreground text-xs"
+            htmlFor={feedbackReasonId}
+          >
+            Optional note
+          </label>
+          <textarea
+            id={feedbackReasonId}
+            value={feedbackReason}
+            maxLength={MAX_CLIENT_REASON_LENGTH}
+            onChange={(event) => setFeedbackReason(event.target.value)}
+            placeholder="What felt missing or inaccurate?"
+            className="border-input bg-background focus-visible:ring-ring/50 min-h-20 w-full resize-y rounded-lg border px-3 py-2 text-sm outline-none focus-visible:ring-[3px]"
+          />
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              className="h-8 rounded-lg"
+              onClick={() => {
+                void submitFeedback({
+                  rating: 'down',
+                  reason: feedbackReason,
+                  metadata: ragMetadata,
+                  context: feedbackContext,
+                  setFeedbackRating,
+                  setFeedbackState,
+                });
+              }}
+            >
+              <Send className="h-4 w-4" />
+              Save feedback
+            </Button>
+          </div>
+        </div>
+      )}
     </section>
   );
+}
+
+async function submitFeedback({
+  rating,
+  reason,
+  metadata,
+  context,
+  setFeedbackRating,
+  setFeedbackState,
+}: {
+  rating: FeedbackRating;
+  reason: string | null;
+  metadata: RagMetadata;
+  context: FeedbackContext | undefined;
+  setFeedbackRating: (rating: FeedbackRating) => void;
+  setFeedbackState: (state: FeedbackState) => void;
+}) {
+  if (!context?.messageId) {
+    setFeedbackState('error');
+    return;
+  }
+
+  setFeedbackRating(rating);
+  setFeedbackState('saving');
+
+  try {
+    const response = await fetch('/api/feedback', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sessionId: context.sessionId ?? '',
+        messageId: truncateForFeedback(context.messageId, 128),
+        question: truncateForFeedback(
+          context.question ?? '',
+          MAX_CLIENT_QUESTION_LENGTH
+        ),
+        answer: truncateForFeedback(
+          context.answer ?? '',
+          MAX_CLIENT_TEXT_LENGTH
+        ),
+        rating,
+        reason: reason?.trim() || null,
+        matchedEntityIds: metadata.matchedEntityIds,
+        sourceChunkIds: metadata.sources.map((source) => source.chunk_id),
+        confidence: metadata.confidence,
+      }),
+    });
+    const result = (await response.json().catch(() => null)) as {
+      ok?: boolean;
+    } | null;
+
+    if (!response.ok || !result?.ok) {
+      throw new Error('Feedback request failed.');
+    }
+
+    setFeedbackState('saved');
+  } catch (error) {
+    console.warn('Unable to save answer feedback:', error);
+    setFeedbackState('error');
+  }
+}
+
+function getFeedbackStatusText(
+  state: FeedbackState,
+  rating: FeedbackRating | null
+) {
+  if (state === 'saving') return 'Saving feedback...';
+  if (state === 'saved') return 'Thanks. Feedback saved.';
+  if (state === 'error') return 'Feedback could not be saved.';
+  if (state === 'editing-down') return 'What should be improved?';
+  if (rating === 'up') return 'Thanks for the feedback.';
+  if (rating === 'down') return 'Thanks. This answer can be improved.';
+
+  return 'Was this answer helpful?';
 }
 
 function parseRagMetadata(value: unknown): RagMetadata | null {
@@ -420,6 +569,10 @@ function formatSourceTitle(source: RagSource) {
   return `${path} | ${source.visibility}${
     source.has_todo ? ' | TODO evidence' : ''
   }`;
+}
+
+function truncateForFeedback(value: string, max: number) {
+  return value.trim().replace(/\s+/g, ' ').slice(0, max);
 }
 
 function normalizeConfidence(value: unknown) {

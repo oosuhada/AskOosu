@@ -18,6 +18,10 @@ export type ChatMessageContentProps = {
   isLoading?: boolean;
   regenerate?: () => Promise<void>;
   skipToolRendering?: boolean;
+  feedbackContext?: {
+    sessionId?: string | null;
+    question?: string | null;
+  };
 };
 
 const CodeBlock = ({ content }: { content: string }) => {
@@ -73,6 +77,7 @@ const CodeBlock = ({ content }: { content: string }) => {
 
 export default function ChatMessageContent({
   message,
+  feedbackContext,
 }: ChatMessageContentProps) {
   // Only handle text parts
   const renderContent = () => {
@@ -132,8 +137,24 @@ export default function ChatMessageContent({
     <div className="w-full">
       {renderContent()}
       {message.role === 'assistant' && (
-        <RagEvidencePanel metadata={message.metadata} />
+        <RagEvidencePanel
+          metadata={message.metadata}
+          feedbackContext={{
+            sessionId: feedbackContext?.sessionId,
+            messageId: message.id,
+            question: feedbackContext?.question,
+            answer: getMessageText(message),
+          }}
+        />
       )}
     </div>
   );
+}
+
+function getMessageText(message: UIMessage) {
+  return message.parts
+    .filter((part) => part.type === 'text')
+    .map((part) => part.text)
+    .join('\n')
+    .trim();
 }
