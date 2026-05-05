@@ -112,6 +112,9 @@ const AMBIGUOUS_PORTFOLIO_INPUTS = new Set([
   '연락',
   '더',
   '그래서',
+  '알려줘',
+  '말해줘',
+  '궁금해',
   'ㅇㅇ',
   'ㄱㄱ',
   'project',
@@ -121,6 +124,8 @@ const AMBIGUOUS_PORTFOLIO_INPUTS = new Set([
   'portfolio',
   'contact',
   'more',
+  'tell me',
+  'show me',
 ]);
 
 const CONTACT_OR_LINK_PATTERNS = [
@@ -344,10 +349,16 @@ export function getConversationEntityHints(question: string) {
 export function buildConversationIntentAnswer({
   intent,
   language,
+  question,
 }: {
   intent: ConversationIntent;
   language: ChatLanguage;
+  question: string;
 }) {
+  if (intent === 'off_topic_redirect') {
+    return buildOffTopicRedirectAnswer({ question, language });
+  }
+
   const copy = isDirectAnswerIntent(intent)
     ? CONVERSATION_DIRECT_ANSWERS[intent]
     : undefined;
@@ -395,6 +406,71 @@ function containsQuestionShape(question: string) {
   return /[?？]|(뭐|무엇|어떤|어디|어떻게|왜|설명|알려|보여|추천|차이|쓰였|썼|만들|해줘|주세요)/.test(
     question
   );
+}
+
+function buildOffTopicRedirectAnswer({
+  question,
+  language,
+}: {
+  question: string;
+  language: ChatLanguage;
+}) {
+  if (isLightTranslationRequest(question)) {
+    return language === 'ko'
+      ? '"우주"는 보통 "universe", 공간의 느낌이면 "space"에 가까워요. 제 망원경은 Oosu Wiki 쪽에 맞춰져 있으니, 다음 별자리는 AskOosu 구조나 우수의 프로젝트로 잡아볼까요?'
+      : '"우주" is usually "universe," or "space" when you mean outer space. My telescope is tuned to the Oosu Wiki, so the next constellation can be AskOosu architecture or Oosu\'s projects.';
+  }
+
+  if (/(우주|space|universe|cosmos|별|행성|은하|너머)/i.test(question)) {
+    return language === 'ko'
+      ? '스케일이 갑자기 은하급이네요. 저는 우주 지도보다 Oosu Wiki 지도를 더 잘 읽으니, AskOosu 구조나 우수의 대표 프로젝트 쪽으로 항로를 잡아볼까요?'
+      : "That question just went galaxy-scale. I read the Oosu Wiki map better than a star chart, so shall we chart a course through AskOosu's architecture or Oosu's projects?";
+  }
+
+  if (/(날씨|기온|비\s*와|눈\s*와|weather|temperature|rain|snow)/i.test(question)) {
+    return language === 'ko'
+      ? '실시간 날씨는 제가 확인해드리기 어려워요. 대신 우수의 프로젝트 흐름은 꽤 맑게 정리해드릴 수 있습니다. 대표 프로젝트부터 볼까요?'
+      : "I cannot check live weather here. I can give you a much clearer forecast of Oosu's project flow, though. Want the representative projects first?";
+  }
+
+  if (/(농담|유머|심심|지루|joke|bored)/i.test(question)) {
+    return language === 'ko'
+      ? '가볍게 웃고 가는 건 좋아요. 다만 여기서는 잡담을 길게 끌기보다 우수의 프로젝트, 기술 스택, 커리어 방향으로 다시 돌아가볼게요.'
+      : "A little levity is welcome. I will keep it short here and steer us back to Oosu's projects, tech stack, or career direction.";
+  }
+
+  if (/(점심|저녁|아침|먹|lunch|dinner|breakfast|eat)/i.test(question)) {
+    return language === 'ko'
+      ? '메뉴 추천은 잠깐만 맡길게요. 이 공간에서는 우수의 대표 프로젝트나 기술 스택을 고르는 쪽이 제 전문이에요.'
+      : "I will leave menu picks to someone hungrier. In this space, I am better at helping you choose which Oosu project or tech stack to inspect first.";
+  }
+
+  const variants =
+    language === 'ko'
+      ? [
+          '그쪽 이야기도 살짝은 받을 수 있지만, AskOosu에서는 우수의 프로젝트와 기술 경험을 소개하는 데 집중할게요. 어떤 프로젝트부터 볼까요?',
+          '좋은 샛길이긴 한데, 오래 벗어나진 않을게요. 여기서는 우수의 커리어 방향, 기술 스택, 대표 프로젝트를 가장 잘 안내할 수 있어요.',
+          '가볍게 받아치면 좋죠. 다만 이 포트폴리오에서는 우수의 작업 방식이나 프로젝트 맥락으로 다시 돌아오는 게 제 역할이에요.',
+        ]
+      : [
+          "I can play along briefly, but AskOosu is here to keep the spotlight on Oosu's work. Want projects, tech stack, career story, or contact options?",
+          "Fun detour, but I should keep us close to the portfolio. I can walk you through Oosu's projects, architecture, or working style.",
+          "I will keep that light and not drift too far. Back in AskOosu, the useful threads are projects, stack, career direction, and contact.",
+        ];
+
+  return variants[stableIndex(question, variants.length)];
+}
+
+function isLightTranslationRequest(question: string) {
+  return /우주(?:를|을)?\s*영어로/.test(question);
+}
+
+function stableIndex(value: string, modulo: number) {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+  }
+  return hash % modulo;
 }
 
 const CONVERSATION_DIRECT_ANSWERS: Record<
