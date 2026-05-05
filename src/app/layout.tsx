@@ -113,6 +113,10 @@ export const metadata: Metadata = {
   },
 };
 
+const shouldLoadVercelAnalytics =
+  process.env.VERCEL === '1' ||
+  process.env.NEXT_PUBLIC_ENABLE_VERCEL_ANALYTICS === 'true';
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -146,7 +150,7 @@ export default function RootLayout({
           </Suspense>
           <main className="flex min-h-screen flex-col">{children}</main>
           <Toaster />
-          <Analytics />
+          {shouldLoadVercelAnalytics ? <Analytics /> : null}
         </ThemeProvider>
       </body>
     </html>
