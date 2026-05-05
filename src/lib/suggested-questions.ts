@@ -21,6 +21,17 @@ export type SuggestedQuestion = QuestionTrigger & {
   renderSpec?: string;
 };
 
+const legacySuggestedQuestionIds: Record<string, string> = {
+  bestProjects: 'home.projects.top3',
+  developerType: 'home.profile.intro',
+  nowBuilding: 'home.projects.top3',
+  techStack: 'home.skills.level',
+  aiUsage: 'home.ai.workflow',
+  fullstackAiGrowth: 'home.profile.intro',
+  conversationalPortfolio: 'home.ai.workflow',
+  contactCollab: 'home.contact',
+};
+
 const questionSurfaces: Record<DisplayLanguage, QuestionTrigger[]> = {
   ko: questionSurfacesKo,
   en: questionSurfacesEn,
@@ -84,7 +95,7 @@ export function getSuggestedQuestionMeta(
   language?: DisplayLanguage
 ) {
   if (!id) return null;
-  const normalizedId = id.trim();
+  const normalizedId = legacySuggestedQuestionIds[id.trim()] ?? id.trim();
   if (!normalizedId) return null;
 
   const languages = language ? [language] : (['ko', 'en'] as const);
