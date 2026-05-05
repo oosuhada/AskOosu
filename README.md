@@ -22,9 +22,10 @@ Instead of a static portfolio, this project uses a chat-first interface: visitor
 - GitHub: https://github.com/oosuhada
 - LinkedIn: https://www.linkedin.com/in/oosuhada/
 - Instagram: https://www.instagram.com/oosu.hada
+- AskOosu: https://oosu.dev
 - AskOosu Wiki: https://www.notion.so/355a342869018181b578d73a791356af
-- Source Notion page: https://www.notion.so/401a342869018248a3f881a3e5fbef07
-- 2025 portfolio: https://oosuhada.github.io/portfoli-oh/
+- Source Notion page: https://www.notion.so/355a342869018181b578d73a791356af
+- 2025 portfolio: https://portfoli-oh.oosu.dev
 - 2025 portfolio repository: https://github.com/oosuhada/portfoli-oh
 
 ## Run Locally
@@ -58,7 +59,8 @@ GROQ_KEY_QUOTA_COOLDOWN_MS=3600000
 # Optional Notion RAG
 NOTION_API_KEY=your_notion_integration_secret
 NOTION_VERSION=2026-03-11
-ASKOOSU_NOTION_PAGE_IDS=401a342869018248a3f881a3e5fbef07
+NOTION_PAGE_ID=355a342869018181b578d73a791356af
+ASKOOSU_NOTION_PAGE_IDS=355a342869018181b578d73a791356af
 ASKOOSU_NOTION_DATABASE_IDS=
 ASKOOSU_NOTION_DATA_SOURCE_IDS=
 ASKOOSU_RAG_STORE=memory

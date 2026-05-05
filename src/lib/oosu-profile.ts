@@ -11,11 +11,12 @@ export const oosuProfile = {
   github: 'https://github.com/oosuhada',
   linkedin: 'https://www.linkedin.com/in/oosuhada/',
   instagram: 'https://www.instagram.com/oosu.hada',
-  currentPortfolio: 'https://github.com/oosuhada/AskOosu',
-  legacyPortfolioUrl: 'https://oosuhada.github.io/portfoli-oh/',
+  currentPortfolioUrl: 'https://oosu.dev',
+  currentPortfolioGithub: 'https://github.com/oosuhada/AskOosu',
+  legacyPortfolioUrl: 'https://portfoli-oh.oosu.dev',
   legacyPortfolioGithub: 'https://github.com/oosuhada/portfoli-oh',
   notionWikiUrl: 'https://www.notion.so/355a342869018181b578d73a791356af',
-  notionSourceUrl: 'https://www.notion.so/401a342869018248a3f881a3e5fbef07',
+  notionSourceUrl: 'https://www.notion.so/355a342869018181b578d73a791356af',
   resumeKoUrl: '',
   resumeEnUrl: '',
   wikiSource: 'Notion RAG source',
@@ -37,29 +38,35 @@ export const oosuProjects = [
     category: 'AI Portfolio',
     date: '2026',
     description:
-      'AskOosu is a 2026 portfolio interface connected to an AI backend. Instead of asking visitors to scroll through static sections, it lets them ask natural language questions and receive answers about Oosu, projects, skills, portfolio work, and future wiki knowledge. The latest profile and project source is planned to come from Notion.',
+      'AskOosu is a 2026 AI-connected portfolio deployed at oosu.dev on a Mac mini home server. Instead of asking visitors to scroll through static sections, it uses a Next.js chat UI, Vercel AI SDK, Groq, Notion RAG, and PostgreSQL-backed evidence to answer questions about Oosu, projects, skills, and portfolio work.',
     techStack: [
       'Next.js',
       'React',
       'TypeScript',
       'Tailwind CSS',
       'Vercel AI SDK',
-      'OpenAI',
-      'Tool Calling',
+      'Groq',
       'Notion API',
       'RAG',
+      'PostgreSQL',
+      'Docker Compose',
+      'Mac mini',
     ],
     links: [
       {
+        name: 'Live Site',
+        url: oosuProfile.currentPortfolioUrl,
+      },
+      {
         name: 'GitHub',
-        url: oosuProfile.currentPortfolio,
+        url: oosuProfile.currentPortfolioGithub,
       },
       {
         name: 'Notion Wiki',
         url: oosuProfile.notionWikiUrl,
       },
       {
-        name: 'Source Notion Page',
+        name: 'RAG Source Page',
         url: oosuProfile.notionSourceUrl,
       },
     ],
@@ -84,7 +91,7 @@ export const oosuProjects = [
     links: [
       {
         name: 'Live Site',
-        url: 'https://oosuhada-instagram-web.fly.dev/',
+        url: 'https://aigram.oosu.dev',
       },
     ],
     images: [
@@ -104,7 +111,7 @@ export const oosuProjects = [
     links: [
       {
         name: 'Live Site',
-        url: 'https://stks-kr.vercel.app/',
+        url: 'https://stks.oosu.dev',
       },
     ],
     images: [

@@ -1,14 +1,16 @@
 # AskOosu RAG Setup
 
-`docs/wiki/notion-wiki-draft-v9.md` is the canonical Markdown source for the AskOosu Notion wiki.
+`docs/notion-wiki-draft-v10-ko.md` and `docs/notion-wiki-draft-v10-en.md` are the canonical language-managed Markdown sources for the AskOosu Notion wiki.
 
 ## Notion Import Checklist
 
-1. Import `docs/wiki/notion-wiki-draft-v9.md` into Notion as Markdown.
-2. Create a Notion integration for AskOosu RAG.
-3. Share the imported Notion page with that integration.
-4. Copy the imported page id into `.env.local`.
-5. Run `/api/rag/sync` after the page and environment variables are ready.
+1. Open the parent Notion page `AskOosu Wiki` (`355a342869018181b578d73a791356af`).
+2. Import `docs/notion-wiki-draft-v10-ko.md` as a `KO` child page.
+3. Import `docs/notion-wiki-draft-v10-en.md` as an `EN` child page.
+4. Create a Notion integration for AskOosu RAG.
+5. Share the parent `AskOosu Wiki` page and both child pages with that integration.
+6. Use the parent page id as the sync target.
+7. Run `/api/rag/sync` after the page and environment variables are ready.
 
 ## Environment Variables
 
@@ -16,16 +18,13 @@ Use real values only in `.env.local` or the deployment environment. Do not commi
 
 ```env
 NOTION_API_KEY=
-NOTION_PAGE_ID=
+NOTION_PAGE_ID=355a342869018181b578d73a791356af
+ASKOOSU_NOTION_PAGE_IDS=355a342869018181b578d73a791356af
 GROQ_API_KEY=
 DATABASE_URL=
 ```
 
-The current Next.js sync code reads `ASKOOSU_NOTION_PAGE_IDS`, so copy the same Notion page id there as well when running the app:
-
-```env
-ASKOOSU_NOTION_PAGE_IDS=
-```
+The sync route reads `NOTION_PAGE_ID` first and falls back to the first value in `ASKOOSU_NOTION_PAGE_IDS`.
 
 ## Database Migration
 
