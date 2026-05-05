@@ -124,6 +124,24 @@ After a successful `/api/rag/sync`, AskOosu invalidates generated `answer_cache`
 
 Rate limiting defaults to Postgres when `DATABASE_URL` or `POSTGRES_URL` is configured. Set `ASKOOSU_RATE_LIMIT_STORE=memory` only for local development without Postgres; production should keep the Postgres store so counters survive app restarts and remain consistent across future app instances.
 
+## Logs
+
+AskOosu writes structured JSON logs to stdout/stderr. Each line includes `ts`, `level`, `svc=askoosu`, `event`, `requestId`, and `route`, plus safe route/provider fields such as language, answer source, confidence, matched entity ids, source count, provider/model, latency, and error code. Logs do not include secrets, API keys, raw prompts, full user messages, full answers, or retrieved context.
+
+Inspect recent app logs from the Docker host:
+
+```bash
+docker logs askoosu-app --since 1h
+```
+
+With Compose:
+
+```bash
+docker compose -f ops/orbstack/compose.prod.yml logs --since 1h app
+```
+
+External log shipping can be added later by collecting container stdout/stderr and forwarding these JSON lines to the chosen logging backend.
+
 ## Google Vertex Fallback
 
 Groq remains the primary provider. Google Vertex is a fallback only when credentials and env are configured.

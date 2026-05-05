@@ -6,6 +6,7 @@ import { createVertex } from '@ai-sdk/google-vertex';
 import { createGroq } from '@ai-sdk/groq';
 import { openai } from '@ai-sdk/openai';
 import { createXai } from '@ai-sdk/xai';
+import { logInfo, logWarn } from '@/lib/observability/logger';
 
 export type ChatProviderName = 'openai' | 'xai' | 'groq' | 'google_vertex';
 type XaiApiMode = 'responses' | 'chat';
@@ -131,12 +132,26 @@ export function recordChatModelFailure(
     state.failureCount = getGroqFailureThreshold();
     state.disabledUntil = now + getGroqQuotaCooldownMs();
     state.disabledReason = 'quota';
+    logGroqKeyDisabled({
+      groqKeyId: selection.groqKeyId,
+      reason: state.disabledReason,
+      disabledUntil: state.disabledUntil,
+      failureCount: state.failureCount,
+      errorCode: getChatProviderErrorCode(error),
+    });
   } else {
     state.failureCount += 1;
 
     if (state.failureCount >= getGroqFailureThreshold()) {
       state.disabledUntil = now + getGroqCooldownMs();
       state.disabledReason = 'failures';
+      logGroqKeyDisabled({
+        groqKeyId: selection.groqKeyId,
+        reason: state.disabledReason,
+        disabledUntil: state.disabledUntil,
+        failureCount: state.failureCount,
+        errorCode: getChatProviderErrorCode(error),
+      });
     }
   }
 
@@ -296,6 +311,11 @@ function selectGroqCredential() {
       state.failureCount = 0;
       state.disabledUntil = 0;
       state.disabledReason = undefined;
+      logInfo('ai.groq_key_reactivated', {
+        route: 'api/chat',
+        provider: 'groq',
+        groqKeyId: credential.id,
+      });
     }
   }
 
@@ -317,10 +337,16 @@ function selectGroqCredential() {
     })
   );
 
+  const nextReactivationAt = new Date(nextReactivation).toISOString();
+  logWarn('ai.groq_key_pool_exhausted', {
+    route: 'api/chat',
+    provider: 'groq',
+    keyCount: credentials.length,
+    nextReactivationAt,
+  });
+
   throw new Error(
-    `All configured Groq keys are cooling down. Next key reactivates at ${new Date(
-      nextReactivation
-    ).toISOString()}.`
+    `All configured Groq keys are cooling down. Next key reactivates at ${nextReactivationAt}.`
   );
 }
 
@@ -417,6 +443,30 @@ function getOrCreateGroqRuntimeState(keyId: string) {
 
   pool.keys.set(keyId, nextState);
   return nextState;
+}
+
+function logGroqKeyDisabled({
+  groqKeyId,
+  reason,
+  disabledUntil,
+  failureCount,
+  errorCode,
+}: {
+  groqKeyId: string;
+  reason: 'failures' | 'quota';
+  disabledUntil: number;
+  failureCount: number;
+  errorCode: string;
+}) {
+  logWarn('ai.groq_key_disabled', {
+    route: 'api/chat',
+    provider: 'groq',
+    groqKeyId,
+    reason,
+    disabledUntil: new Date(disabledUntil).toISOString(),
+    failureCount,
+    errorCode,
+  });
 }
 
 function getProviderFailure(error: unknown) {

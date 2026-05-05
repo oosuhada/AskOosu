@@ -49,6 +49,8 @@ FAQ routing now lives in `src/lib/faq/semantic-router.ts`. It builds canonical c
 
 Answer confidence is stored as structured signals on `metadata.confidenceSignals`: `retrieval`, `intent`, `freshness`, `grounding`, and `final`. The legacy `metadata.confidence` field is still returned for compatibility and mirrors `confidenceSignals.final`, so answer cache policy can continue using one final number while debug tooling can inspect the contributing signals. Public UI shows only groundedness labels (`Well grounded`, `Partially grounded`, `Limited evidence`) and does not expose numeric signal values unless `debug=true` is enabled.
 
+Chat and provider observability uses `src/lib/observability/logger.ts`. It writes one JSON object per line with `ts`, `level`, `svc=askoosu`, `event`, `requestId`, `route`, and safe event fields. `/api/chat` emits `chat.request_received`, `chat.route_decided`, `chat.cache_hit`, `chat.generation_started`, `chat.generation_completed`, `chat.fallback_returned`, and `chat.request_failed`. Provider calls emit `ai.provider_attempt` with provider, model, attempt index, success, latency, error code, Groq key id, answer source, and fallback reason. Logs intentionally avoid secrets, API keys, raw prompts, full user messages, full answers, and retrieved context; local question previews are truncated and disabled by default in production.
+
 Routing modes:
 
 - `direct`: high-confidence, unambiguous FAQ match. The direct threshold defaults to `ASKOOSU_FAQ_SEMANTIC_DIRECT_MIN=0.88`, and the top result must beat the second result by `ASKOOSU_FAQ_SEMANTIC_MARGIN_MIN=0.12`.
