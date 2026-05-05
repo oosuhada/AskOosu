@@ -22,6 +22,8 @@ Chat orchestration is intentionally cache-first:
 3. `src/lib/ai/providers.ts` selects the provider and keeps Groq key-pool/cooldown behavior isolated from the route.
 4. Generated answers are written back to `answer_cache`, while provider success/failure is logged in `ai_provider_usage` and `ai_provider_status`.
 
+Rate limits use `src/lib/rate-limit.ts` with the same `checkRateLimit` and `checkRateLimitForKey` API for request and session scopes. `ASKOOSU_RATE_LIMIT_STORE=postgres` stores counters in the `rate_limit_buckets` table using atomic Postgres upserts, so limits survive app restarts and work across future multi-instance deployments. If Postgres is unavailable or `ASKOOSU_RATE_LIMIT_STORE=memory`, the limiter falls back to in-process buckets for local development.
+
 `answer_cache` rows carry `matched_entity_ids` and `source_chunk_ids` so RAG sync can invalidate stale generated answers after Wiki changes. Cache reads require a fresh `created_at` within `ASKOOSU_ANSWER_CACHE_TTL_HOURS`, `invalidated_at IS NULL`, confidence >= `0.7`, and a non-fallback answer source. Cache writes are skipped for TODO evidence, warnings, safe fallbacks, insufficient-evidence answers, prompt-leakage guardrails, and low-confidence answers.
 
 Model selection is isolated in `src/lib/ai/providers.ts` with a compatibility re-export from `src/app/api/chat/model-provider.ts`:
@@ -140,6 +142,7 @@ ASKOOSU_WIKI_VERSION=v10
 ASKOOSU_ANSWER_CACHE_TTL_HOURS=24
 ASKOOSU_RAG_SYNC_LOCK_TTL_SECONDS=300
 ASKOOSU_CHAT_MAX_REQUEST_BYTES=32768
+ASKOOSU_RATE_LIMIT_STORE=postgres
 ASKOOSU_FAQ_SEMANTIC_ROUTER_ENABLED=true
 ASKOOSU_FAQ_SEMANTIC_DIRECT_MIN=0.88
 ASKOOSU_FAQ_SEMANTIC_REWRITE_MIN=0.76

@@ -1,3 +1,8 @@
+import {
+  checkPostgresRateLimit,
+  hasPostgresDatabaseUrl,
+} from './rate-limit/database';
+
 type RateLimitConfig = {
   scope: string;
   windowMs: number;
@@ -17,6 +22,8 @@ type RateLimitResult = {
   retryAfter: number;
 };
 
+type RateLimitStore = 'memory' | 'postgres';
+
 declare global {
   // eslint-disable-next-line no-var
   var askOosuRateLimitBuckets: Map<string, RateLimitState> | undefined;
@@ -25,26 +32,55 @@ declare global {
 const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 let lastCleanupAt = 0;
 
-export function checkRateLimit(
+export type { RateLimitConfig, RateLimitResult };
+
+export async function checkRateLimit(
   req: Request,
   config: RateLimitConfig
-): RateLimitResult {
+): Promise<RateLimitResult> {
   return checkRateLimitForKey(getClientIp(req), config);
 }
 
-export function checkRateLimitForKey(
+export async function checkRateLimitForKey(
   rawKey: string,
+  config: RateLimitConfig
+): Promise<RateLimitResult> {
+  const key = normalizeRateLimitKey(rawKey);
+  const scope = normalizeRateLimitScope(config.scope);
+
+  if (getRateLimitStore() === 'postgres') {
+    try {
+      return await checkPostgresRateLimit({
+        key,
+        scope,
+        windowMs: config.windowMs,
+        max: config.max,
+      });
+    } catch (error) {
+      console.warn(
+        'Postgres rate limit failed; using memory fallback:',
+        getSafeError(error)
+      );
+    }
+  }
+
+  return checkMemoryRateLimit(key, scope, config);
+}
+
+function checkMemoryRateLimit(
+  key: string,
+  scope: string,
   config: RateLimitConfig
 ): RateLimitResult {
   const now = Date.now();
   const buckets = getBuckets();
-  const key = `${config.scope}:${normalizeRateLimitKey(rawKey)}`;
-  const current = buckets.get(key);
+  const bucketKey = `${scope}:${key}`;
+  const current = buckets.get(bucketKey);
 
   cleanupExpiredBuckets(buckets, now);
 
   if (!current || current.resetAt <= now) {
-    buckets.set(key, {
+    buckets.set(bucketKey, {
       count: 1,
       resetAt: now + config.windowMs,
     });
@@ -59,7 +95,7 @@ export function checkRateLimitForKey(
   }
 
   current.count += 1;
-  buckets.set(key, current);
+  buckets.set(bucketKey, current);
 
   const retryAfter = Math.max(1, Math.ceil((current.resetAt - now) / 1000));
   const remaining = Math.max(0, config.max - current.count);
@@ -75,6 +111,17 @@ export function checkRateLimitForKey(
 
 function normalizeRateLimitKey(value: string) {
   return value.trim().replace(/\s+/g, '_').slice(0, 160) || 'unknown';
+}
+
+function normalizeRateLimitScope(value: string) {
+  return value.trim().replace(/\s+/g, '_').slice(0, 120) || 'default';
+}
+
+function getRateLimitStore(): RateLimitStore {
+  const value = process.env.ASKOOSU_RATE_LIMIT_STORE?.toLowerCase();
+  if (value === 'memory') return 'memory';
+  if (value === 'postgres' && hasPostgresDatabaseUrl()) return 'postgres';
+  return hasPostgresDatabaseUrl() ? 'postgres' : 'memory';
 }
 
 export function rateLimitHeaders(result: RateLimitResult) {
@@ -126,4 +173,10 @@ function cleanupExpiredBuckets(
       buckets.delete(key);
     }
   }
+}
+
+function getSafeError(error: unknown) {
+  return error instanceof Error
+    ? { name: error.name, message: error.message }
+    : { message: 'Unknown error' };
 }

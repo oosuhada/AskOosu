@@ -21,7 +21,7 @@ const feedbackRequestSchema = z.object({
 });
 
 export async function POST(req: Request) {
-  const rateLimit = checkRateLimit(req, {
+  const rateLimit = await checkRateLimit(req, {
     scope: 'api:feedback',
     windowMs: 60 * 1000,
     max: 30,

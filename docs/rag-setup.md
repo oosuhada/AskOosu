@@ -59,6 +59,7 @@ psql "$DATABASE_URL" -f db/migrations/004_add_rag_language_and_sync_lock.sql
 psql "$DATABASE_URL" -f db/migrations/005_create_rag_search_cache.sql
 psql "$DATABASE_URL" -f db/migrations/006_add_ai_provider_usage_metadata.sql
 psql "$DATABASE_URL" -f db/migrations/007_add_answer_cache_invalidation.sql
+psql "$DATABASE_URL" -f db/migrations/008_create_rate_limit_buckets.sql
 ```
 
 For the Mac mini Docker Compose deployment, run:
@@ -78,6 +79,7 @@ The migration creates:
 - `ai_provider_status`
 - `rag_sync_locks`
 - `rag_search_cache`
+- `rate_limit_buckets`
 
 It also adds PostgreSQL indexes for `chunk_id`, `entity_id`, `source_id`, `has_todo`, metadata JSON, full-text search, and pgvector embedding search.
 
@@ -86,6 +88,8 @@ It also adds PostgreSQL indexes for `chunk_id`, `entity_id`, `source_id`, `has_t
 `answer_cache` stores generated RAG answers by normalized question, language, and wiki version so repeat questions can skip the provider call. It stores matched entity ids and source chunk ids; successful RAG sync invalidates changed-entity cache rows first, falls back to source chunk ids when entity ids are unavailable, and uses `ASKOOSU_ANSWER_CACHE_TTL_HOURS` as the final stale-cache safety net. `ai_provider_usage` and `ai_provider_status` record provider latency, token usage, success/failure, and recent status for Groq/Google fallback operations.
 
 `rag_sources.language` and `rag_chunks.language` let Korean questions search Korean chunks first and English questions search English chunks first. `rag_sync_locks` prevents two sync runs from mutating the same chunk set at the same time. `rag_search_cache` stores short-lived top chunk results so repeated free-form questions do not rerun ranking every time.
+
+`rate_limit_buckets` stores request/session counters for Postgres-backed rate limits. Set `ASKOOSU_RATE_LIMIT_STORE=memory` only when running without Postgres locally.
 
 ## Google Vertex Fallback
 
