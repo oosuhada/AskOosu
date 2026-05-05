@@ -1,13 +1,23 @@
 import { getPostgresPool, hasPostgresDatabaseUrl } from '@/lib/db/postgres';
 import type { ChatLanguage } from '@/lib/i18n/detect-language';
-import type { ChatAnswerSource } from './types';
+import type { AnswerRouteDecision, ChatAnswerSource } from './types';
 import { hashQuestion, truncateText } from './text';
 
 const DEFAULT_ANSWER_CACHE_TTL_HOURS = 24;
+const MIN_CACHEABLE_CONFIDENCE = 0.7;
 const MAX_ANSWER_CACHE_TEXT_LENGTH = 8000;
 const MAX_MODEL_LENGTH = 120;
 const MAX_PROVIDER_LENGTH = 80;
 const MAX_ERROR_CODE_LENGTH = 120;
+const MAX_INVALIDATION_REASON_LENGTH = 160;
+const PROMPT_LEAK_DETECTED_ERROR_CODE = 'prompt_leak_detected';
+
+const UNSAFE_CACHE_ANSWER_SOURCES: ChatAnswerSource[] = [
+  'fallback',
+  'insufficient_evidence',
+];
+
+let chatRuntimeSchemaPromise: Promise<void> | null = null;
 
 export type AnswerCacheRecord = {
   answer: string;
@@ -29,6 +39,10 @@ export type AnswerCacheInput = {
   confidence: number;
   provider?: string;
   model?: string;
+  hasTodoEvidence?: boolean;
+  warnings?: string[];
+  routeDecision?: AnswerRouteDecision;
+  errorCode?: string | null;
 };
 
 export type AiProviderUsageInput = {
@@ -61,6 +75,15 @@ export type AiProviderStatusRecord = {
 export { hasPostgresDatabaseUrl };
 
 export async function ensureChatRuntimeSchema() {
+  chatRuntimeSchemaPromise ??= ensureChatRuntimeSchemaOnce().catch((error) => {
+    chatRuntimeSchemaPromise = null;
+    throw error;
+  });
+
+  return chatRuntimeSchemaPromise;
+}
+
+async function ensureChatRuntimeSchemaOnce() {
   const pool = await getPostgresPool();
 
   await pool.query('CREATE EXTENSION IF NOT EXISTS pgcrypto');
@@ -79,10 +102,45 @@ export async function ensureChatRuntimeSchema() {
       model text,
       wiki_version text NOT NULL DEFAULT '',
       expires_at timestamptz,
+      invalidated_at timestamptz,
+      invalidation_reason text,
       created_at timestamptz NOT NULL DEFAULT now(),
       updated_at timestamptz NOT NULL DEFAULT now(),
       UNIQUE (question_hash, language, wiki_version)
     )
+  `);
+  await pool.query(`
+    ALTER TABLE answer_cache
+      ADD COLUMN IF NOT EXISTS matched_entity_ids text[] NOT NULL DEFAULT '{}'::text[],
+      ADD COLUMN IF NOT EXISTS source_chunk_ids text[] NOT NULL DEFAULT '{}'::text[],
+      ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now(),
+      ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now(),
+      ADD COLUMN IF NOT EXISTS invalidated_at timestamptz,
+      ADD COLUMN IF NOT EXISTS invalidation_reason text
+  `);
+  await pool.query(`
+    UPDATE answer_cache
+    SET
+      matched_entity_ids = COALESCE(matched_entity_ids, '{}'::text[]),
+      source_chunk_ids = COALESCE(source_chunk_ids, '{}'::text[]),
+      created_at = COALESCE(created_at, now()),
+      updated_at = COALESCE(updated_at, now())
+    WHERE
+      matched_entity_ids IS NULL
+      OR source_chunk_ids IS NULL
+      OR created_at IS NULL
+      OR updated_at IS NULL
+  `);
+  await pool.query(`
+    ALTER TABLE answer_cache
+      ALTER COLUMN matched_entity_ids SET DEFAULT '{}'::text[],
+      ALTER COLUMN matched_entity_ids SET NOT NULL,
+      ALTER COLUMN source_chunk_ids SET DEFAULT '{}'::text[],
+      ALTER COLUMN source_chunk_ids SET NOT NULL,
+      ALTER COLUMN created_at SET DEFAULT now(),
+      ALTER COLUMN created_at SET NOT NULL,
+      ALTER COLUMN updated_at SET DEFAULT now(),
+      ALTER COLUMN updated_at SET NOT NULL
   `);
   await pool.query(`
     CREATE TABLE IF NOT EXISTS ai_provider_usage (
@@ -123,6 +181,26 @@ export async function ensureChatRuntimeSchema() {
       ON answer_cache (expires_at)
   `);
   await pool.query(`
+    CREATE INDEX IF NOT EXISTS answer_cache_matched_entity_ids_gin_idx
+      ON answer_cache USING gin (matched_entity_ids)
+  `);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS answer_cache_source_chunk_ids_gin_idx
+      ON answer_cache USING gin (source_chunk_ids)
+  `);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS answer_cache_created_at_idx
+      ON answer_cache (created_at DESC)
+  `);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS answer_cache_updated_at_idx
+      ON answer_cache (updated_at DESC)
+  `);
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS answer_cache_invalidated_at_idx
+      ON answer_cache (invalidated_at)
+  `);
+  await pool.query(`
     CREATE INDEX IF NOT EXISTS ai_provider_usage_created_at_idx
       ON ai_provider_usage (created_at DESC)
   `);
@@ -143,6 +221,7 @@ export async function getCachedAnswer({
 
   await ensureChatRuntimeSchema();
   const pool = await getPostgresPool();
+  const ttlHours = getAnswerCacheTtlHours();
   const result = await pool.query<{
     answer: string;
     answer_source: ChatAnswerSource;
@@ -165,11 +244,22 @@ export async function getCachedAnswer({
       WHERE question_hash = $1
         AND language = $2
         AND wiki_version = $3
+        AND invalidated_at IS NULL
+        AND confidence >= $4
+        AND answer_source <> ALL($5::text[])
+        AND created_at > now() - ($6::text || ' hours')::interval
         AND (expires_at IS NULL OR expires_at > now())
       ORDER BY updated_at DESC
       LIMIT 1
     `,
-    [hashQuestion(normalizedQuestion), language, getWikiVersion()]
+    [
+      hashQuestion(normalizedQuestion),
+      language,
+      getWikiVersion(),
+      MIN_CACHEABLE_CONFIDENCE,
+      UNSAFE_CACHE_ANSWER_SOURCES,
+      String(ttlHours),
+    ]
   );
   const row = result.rows[0];
   if (!row) return null;
@@ -186,13 +276,13 @@ export async function getCachedAnswer({
 }
 
 export async function upsertCachedAnswer(input: AnswerCacheInput) {
-  if (!hasPostgresDatabaseUrl()) return;
+  if (!shouldCacheAnswer(input)) return false;
+  if (!hasPostgresDatabaseUrl()) return false;
 
   await ensureChatRuntimeSchema();
   const pool = await getPostgresPool();
   const ttlHours = getAnswerCacheTtlHours();
-  const expiresAtSql =
-    ttlHours > 0 ? `now() + ($12::text || ' hours')::interval` : 'NULL';
+  const expiresAtSql = `now() + ($12::text || ' hours')::interval`;
 
   await pool.query(
     `
@@ -222,6 +312,9 @@ export async function upsertCachedAnswer(input: AnswerCacheInput) {
         provider = EXCLUDED.provider,
         model = EXCLUDED.model,
         expires_at = EXCLUDED.expires_at,
+        invalidated_at = NULL,
+        invalidation_reason = NULL,
+        created_at = now(),
         updated_at = now()
     `,
     [
@@ -230,8 +323,8 @@ export async function upsertCachedAnswer(input: AnswerCacheInput) {
       input.language,
       truncateText(input.answer, MAX_ANSWER_CACHE_TEXT_LENGTH),
       input.answerSource,
-      input.matchedEntityIds,
-      input.sourceChunkIds,
+      normalizeCacheTextArray(input.matchedEntityIds),
+      normalizeCacheTextArray(input.sourceChunkIds),
       normalizeConfidence(input.confidence),
       input.provider ? truncateText(input.provider, MAX_PROVIDER_LENGTH) : null,
       input.model ? truncateText(input.model, MAX_MODEL_LENGTH) : null,
@@ -239,6 +332,66 @@ export async function upsertCachedAnswer(input: AnswerCacheInput) {
       String(ttlHours),
     ]
   );
+
+  return true;
+}
+
+export async function invalidateCachedAnswersForEntities(
+  entityIds: string[],
+  reason: string
+) {
+  const normalizedEntityIds = normalizeCacheTextArray(entityIds);
+  if (normalizedEntityIds.length === 0 || !hasPostgresDatabaseUrl()) return 0;
+
+  await ensureChatRuntimeSchema();
+  const pool = await getPostgresPool();
+  const result = await pool.query(
+    `
+      UPDATE answer_cache
+      SET
+        invalidated_at = now(),
+        invalidation_reason = $2,
+        updated_at = now()
+      WHERE invalidated_at IS NULL
+        AND matched_entity_ids && $1::text[]
+    `,
+    [
+      normalizedEntityIds,
+      truncateText(reason, MAX_INVALIDATION_REASON_LENGTH),
+    ]
+  );
+
+  return result.rowCount ?? 0;
+}
+
+export async function invalidateCachedAnswersForSourceChunks(
+  sourceChunkIds: string[],
+  reason: string
+) {
+  const normalizedSourceChunkIds = normalizeCacheTextArray(sourceChunkIds);
+  if (normalizedSourceChunkIds.length === 0 || !hasPostgresDatabaseUrl()) {
+    return 0;
+  }
+
+  await ensureChatRuntimeSchema();
+  const pool = await getPostgresPool();
+  const result = await pool.query(
+    `
+      UPDATE answer_cache
+      SET
+        invalidated_at = now(),
+        invalidation_reason = $2,
+        updated_at = now()
+      WHERE invalidated_at IS NULL
+        AND source_chunk_ids && $1::text[]
+    `,
+    [
+      normalizedSourceChunkIds,
+      truncateText(reason, MAX_INVALIDATION_REASON_LENGTH),
+    ]
+  );
+
+  return result.rowCount ?? 0;
 }
 
 export async function recordAiProviderUsage(input: AiProviderUsageInput) {
@@ -407,9 +560,29 @@ function getAnswerCacheTtlHours() {
   if (!value) return DEFAULT_ANSWER_CACHE_TTL_HOURS;
 
   const parsedValue = Number.parseInt(value, 10);
-  return Number.isFinite(parsedValue) && parsedValue >= 0
+  return Number.isFinite(parsedValue) && parsedValue > 0
     ? parsedValue
     : DEFAULT_ANSWER_CACHE_TTL_HOURS;
+}
+
+function shouldCacheAnswer(input: AnswerCacheInput) {
+  if (normalizeConfidence(input.confidence) < MIN_CACHEABLE_CONFIDENCE) {
+    return false;
+  }
+
+  if (input.hasTodoEvidence) return false;
+  if ((input.warnings?.length ?? 0) > 0) return false;
+  if (UNSAFE_CACHE_ANSWER_SOURCES.includes(input.answerSource)) return false;
+  if (input.routeDecision?.mode === 'safe_fallback') return false;
+  if (input.errorCode === PROMPT_LEAK_DETECTED_ERROR_CODE) return false;
+
+  return true;
+}
+
+function normalizeCacheTextArray(values: string[]) {
+  return Array.from(
+    new Set(values.map((value) => value.trim()).filter(Boolean))
+  );
 }
 
 function normalizeConfidence(value: unknown) {
