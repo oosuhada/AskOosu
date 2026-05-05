@@ -42,6 +42,8 @@ type ChatRequestBody = {
   intentId?: string | null;
   displayQuestion?: string | null;
   originalQuickLabel?: string | null;
+  answerVariant?: string | null;
+  renderSpec?: string | null;
   source?: string | null;
   conversationId?: string | null;
 };
@@ -104,6 +106,8 @@ export async function POST(req: Request) {
       intentId: body.intentId,
       displayQuestion: body.displayQuestion,
       originalQuickLabel: body.originalQuickLabel,
+      answerVariant: body.answerVariant,
+      renderSpec: body.renderSpec,
       source: body.source,
     });
 
@@ -237,6 +241,8 @@ function toUsageMetadata(metadata: unknown): Record<string, unknown> {
     'quickLabel',
     'originalQuickLabel',
     'displayQuestion',
+    'answerVariant',
+    'renderSpecKey',
     'language',
     'answerSource',
     'skippedGroq',

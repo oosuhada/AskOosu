@@ -5,6 +5,7 @@ import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { oosuProfile } from '@/lib/oosu-profile';
 import { cn } from '@/lib/utils';
+import type { QuestionSurface } from '@/data/question-surfaces.shared';
 import {
   BookOpenCheck,
   BriefcaseBusiness,
@@ -13,6 +14,7 @@ import {
   Github,
   Linkedin,
   Mail,
+  MessageSquareText,
   Sparkles,
 } from 'lucide-react';
 
@@ -53,6 +55,8 @@ type RichPayload = {
   language: 'ko' | 'en';
   badge?: string;
   todoBadge?: string;
+  renderSpecKey?: string;
+  richAnswerData?: unknown;
   answerParts: RichAnswerPart[];
   visualBlocks: VisualBlock[];
   mediaRefs: MediaRef[];
@@ -84,6 +88,18 @@ type ContactAction = {
 type DiagramStep = {
   title: string;
   description?: string;
+};
+
+type ComparisonTable = {
+  leftTitle: string;
+  rightTitle: string;
+  rows: ComparisonRow[];
+};
+
+type ComparisonRow = {
+  label: string;
+  left: string;
+  right: string;
 };
 
 export function RichAnswerRenderer({
@@ -131,8 +147,14 @@ export function RichAnswerRenderer({
 
 export function hasRichAnswerPayload(metadata: unknown) {
   if (!isRecord(metadata)) return false;
+  const richAnswerData = isRecord(metadata.richAnswerData)
+    ? metadata.richAnswerData
+    : null;
+
   return (
-    Array.isArray(metadata.answerParts) || Array.isArray(metadata.visualBlocks)
+    Array.isArray(metadata.answerParts) ||
+    Array.isArray(metadata.visualBlocks) ||
+    Array.isArray(richAnswerData?.visualBlocks)
   );
 }
 
@@ -172,6 +194,7 @@ function renderPart({
         key={`${block.type}-${index}`}
         block={block}
         mediaRefs={payload.mediaRefs}
+        language={payload.language}
       />
     );
   }
@@ -216,6 +239,16 @@ function renderPart({
 
   if (block.type === 'statelessDiagram' || block.type === 'timeline') {
     return <WorkflowSteps key={`${block.type}-${index}`} block={block} />;
+  }
+
+  if (block.type === 'comparisonTable') {
+    return (
+      <ComparisonGrid
+        key={`${block.type}-${index}`}
+        block={block}
+        language={payload.language}
+      />
+    );
   }
 
   if (block.type === 'profileCard') {
@@ -267,9 +300,11 @@ function MarkdownBlock({ content }: { content: string }) {
 function ProjectShowcaseCards({
   block,
   mediaRefs,
+  language,
 }: {
   block: VisualBlock;
   mediaRefs: MediaRef[];
+  language: 'ko' | 'en';
 }) {
   const projects = block.items.map(parseProjectItem).filter(isDefined);
   if (projects.length === 0) return null;
@@ -316,19 +351,82 @@ function ProjectShowcaseCards({
                   </span>
                 ))}
               </div>
-              {project.href && (
-                <a
-                  href={project.href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:underline dark:text-blue-300"
-                >
-                  Open
-                  <ExternalLink className="h-3.5 w-3.5" />
-                </a>
-              )}
+              <div className="flex flex-wrap gap-2 pt-1">
+                {surfaceForProject(project.id) && (
+                  <button
+                    type="button"
+                    onClick={() => switchQuestionSurface(project.id)}
+                    className="bg-background hover:bg-accent hover:text-accent-foreground inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition"
+                  >
+                    <MessageSquareText className="h-3.5 w-3.5" />
+                    {language === 'ko' ? '관련 질문' : 'Questions'}
+                  </button>
+                )}
+                {project.href && (
+                  <a
+                    href={project.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-background hover:bg-accent hover:text-accent-foreground inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition"
+                  >
+                    {language === 'ko' ? '열기' : 'Open'}
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                )}
+              </div>
             </div>
           </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function ComparisonGrid({
+  block,
+  language,
+}: {
+  block: VisualBlock;
+  language: 'ko' | 'en';
+}) {
+  const tables = block.items.map(parseComparisonTable).filter(isDefined);
+  if (tables.length === 0) return null;
+
+  return (
+    <section className="space-y-2" aria-label={block.title ?? 'Comparison'}>
+      {block.title && (
+        <h3 className="text-sm font-semibold tracking-normal">{block.title}</h3>
+      )}
+      <div className="space-y-3">
+        {tables.map((table, tableIndex) => (
+          <div
+            key={`${table.leftTitle}-${table.rightTitle}-${tableIndex}`}
+            className="overflow-hidden rounded-lg border bg-white/70 dark:bg-white/[0.05]"
+          >
+            <div className="grid grid-cols-[0.72fr_1fr_1fr] border-b bg-slate-50 text-xs font-semibold dark:bg-slate-900/40">
+              <div className="px-3 py-2 text-slate-500 dark:text-slate-400">
+                {language === 'ko' ? '기준' : 'Criteria'}
+              </div>
+              <div className="border-l px-3 py-2">{table.leftTitle}</div>
+              <div className="border-l px-3 py-2">{table.rightTitle}</div>
+            </div>
+            {table.rows.map((row) => (
+              <div
+                key={row.label}
+                className="grid grid-cols-[0.72fr_1fr_1fr] border-b last:border-b-0"
+              >
+                <div className="bg-slate-50/70 px-3 py-2 text-xs font-medium text-slate-600 dark:bg-slate-900/25 dark:text-slate-300">
+                  {row.label}
+                </div>
+                <div className="border-l px-3 py-2 text-xs leading-relaxed">
+                  {row.left}
+                </div>
+                <div className="border-l px-3 py-2 text-xs leading-relaxed">
+                  {row.right}
+                </div>
+              </div>
+            ))}
+          </div>
         ))}
       </div>
     </section>
@@ -678,9 +776,27 @@ function componentNameForBlock(blockType: string) {
 function parseRichPayload(metadata: unknown): RichPayload | null {
   if (!isRecord(metadata)) return null;
 
-  const visualBlocks = Array.isArray(metadata.visualBlocks)
-    ? metadata.visualBlocks.map(parseVisualBlock).filter(isDefined)
-    : [];
+  const richAnswerData = metadata.richAnswerData;
+  const nestedRichData = isRecord(richAnswerData) ? richAnswerData : null;
+  const visualBlockSource = Array.isArray(metadata.visualBlocks)
+    ? metadata.visualBlocks
+    : Array.isArray(nestedRichData?.visualBlocks)
+      ? nestedRichData.visualBlocks
+      : [];
+  const mediaRefSource = Array.isArray(metadata.mediaRefs)
+    ? metadata.mediaRefs
+    : Array.isArray(nestedRichData?.mediaRefs)
+      ? nestedRichData.mediaRefs
+      : [];
+  const sourceChunkIdsSource = Array.isArray(metadata.sourceChunkIds)
+    ? metadata.sourceChunkIds
+    : Array.isArray(nestedRichData?.sourceChunkIds)
+      ? nestedRichData.sourceChunkIds
+      : [];
+
+  const visualBlocks = visualBlockSource
+    .map(parseVisualBlock)
+    .filter(isDefined);
   const answerParts = Array.isArray(metadata.answerParts)
     ? metadata.answerParts.map(parseAnswerPart).filter(isDefined)
     : [];
@@ -691,12 +807,12 @@ function parseRichPayload(metadata: unknown): RichPayload | null {
     language: metadata.language === 'ko' ? 'ko' : 'en',
     badge: parseString(metadata.badge) ?? undefined,
     todoBadge: parseString(metadata.todoBadge) ?? undefined,
+    renderSpecKey: parseString(metadata.renderSpecKey) ?? undefined,
+    richAnswerData,
     answerParts,
     visualBlocks,
-    mediaRefs: Array.isArray(metadata.mediaRefs)
-      ? metadata.mediaRefs.map(parseMediaRef).filter(isDefined)
-      : [],
-    sourceChunkIds: parseStringArray(metadata.sourceChunkIds),
+    mediaRefs: mediaRefSource.map(parseMediaRef).filter(isDefined),
+    sourceChunkIds: parseStringArray(sourceChunkIdsSource),
   };
 }
 
@@ -820,6 +936,62 @@ function parseDiagramStep(value: unknown): DiagramStep | null {
     title,
     description: parseString(value.description) ?? undefined,
   };
+}
+
+function parseComparisonTable(value: unknown): ComparisonTable | null {
+  if (!isRecord(value)) return null;
+  const leftTitle = parseString(value.leftTitle);
+  const rightTitle = parseString(value.rightTitle);
+  const rows = Array.isArray(value.rows)
+    ? value.rows.map(parseComparisonRow).filter(isDefined)
+    : [];
+
+  if (!leftTitle || !rightTitle || rows.length === 0) return null;
+
+  return {
+    leftTitle,
+    rightTitle,
+    rows,
+  };
+}
+
+function parseComparisonRow(value: unknown): ComparisonRow | null {
+  if (!isRecord(value)) return null;
+  const label = parseString(value.label);
+  const left = parseString(value.left);
+  const right = parseString(value.right);
+
+  if (!label || !left || !right) return null;
+
+  return { label, left, right };
+}
+
+function surfaceForProject(projectId: string): QuestionSurface | null {
+  const normalizedId = projectId.trim().toLowerCase();
+  const surfaceByProjectId: Record<string, QuestionSurface> = {
+    askoosu: 'project.askoosu',
+    askoosu_2026: 'project.askoosu',
+    instagram_clone: 'project.instagram',
+    instagram: 'project.instagram',
+    sticks_and_stones: 'project.sticks',
+    sticks: 'project.sticks',
+    portfoliooh: 'project.portfoliooh',
+    portfolio_oh: 'project.portfoliooh',
+    portfoli_oh: 'project.portfoliooh',
+  };
+
+  return surfaceByProjectId[normalizedId] ?? null;
+}
+
+function switchQuestionSurface(projectId: string) {
+  const surface = surfaceForProject(projectId);
+  if (!surface || typeof window === 'undefined') return;
+
+  window.dispatchEvent(
+    new CustomEvent('askoosu:question-surface', {
+      detail: { surface },
+    })
+  );
 }
 
 function iconForAction(kind: string) {

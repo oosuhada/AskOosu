@@ -6,12 +6,16 @@ import {
   suggestedQuestionIds,
   type SuggestedQuestionId,
 } from '@/lib/suggested-questions';
+import type { QuestionSurface } from '@/data/question-surfaces.shared';
 import { useDisplayPreferences } from '@/lib/use-display-preferences';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const ASKED_QUESTIONS_STORAGE_KEY = 'ask-oosu-asked-question-ids';
 
-export function useSuggestedQuestions(limit = 5) {
+export function useSuggestedQuestions(
+  limit = 5,
+  surface: QuestionSurface = 'home'
+) {
   const { language } = useDisplayPreferences();
   const [askedQuestionIds, setAskedQuestionIds] = useState<
     SuggestedQuestionId[]
@@ -22,8 +26,8 @@ export function useSuggestedQuestions(limit = 5) {
   }, []);
 
   const allQuestions = useMemo(
-    () => getSuggestedQuestions(language),
-    [language]
+    () => getSuggestedQuestions(language, surface),
+    [language, surface]
   );
 
   const visibleQuestions = useMemo(() => {

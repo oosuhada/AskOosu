@@ -1,0 +1,96 @@
+import type { RenderSpecDefinition } from './render-specs.shared';
+
+export const renderSpecsEn = [
+  {
+    key: 'profile_hero_card',
+    component: 'ProfileHeroCard',
+    priority: 'A',
+    title: 'Profile hero',
+    description: 'Shows portrait, name, title, location, and core chips first.',
+  },
+  {
+    key: 'project_showcase_carousel',
+    component: 'ProjectShowcaseCarousel',
+    priority: 'A',
+    title: 'Project showcase',
+    description: 'Shows the top three projects as strong cards.',
+  },
+  {
+    key: 'skills_cloud_card',
+    component: 'SkillsCloudCard',
+    priority: 'A',
+    title: 'Skills cloud',
+    description: 'Groups skill chips by category with project evidence.',
+  },
+  {
+    key: 'contact_opportunity_card',
+    component: 'ContactOpportunityCard',
+    priority: 'A',
+    title: 'Contact opportunity',
+    description:
+      'Structures contact channels, target roles, and collaboration fit.',
+  },
+  {
+    key: 'tooling_workflow_steps',
+    component: 'ToolingWorkflowSteps',
+    priority: 'A',
+    title: 'AI tooling workflow',
+    description: 'Shows plan, build, review, test, and ship as workflow cards.',
+  },
+  {
+    key: 'product_spotlight_card',
+    component: 'ProductSpotlightCard',
+    priority: 'A',
+    title: 'Product spotlight',
+    description: 'Highlights AskOosu problem framing and product structure.',
+  },
+  {
+    key: 'architecture_steps_diagram',
+    component: 'ArchitectureStepsDiagram',
+    priority: 'B',
+    title: 'Architecture steps',
+    description: 'Shows Notion, sync, DB, search, model, and UI as a flow.',
+  },
+  {
+    key: 'deployment_stack_flow',
+    component: 'DeploymentStackFlow',
+    priority: 'A',
+    title: 'Deployment stack',
+    description: 'Splits content, app, data, and infrastructure/domain layers.',
+  },
+  {
+    key: 'comparison_grid',
+    component: 'ComparisonGrid',
+    priority: 'A',
+    title: 'Comparison grid',
+    description: 'Explains two concepts or projects with a two-column grid.',
+  },
+  {
+    key: 'project_tech_usage_cards',
+    component: 'ProjectTechUsageCards',
+    priority: 'A',
+    title: 'Project tech usage',
+    description: 'Shows backend/database context and lessons by project.',
+  },
+  {
+    key: 'thirty_day_plan_timeline',
+    component: 'ThirtyDayPlanTimeline',
+    priority: 'A',
+    title: '30-day plan',
+    description: 'Shows a 0-10, 10-20, and 20-30 day contribution timeline.',
+  },
+  {
+    key: 'collaboration_fit_card',
+    component: 'CollaborationFitCard',
+    priority: 'A',
+    title: 'Collaboration fit',
+    description: 'Shows preferred project types and why they fit.',
+  },
+  {
+    key: 'ui_principles_cards',
+    component: 'UiPrinciplesCards',
+    priority: 'A',
+    title: 'UI principles',
+    description: 'Shows AskOosu UI/UX principles as 3-4 cards.',
+  },
+] satisfies RenderSpecDefinition[];

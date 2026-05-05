@@ -1,9 +1,7 @@
 import { useSuggestedQuestions } from '@/hooks/use-suggested-questions';
+import type { QuestionSurface } from '@/data/question-surfaces.shared';
 import { getUiText } from '@/lib/i18n';
-import type {
-  SuggestedQuestion,
-  SuggestedQuestionId,
-} from '@/lib/suggested-questions';
+import type { SuggestedQuestion } from '@/lib/suggested-questions';
 import { useDisplayPreferences } from '@/lib/use-display-preferences';
 import {
   BriefcaseBusiness,
@@ -16,36 +14,43 @@ import {
   Sparkles,
 } from 'lucide-react';
 import type { ElementType } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface HelperBoostProps {
   submitQuery?: (query: string, suggestedQuestion?: SuggestedQuestion) => void;
   setInput?: (value: string) => void;
+  activeSurface?: QuestionSurface;
   hasReachedLimit?: boolean;
 }
 
-const questionConfig: Record<
-  SuggestedQuestionId,
-  { color: string; icon: ElementType }
-> = {
-  bestProjects: { color: '#246BFE', icon: BriefcaseBusiness },
-  developerType: { color: '#188B75', icon: MessageSquareText },
-  nowBuilding: { color: '#D04E6B', icon: Sparkles },
-  techStack: { color: '#856ED9', icon: Layers },
-  aiUsage: { color: '#0F8AA3', icon: LibraryBig },
-  fullstackAiGrowth: { color: '#A15C1F', icon: Layers },
-  conversationalPortfolio: { color: '#8B5CF6', icon: LibraryBig },
-  contactCollab: { color: '#C19433', icon: Mail },
+const questionConfig: Record<string, { color: string; icon: ElementType }> = {
+  'home.projects.top3': { color: '#246BFE', icon: BriefcaseBusiness },
+  'home.profile.intro': { color: '#188B75', icon: MessageSquareText },
+  'home.skills.level': { color: '#856ED9', icon: Layers },
+  'home.ai.workflow': { color: '#0F8AA3', icon: LibraryBig },
+  'home.contact': { color: '#C19433', icon: Mail },
+  'project.askoosu.overview': { color: '#D04E6B', icon: Sparkles },
+  'project.askoosu.rag': { color: '#A15C1F', icon: Layers },
+  'project.askoosu.visual_ui': { color: '#8B5CF6', icon: LibraryBig },
+  'project.askoosu.deployment': { color: '#246BFE', icon: BriefcaseBusiness },
 };
 
 export default function HelperBoost({
   submitQuery,
+  activeSurface = 'home',
   hasReachedLimit = false,
 }: HelperBoostProps) {
   const [isVisible, setIsVisible] = useState(true);
   const { language } = useDisplayPreferences();
   const text = getUiText(language);
-  const { visibleQuestions, markQuestionAsked } = useSuggestedQuestions(5);
+  const { visibleQuestions, markQuestionAsked } = useSuggestedQuestions(
+    5,
+    activeSurface
+  );
+
+  useEffect(() => {
+    setIsVisible(true);
+  }, [activeSurface]);
 
   return (
     <div className="w-full">
@@ -55,7 +60,10 @@ export default function HelperBoost({
           className="-mx-2 mb-2 flex snap-x gap-2 overflow-x-auto px-2 pb-1 md:mx-0 md:flex-wrap md:justify-center md:gap-3 md:overflow-visible md:px-0 md:pb-0"
         >
           {visibleQuestions.map((question) => {
-            const { color, icon: Icon } = questionConfig[question.id];
+            const { color, icon: Icon } = questionConfig[question.id] ?? {
+              color: '#64748B',
+              icon: Sparkles,
+            };
 
             return (
               <button

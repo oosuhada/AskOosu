@@ -1,5 +1,6 @@
 'use client';
 import { useOutsideClick } from '@/hooks/use-outside-click';
+import type { QuestionSurface } from '@/data/question-surfaces.shared';
 import { cn } from '@/lib/utils';
 import {
   IconArrowNarrowLeft,
@@ -10,6 +11,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import Image, { ImageProps } from 'next/image';
 import React, {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useRef,
@@ -20,6 +22,7 @@ type Card = {
   src: string;
   title: string;
   category: string;
+  surface?: QuestionSurface;
   content: React.ReactNode;
 };
 
@@ -183,7 +186,12 @@ export const Card = ({
 }) => {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { onCardClose, currentIndex } = useContext(CarouselContext);
+  const { onCardClose } = useContext(CarouselContext);
+
+  const handleClose = useCallback(() => {
+    setOpen(false);
+    onCardClose(index);
+  }, [index, onCardClose]);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -200,18 +208,20 @@ export const Card = ({
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [open]);
+  }, [handleClose, open]);
 
-  //@ts-ignore
-  useOutsideClick(containerRef, () => handleClose());
+  useOutsideClick(containerRef, handleClose);
 
   const handleOpen = () => {
-    setOpen(true);
-  };
+    if (card.surface) {
+      window.dispatchEvent(
+        new CustomEvent('askoosu:question-surface', {
+          detail: { surface: card.surface },
+        })
+      );
+    }
 
-  const handleClose = () => {
-    setOpen(false);
-    onCardClose(index);
+    setOpen(true);
   };
 
   return (
@@ -272,7 +282,7 @@ export const Card = ({
         onClick={handleOpen}
         className="relative z-10 flex h-80 w-56 flex-col items-start justify-start overflow-hidden rounded-3xl bg-gray-100 dark:bg-neutral-900"
       >
-        <div className="absolute inset-x-0 top-0 z-30 h-full cursor-pointer bg-gradient-to-b from-black hover:scale-110 via-transparent to-transparent" />
+        <div className="absolute inset-x-0 top-0 z-30 h-full cursor-pointer bg-gradient-to-b from-black via-transparent to-transparent hover:scale-110" />
         {/*<div className="absolute inset-0 z-20 cursor-pointer bg-black/20 hover:bg-black/2" />*/}
         <div className="relative z-40 p-8">
           <motion.p

@@ -395,6 +395,7 @@ const sharedGuardrails = [
 export const FAQ_ANSWERS: FaqAnswer[] = [
   createFaqAnswer({
     id: 'faq.project.top_three.default',
+    legacyIds: ['faq.projects.top3.summary'],
     intentId: 'project.top_three',
     entityId: 'projects.representative',
     language: 'ko',
@@ -451,6 +452,7 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
   }),
   createFaqAnswer({
     id: 'faq.project.top_three.default',
+    legacyIds: ['faq.projects.top3.summary'],
     intentId: 'project.top_three',
     entityId: 'projects.representative',
     language: 'en',
@@ -506,6 +508,7 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
   }),
   createFaqAnswer({
     id: 'faq.skills.tech_stack.default',
+    legacyIds: ['faq.tech_stack.level.default'],
     intentId: 'skills.tech_stack',
     entityId: 'skills.core',
     language: 'ko',
@@ -562,6 +565,7 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
   }),
   createFaqAnswer({
     id: 'faq.skills.tech_stack.default',
+    legacyIds: ['faq.tech_stack.level.default'],
     intentId: 'skills.tech_stack',
     entityId: 'skills.core',
     language: 'en',
@@ -617,7 +621,7 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
   }),
   createFaqAnswer({
     id: 'faq.contact.collaboration.default',
-    legacyIds: ['contact.collab.ko'],
+    legacyIds: ['contact.collab.ko', 'faq.contact.default'],
     intentId: 'contact.collaboration',
     entityId: 'contact.public',
     language: 'ko',
@@ -676,7 +680,7 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
   }),
   createFaqAnswer({
     id: 'faq.contact.collaboration.default',
-    legacyIds: ['contact.collab.en'],
+    legacyIds: ['contact.collab.en', 'faq.contact.default'],
     intentId: 'contact.collaboration',
     entityId: 'contact.public',
     language: 'en',
@@ -734,7 +738,7 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
   }),
   createFaqAnswer({
     id: 'faq.ai_usage.workflow.default',
-    legacyIds: ['ai.usage.ko'],
+    legacyIds: ['ai.usage.ko', 'faq.ai_usage.default'],
     intentId: 'ai_usage.workflow',
     entityId: 'ai.workflow',
     language: 'ko',
@@ -789,7 +793,7 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
   }),
   createFaqAnswer({
     id: 'faq.ai_usage.workflow.default',
-    legacyIds: ['ai.usage.en'],
+    legacyIds: ['ai.usage.en', 'faq.ai_usage.default'],
     intentId: 'ai_usage.workflow',
     entityId: 'ai.workflow',
     language: 'en',
@@ -1386,6 +1390,164 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
     confidence: 0.96,
   }),
   createFaqAnswer({
+    id: 'faq.project.portfoliooh_vs_askoosu.default',
+    intentId: 'project.portfoliooh_vs_askoosu',
+    entityId: 'portfoli_oh',
+    language: 'ko',
+    quickLabel: 'Portfoli-Oh! vs AskOosu',
+    displayQuestion: 'Portfoli-Oh!와 AskOosu는 어떤 점이 다른가요?',
+    patterns: [
+      'Portfoli-Oh!와 AskOosu는 어떤 점이 다른가요?',
+      'Portfoli-Oh!의 한계가 AskOosu로 어떻게 이어졌나요?',
+      'portfoli-oh askoosu 차이',
+      'old portfolio vs AskOosu',
+      'before after portfolio',
+    ],
+    shortAnswer:
+      'Portfoli-Oh!는 인터랙션 중심의 프론트엔드 아카이브였고, AskOosu는 질문 중심의 AI/RAG 포트폴리오입니다.',
+    defaultAnswer: [
+      'Portfoli-Oh!는 우수가 프론트엔드 인터랙션을 많이 실험했던 2025 포트폴리오이고, AskOosu는 그 경험을 바탕으로 만든 2026 대화형 AI 포트폴리오입니다.',
+      '',
+      'Portfoli-Oh!에서는 GSAP, Three.js, Lottie, 커스텀 커서, JSON 키워드 매칭 챗봇처럼 “보여줄 수 있는 것”을 많이 넣었습니다. 배운 점은 컸지만 기능이 늘수록 방문자가 무엇을 봐야 하는지 흐름이 흐려질 수 있다는 한계도 보였습니다.',
+      '',
+      'AskOosu는 그 반성에서 출발해 “더 많이 보여주기”보다 “더 빨리 묻고 찾게 하기”를 우선합니다. 그래서 FAQ cache, Notion Wiki, RAG, source badge, contextual quick question처럼 정보 구조와 답변 신뢰도를 중심에 둡니다.',
+    ].join('\n'),
+    detailedAnswer: [
+      'Portfoli-Oh!와 AskOosu의 차이는 단순히 2025 포트폴리오와 2026 포트폴리오의 차이가 아니라, 우수의 제품 사고가 어떻게 바뀌었는지를 보여줍니다.',
+      '',
+      'Portfoli-Oh!는 프론트엔드 학습 아카이브에 가까웠습니다. 애니메이션, 3D, 하이라이터, JSON 챗봇 등 여러 인터랙션을 넣으면서 구현 경험을 쌓았지만, 데이터가 커질수록 JSON 기반 챗봇 유지보수가 어려워지고 방문자 입장에서는 탐색 방향이 흐려지는 문제가 생겼습니다.',
+      '',
+      'AskOosu는 그 문제를 정보 구조로 다시 푼 프로젝트입니다. 방문자가 특정 섹션을 오래 스크롤하지 않아도 질문으로 바로 들어가고, FAQ cache와 RAG가 질문 성격에 맞게 답변을 라우팅합니다. 그래서 AskOosu는 “인터랙션을 많이 만든 포트폴리오”가 아니라 “질문과 근거로 탐색하는 포트폴리오”에 가깝습니다.',
+    ].join('\n'),
+    renderSpec: {
+      layout: 'comparison_grid',
+      density: 'standard',
+      leadVisual: 'ComparisonGrid',
+      components: ['ComparisonGrid', 'SourceBadgeList'],
+    },
+    visualBlocks: [
+      {
+        type: 'comparisonTable',
+        title: 'Portfoli-Oh! → AskOosu',
+        dataKey: 'project.portfoliooh_vs_askoosu',
+        items: [
+          {
+            leftTitle: 'Portfoli-Oh! 2025',
+            rightTitle: 'AskOosu 2026',
+            rows: [
+              {
+                label: '중심',
+                left: '인터랙션과 프론트엔드 실험',
+                right: '질문 중심 정보 탐색',
+              },
+              {
+                label: '답변 구조',
+                left: 'JSON 키워드 매칭 챗봇',
+                right: 'FAQ cache + Notion RAG',
+              },
+              {
+                label: '배운 점',
+                left: '기능이 많아질수록 흐름이 흐려질 수 있음',
+                right: '맥락형 질문과 근거 표시가 더 중요함',
+              },
+            ],
+          },
+        ],
+      },
+      { type: 'sourceBadges' },
+    ],
+    mediaRefs,
+    sourceChunkIds: [
+      'project.portfolio_oh.story',
+      'project.askoosu.fact',
+      'rag.answer_routing',
+    ],
+    hasTodo: false,
+    freshness: 'stable',
+    guardrails: sharedGuardrails,
+    matchedEntityIds: ['portfoli_oh', 'askoosu'],
+    confidence: 0.97,
+  }),
+  createFaqAnswer({
+    id: 'faq.project.portfoliooh_vs_askoosu.default',
+    intentId: 'project.portfoliooh_vs_askoosu',
+    entityId: 'portfoli_oh',
+    language: 'en',
+    quickLabel: 'Portfoli-Oh! vs AskOosu',
+    displayQuestion: 'What is the difference between Portfoli-Oh! and AskOosu?',
+    patterns: [
+      'What is the difference between Portfoli-Oh! and AskOosu?',
+      'How did the limits of Portfoli-Oh! lead to AskOosu?',
+      'portfoli-oh askoosu difference',
+      'old portfolio vs AskOosu',
+      'before after portfolio',
+    ],
+    shortAnswer:
+      'Portfoli-Oh! was an interaction-heavy frontend archive; AskOosu is a question-first AI/RAG portfolio.',
+    defaultAnswer: [
+      'Portfoli-Oh! was Oosu’s 2025 portfolio for experimenting with frontend interactions, while AskOosu is the 2026 conversational AI portfolio built from those lessons.',
+      '',
+      'Portfoli-Oh! included GSAP, Three.js, Lottie, a custom cursor, highlighting, and a JSON keyword-matching chatbot. It was valuable as a learning archive, but it also showed that too many features can make visitors lose direction.',
+      '',
+      'AskOosu starts from that reflection. Instead of adding more visual effects, it focuses on helping visitors ask, find, and trust answers faster through FAQ cache, Notion Wiki, RAG, source badges, and contextual quick questions.',
+    ].join('\n'),
+    detailedAnswer: [
+      'The difference between Portfoli-Oh! and AskOosu is also a difference in product thinking.',
+      '',
+      'Portfoli-Oh! was closer to a frontend learning archive. Oosu tried animation, 3D, highlighting, and a JSON chatbot, which created useful implementation experience. But as the content grew, the JSON chatbot became harder to maintain and the visitor journey became less clear.',
+      '',
+      'AskOosu reframes that problem as information architecture. Visitors can ask instead of scrolling through every section, and the system routes questions through FAQ cache and RAG depending on the intent. That makes AskOosu less about showing every possible interaction and more about conversational discovery with evidence.',
+    ].join('\n'),
+    renderSpec: {
+      layout: 'comparison_grid',
+      density: 'standard',
+      leadVisual: 'ComparisonGrid',
+      components: ['ComparisonGrid', 'SourceBadgeList'],
+    },
+    visualBlocks: [
+      {
+        type: 'comparisonTable',
+        title: 'Portfoli-Oh! → AskOosu',
+        dataKey: 'project.portfoliooh_vs_askoosu',
+        items: [
+          {
+            leftTitle: 'Portfoli-Oh! 2025',
+            rightTitle: 'AskOosu 2026',
+            rows: [
+              {
+                label: 'Center',
+                left: 'Interaction and frontend experiments',
+                right: 'Question-first information discovery',
+              },
+              {
+                label: 'Answer model',
+                left: 'JSON keyword-matching chatbot',
+                right: 'FAQ cache + Notion RAG',
+              },
+              {
+                label: 'Lesson',
+                left: 'Too many features can blur the visitor flow',
+                right: 'Contextual questions and evidence matter more',
+              },
+            ],
+          },
+        ],
+      },
+      { type: 'sourceBadges' },
+    ],
+    mediaRefs,
+    sourceChunkIds: [
+      'project.portfolio_oh.story',
+      'project.askoosu.fact',
+      'rag.answer_routing',
+    ],
+    hasTodo: false,
+    freshness: 'stable',
+    guardrails: sharedGuardrails,
+    matchedEntityIds: ['portfoli_oh', 'askoosu'],
+    confidence: 0.97,
+  }),
+  createFaqAnswer({
     id: 'faq.profile.business_to_dev.default',
     legacyIds: ['business.connection.ko'],
     intentId: 'profile.business_to_dev',
@@ -1718,6 +1880,890 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
     ],
     confidence: 0.98,
   }),
+  createFaqAnswer({
+    id: 'faq.project.askoosu.visual_ui.default',
+    intentId: 'project.askoosu.visual_ui',
+    entityId: 'askoosu',
+    language: 'ko',
+    quickLabel: 'UI/UX 방향',
+    displayQuestion: 'AskOosu의 UI/UX는 어떤 방향으로 설계했나요?',
+    patterns: [
+      'AskOosu의 UI는 어떻게 설계했나요?',
+      'AskOosu UI UX 방향',
+      '대화형 포트폴리오 UX 설명',
+      'AskOosu visual ui',
+      'AskOosu design direction',
+    ],
+    shortAnswer:
+      'AskOosu의 UI/UX는 긴 포트폴리오를 읽게 하기보다 궁금한 것을 바로 묻게 하는 방향으로 설계했습니다.',
+    defaultAnswer: [
+      'AskOosu의 UI/UX는 정적인 포트폴리오를 대화형 정보 탐색 경험으로 바꾸는 방향으로 설계되었습니다.',
+      '',
+      '핵심은 사용자가 긴 스크롤 페이지를 읽는 대신, 궁금한 것을 바로 질문하고 빠르게 답에 도달하게 만드는 것입니다. 그래서 중심 인터페이스는 채팅이지만, 답변이 전부 텍스트로만 끝나지 않도록 추천 질문, 프로젝트 카드, source/confidence badge, quick action 같은 시각 블록을 함께 두는 방향으로 보고 있습니다.',
+      '',
+      'Portfoli-Oh!를 만들면서 인터랙션이 많아질수록 사용자가 길을 잃을 수 있다는 점을 배웠기 때문에, AskOosu에서는 “더 화려하게”보다 “더 빨리 이해되게”를 우선합니다.',
+    ].join('\n'),
+    detailedAnswer: [
+      'AskOosu의 UI/UX 방향은 세 가지 원칙으로 정리할 수 있습니다.',
+      '',
+      '첫째, 질문 중심 탐색입니다. 방문자가 About, Projects, Skills를 순서대로 읽지 않아도 궁금한 질문 하나로 바로 원하는 맥락에 들어갈 수 있어야 합니다.',
+      '',
+      '둘째, 텍스트와 시각 블록을 섞은 답변입니다. 대표 프로젝트, 기술 스택, 연락/협업, AskOosu 구조 같은 질문은 카드, 칩, 단계형 다이어그램으로 보여줄 때 이해가 더 빠릅니다.',
+      '',
+      '셋째, 과한 인터랙션보다 명확한 정보 위계입니다. AskOosu는 “보기 좋은 포트폴리오”보다 “질문하기 쉬운 포트폴리오”에 가깝습니다.',
+    ].join('\n'),
+    renderSpec: {
+      layout: 'project_deep_dive',
+      density: 'standard',
+      leadVisual: 'AIWorkflowSteps',
+      components: ['AIWorkflowSteps', 'SourceBadgeList'],
+    },
+    visualBlocks: [
+      {
+        type: 'statelessDiagram',
+        title: 'AskOosu UI Principles',
+        dataKey: 'askoosu.ui_principles',
+        items: [
+          {
+            title: '질문 중심 탐색',
+            description: '긴 스크롤 대신 질문 하나로 원하는 맥락에 진입합니다.',
+          },
+          {
+            title: '텍스트 + 시각 블록',
+            description:
+              '답변마다 카드, 칩, badge를 조합해 이해 속도를 높입니다.',
+          },
+          {
+            title: '정보 위계 우선',
+            description: '효과보다 빠른 이해와 명확한 탐색 흐름을 우선합니다.',
+          },
+        ],
+      },
+      { type: 'sourceBadges' },
+    ],
+    sourceChunkIds: [
+      'project.askoosu.fact',
+      'project.askoosu.story',
+      'project.askoosu.rag_principles',
+      'project.portfolio_oh.story',
+      'ui.answer_experience',
+    ],
+    hasTodo: false,
+    freshness: 'stable',
+    guardrails: sharedGuardrails,
+    matchedEntityIds: ['askoosu', 'portfoli_oh'],
+    confidence: 0.97,
+  }),
+  createFaqAnswer({
+    id: 'faq.project.askoosu.visual_ui.default',
+    intentId: 'project.askoosu.visual_ui',
+    entityId: 'askoosu',
+    language: 'en',
+    quickLabel: 'UI/UX direction',
+    displayQuestion: 'What was the UI/UX direction behind AskOosu?',
+    patterns: [
+      'What was the UI direction of AskOosu?',
+      'AskOosu UI UX',
+      'conversational portfolio UX',
+      'AskOosu visual ui',
+      'AskOosu design direction',
+    ],
+    shortAnswer:
+      'AskOosu is designed around letting people ask immediately rather than making them read a long portfolio.',
+    defaultAnswer: [
+      'AskOosu’s UI/UX is designed to turn a static portfolio into a conversational information-discovery experience.',
+      '',
+      'The goal is to help visitors reach answers quickly by asking natural questions instead of scrolling through long sections. Chat is the main interface, but the answer experience should not be text-only: recommended questions, project cards, source/confidence badges, and quick actions should support understanding.',
+      '',
+      'Portfoli-Oh! taught that too many interactions can make people lose their way, so AskOosu prioritizes “easier to understand faster” over “more flashy.”',
+    ].join('\n'),
+    detailedAnswer: [
+      'The UI/UX direction of AskOosu has three principles.',
+      '',
+      'First, question-first navigation. Visitors should not need to read About, Projects, and Skills in a fixed order.',
+      '',
+      'Second, blended text and visual answer blocks. High-value answers are easier to understand as cards, chips, badges, or step diagrams.',
+      '',
+      'Third, clear information hierarchy over excessive interaction. AskOosu is meant to be a portfolio that is easy to ask, not just easy to look at.',
+    ].join('\n'),
+    renderSpec: {
+      layout: 'project_deep_dive',
+      density: 'standard',
+      leadVisual: 'AIWorkflowSteps',
+      components: ['AIWorkflowSteps', 'SourceBadgeList'],
+    },
+    visualBlocks: [
+      {
+        type: 'statelessDiagram',
+        title: 'AskOosu UI Principles',
+        dataKey: 'askoosu.ui_principles',
+        items: [
+          {
+            title: 'Question-first navigation',
+            description:
+              'A visitor can enter the right context through one question.',
+          },
+          {
+            title: 'Text + visual blocks',
+            description:
+              'Cards, chips, and badges make answers easier to scan.',
+          },
+          {
+            title: 'Hierarchy first',
+            description:
+              'The interface prioritizes understanding over visual spectacle.',
+          },
+        ],
+      },
+      { type: 'sourceBadges' },
+    ],
+    sourceChunkIds: [
+      'project.askoosu.fact',
+      'project.askoosu.story',
+      'project.askoosu.rag_principles',
+      'project.portfolio_oh.story',
+      'ui.answer_experience',
+    ],
+    hasTodo: false,
+    freshness: 'stable',
+    guardrails: sharedGuardrails,
+    matchedEntityIds: ['askoosu', 'portfoli_oh'],
+    confidence: 0.97,
+  }),
+  createFaqAnswer({
+    id: 'faq.project.askoosu.deployment.default',
+    intentId: 'project.askoosu.deployment',
+    entityId: 'askoosu',
+    language: 'ko',
+    quickLabel: '배포 / 운영',
+    displayQuestion: 'AskOosu는 어떻게 배포하고 운영하나요?',
+    patterns: [
+      'AskOosu 배포',
+      'AskOosu는 어디서 돌아가나요?',
+      '포트폴리오 운영 구조',
+      'deployment of AskOosu',
+      'home server 배포',
+    ],
+    shortAnswer:
+      'AskOosu는 oosu.dev를 canonical live URL로 두고, Notion Wiki 원본과 Next.js 앱, RAG 캐시, 답변 생성을 연결하는 구조를 지향합니다.',
+    defaultAnswer: [
+      'AskOosu는 `https://oosu.dev`를 canonical live URL로 두고 운영하는 방향입니다.',
+      '',
+      '콘텐츠 원본은 Notion Wiki이고, 서비스 레이어에서는 Next.js 기반 프론트엔드와 API route handler, RAG 검색 캐시용 데이터 저장소, Groq 기반 답변 생성을 연결합니다. 운영 관점에서는 Notion 내용을 주기적으로 sync해 chunk를 갱신하고, 자주 묻는 질문은 FAQ cache로 먼저 처리해 API 비용과 응답 지연을 줄입니다.',
+    ].join('\n'),
+    detailedAnswer: [
+      'AskOosu의 배포/운영 구조는 네 층으로 볼 수 있습니다.',
+      '',
+      '첫째, Notion Wiki를 편집 가능한 콘텐츠 원본으로 둡니다. 둘째, Next.js 앱이 채팅 UI, 추천 질문, 시각 답변 블록, API route handler를 담당합니다.',
+      '',
+      '셋째, `/api/rag/sync`, `/api/rag/search`, `/api/chat`이 FAQ cache, RAG, Groq 흐름을 조립합니다. 넷째, 외부에는 `oosu.dev` 같은 canonical URL을 우선 노출하고 홈서버와 Cloudflare Tunnel 구조를 기준으로 접근성을 확보합니다.',
+    ].join('\n'),
+    renderSpec: {
+      layout: 'ai_workflow',
+      density: 'standard',
+      leadVisual: 'AIWorkflowSteps',
+      components: ['AIWorkflowSteps', 'SourceBadgeList'],
+    },
+    visualBlocks: [
+      {
+        type: 'statelessDiagram',
+        title: 'Deployment / Ops Layers',
+        dataKey: 'askoosu.deployment',
+        items: [
+          {
+            title: 'Content source',
+            description: 'Notion Wiki를 원본 CMS로 사용합니다.',
+          },
+          {
+            title: 'App layer',
+            description: 'Next.js UI와 API route handler가 요청을 처리합니다.',
+          },
+          {
+            title: 'Data / RAG',
+            description:
+              'PostgreSQL 검색 캐시와 source chunk metadata를 활용합니다.',
+          },
+          {
+            title: 'Domain / Infra',
+            description:
+              'oosu.dev canonical URL과 홈서버 운영 원칙을 따릅니다.',
+          },
+        ],
+      },
+      { type: 'sourceBadges' },
+    ],
+    sourceChunkIds: [
+      'links.public',
+      'rag.frontend_backend_db',
+      'rag.notion_sync.rules',
+      'rag.groq.guardrails',
+      'project.askoosu.fact',
+    ],
+    hasTodo: false,
+    freshness: 'time_sensitive',
+    guardrails: sharedGuardrails,
+    matchedEntityIds: ['askoosu', 'rag'],
+    confidence: 0.94,
+  }),
+  createFaqAnswer({
+    id: 'faq.project.askoosu.deployment.default',
+    intentId: 'project.askoosu.deployment',
+    entityId: 'askoosu',
+    language: 'en',
+    quickLabel: 'Deployment',
+    displayQuestion: 'How is AskOosu deployed and operated?',
+    patterns: [
+      'How is AskOosu deployed?',
+      'Where does AskOosu run?',
+      'portfolio deployment',
+      'deployment of AskOosu',
+      'home server deployment',
+    ],
+    shortAnswer:
+      'AskOosu uses oosu.dev as the canonical public URL and connects Notion Wiki, the Next.js app, retrieval cache, and answer generation around it.',
+    defaultAnswer: [
+      'AskOosu is intended to run with `https://oosu.dev` as the canonical live URL.',
+      '',
+      'The original content lives in Notion Wiki, while the service layer connects a Next.js frontend, route handlers, a retrieval/cache data layer, and Groq-based answer generation. Operationally, Notion content should be synced into chunks, and frequently asked questions should be handled by the FAQ cache first to reduce cost and latency.',
+    ].join('\n'),
+    detailedAnswer: [
+      'The deployment and operations model of AskOosu can be understood in four layers.',
+      '',
+      'First, Notion Wiki is the editable source of truth. Second, the Next.js app handles chat UI, suggested questions, visual answer blocks, and route handlers.',
+      '',
+      'Third, `/api/rag/sync`, `/api/rag/search`, and `/api/chat` assemble FAQ cache, RAG, and Groq. Fourth, the public experience should prioritize a canonical domain such as `oosu.dev`, with a home-server and Cloudflare Tunnel style approach for clean access.',
+    ].join('\n'),
+    renderSpec: {
+      layout: 'ai_workflow',
+      density: 'standard',
+      leadVisual: 'AIWorkflowSteps',
+      components: ['AIWorkflowSteps', 'SourceBadgeList'],
+    },
+    visualBlocks: [
+      {
+        type: 'statelessDiagram',
+        title: 'Deployment / Ops Layers',
+        dataKey: 'askoosu.deployment',
+        items: [
+          {
+            title: 'Content source',
+            description: 'Notion Wiki acts as the editable CMS.',
+          },
+          {
+            title: 'App layer',
+            description: 'Next.js UI and route handlers process requests.',
+          },
+          {
+            title: 'Data / RAG',
+            description:
+              'PostgreSQL retrieval cache and source metadata support answers.',
+          },
+          {
+            title: 'Domain / Infra',
+            description:
+              'The public experience centers on the oosu.dev canonical URL.',
+          },
+        ],
+      },
+      { type: 'sourceBadges' },
+    ],
+    sourceChunkIds: [
+      'links.public',
+      'rag.frontend_backend_db',
+      'rag.notion_sync.rules',
+      'rag.groq.guardrails',
+      'project.askoosu.fact',
+    ],
+    hasTodo: false,
+    freshness: 'time_sensitive',
+    guardrails: sharedGuardrails,
+    matchedEntityIds: ['askoosu', 'rag'],
+    confidence: 0.94,
+  }),
+  createFaqAnswer({
+    id: 'faq.tech.rag_vs_faq_cache.default',
+    intentId: 'tech.rag_vs_faq_cache',
+    entityId: 'rag',
+    language: 'ko',
+    quickLabel: 'RAG vs Cache',
+    displayQuestion: 'FAQ cache와 RAG는 어떻게 역할이 다른가요?',
+    patterns: [
+      'FAQ cache와 RAG 차이',
+      'cache랑 rag는 뭐가 달라요?',
+      '왜 둘 다 필요해요?',
+      'faq cache vs rag',
+      'retrieval vs cache',
+    ],
+    shortAnswer:
+      'FAQ cache는 반복 질문에 검증된 답을 바로 반환하고, RAG는 고정하기 어려운 질문에 관련 chunk를 검색해 답을 조립합니다.',
+    defaultAnswer: [
+      'FAQ cache와 RAG는 역할이 다릅니다.',
+      '',
+      'FAQ cache는 반복적으로 자주 들어오고 답변 형태가 안정적인 질문에 대해 Groq 호출 없이 바로 모범답안을 반환하는 구조입니다. 반면 RAG는 질문이 더 구체적이거나 조합형일 때 Notion Wiki chunk를 검색해 근거를 모은 뒤 답을 조립합니다.',
+      '',
+      '즉, FAQ cache는 속도와 비용 절감, RAG는 유연성과 근거 검색을 담당합니다.',
+    ].join('\n'),
+    detailedAnswer: [
+      'AskOosu에서 FAQ cache와 RAG는 경쟁 관계가 아니라 역할 분담 관계입니다.',
+      '',
+      'FAQ cache는 모범답안 뱅크에 가깝습니다. FAQ ID, intent, patterns, short/default/detailed answer를 미리 관리하고 높은 confidence로 매칭되면 바로 반환합니다.',
+      '',
+      'RAG는 근거 검색 기반 설명 엔진에 가깝습니다. 질문이 길거나 여러 개념을 엮으면 관련 source chunk를 먼저 찾고 그 근거를 기반으로 답을 만듭니다. 그래서 실제 라우팅은 FAQ cache first, RAG next가 적절합니다.',
+    ].join('\n'),
+    renderSpec: {
+      layout: 'comparison_grid',
+      density: 'standard',
+      leadVisual: 'ComparisonGrid',
+      components: ['ComparisonGrid', 'SourceBadgeList'],
+    },
+    visualBlocks: [
+      {
+        type: 'comparisonTable',
+        title: 'FAQ cache vs RAG',
+        dataKey: 'tech.rag_vs_cache',
+        items: [
+          {
+            leftTitle: 'FAQ cache',
+            rightTitle: 'RAG',
+            rows: [
+              {
+                label: '역할',
+                left: '반복 질문의 모범답안 반환',
+                right: '관련 chunk 검색 후 답변 조립',
+              },
+              {
+                label: '강점',
+                left: '빠름, 저비용, 톤 안정',
+                right: '유연함, 근거 기반, 조합 질문 대응',
+              },
+              {
+                label: '사용 시점',
+                left: '대표 프로젝트, 연락, 자기소개',
+                right: '상세 기술, 비교, follow-up',
+              },
+            ],
+          },
+        ],
+      },
+      { type: 'sourceBadges' },
+    ],
+    sourceChunkIds: [
+      'rag.architecture.overview',
+      'faq.cache.rules',
+      'rag.answer_routing',
+      'rag.groq.guardrails',
+    ],
+    hasTodo: false,
+    freshness: 'stable',
+    guardrails: sharedGuardrails,
+    matchedEntityIds: ['rag', 'faq_cache'],
+    confidence: 0.98,
+  }),
+  createFaqAnswer({
+    id: 'faq.tech.rag_vs_faq_cache.default',
+    intentId: 'tech.rag_vs_faq_cache',
+    entityId: 'rag',
+    language: 'en',
+    quickLabel: 'RAG vs Cache',
+    displayQuestion: 'What is the difference between FAQ cache and RAG?',
+    patterns: [
+      'Difference between FAQ cache and RAG',
+      'cache vs rag',
+      'Why do you need both?',
+      'faq cache vs rag',
+      'retrieval vs cache',
+    ],
+    shortAnswer:
+      'FAQ cache returns verified answers for repeated questions, while RAG retrieves chunks and composes grounded answers for flexible questions.',
+    defaultAnswer: [
+      'FAQ cache and RAG serve different roles.',
+      '',
+      'FAQ cache is for repeated, stable questions and can return a prepared answer directly without calling Groq. RAG is used when a question is more specific or compositional: it retrieves relevant Notion Wiki chunks first and then assembles the answer.',
+      '',
+      'Cache is mainly for speed and cost reduction; RAG is for flexibility and evidence retrieval.',
+    ].join('\n'),
+    detailedAnswer: [
+      'In AskOosu, FAQ cache and RAG are complementary.',
+      '',
+      'FAQ cache is closer to a model answer bank. Each cached item has an FAQ ID, intent, patterns, and answer variants. When a user question matches with high confidence, the system returns it immediately.',
+      '',
+      'RAG is closer to an evidence-driven explanation engine. Longer or compositional questions retrieve relevant source chunks before answer assembly. The best routing rule is therefore FAQ cache first, RAG next.',
+    ].join('\n'),
+    renderSpec: {
+      layout: 'comparison_grid',
+      density: 'standard',
+      leadVisual: 'ComparisonGrid',
+      components: ['ComparisonGrid', 'SourceBadgeList'],
+    },
+    visualBlocks: [
+      {
+        type: 'comparisonTable',
+        title: 'FAQ cache vs RAG',
+        dataKey: 'tech.rag_vs_cache',
+        items: [
+          {
+            leftTitle: 'FAQ cache',
+            rightTitle: 'RAG',
+            rows: [
+              {
+                label: 'Role',
+                left: 'Returns prepared answers for repeated questions',
+                right: 'Retrieves chunks and assembles grounded answers',
+              },
+              {
+                label: 'Strength',
+                left: 'Fast, low-cost, stable tone',
+                right: 'Flexible, evidence-based, handles follow-ups',
+              },
+              {
+                label: 'Best for',
+                left: 'Top projects, contact, intro',
+                right: 'Technical detail, comparison, contextual questions',
+              },
+            ],
+          },
+        ],
+      },
+      { type: 'sourceBadges' },
+    ],
+    sourceChunkIds: [
+      'rag.architecture.overview',
+      'faq.cache.rules',
+      'rag.answer_routing',
+      'rag.groq.guardrails',
+    ],
+    hasTodo: false,
+    freshness: 'stable',
+    guardrails: sharedGuardrails,
+    matchedEntityIds: ['rag', 'faq_cache'],
+    confidence: 0.98,
+  }),
+  createFaqAnswer({
+    id: 'faq.tech.springboot.postgresql.default',
+    intentId: 'tech.springboot_postgresql',
+    entityId: 'tech',
+    language: 'ko',
+    quickLabel: 'Spring/PostgreSQL',
+    displayQuestion: 'Spring Boot와 PostgreSQL은 어떤 프로젝트에서 사용했나요?',
+    patterns: [
+      'Spring Boot 어디에 썼어요?',
+      'PostgreSQL 사용 프로젝트',
+      'Spring Boot와 PostgreSQL',
+      'backend stack',
+      'what projects used spring boot and postgresql',
+    ],
+    shortAnswer:
+      'Spring Boot와 PostgreSQL은 Instagram Clone에서 함께 사용했고, AskOosu에서는 PostgreSQL을 RAG 검색 캐시 구조로 활용합니다.',
+    defaultAnswer: [
+      'Spring Boot와 PostgreSQL을 가장 본격적으로 다룬 프로젝트는 Instagram Clone입니다.',
+      '',
+      '이 프로젝트에서 Spring Boot 백엔드와 PostgreSQL을 기반으로 사용자, 게시글, 댓글, 팔로우, 검색 같은 SNS의 관계형 데이터 흐름을 설계하고 구현했습니다.',
+      '',
+      'PostgreSQL은 AskOosu에서도 중요합니다. AskOosu에서는 Notion Wiki에서 가져온 chunk를 저장하고 검색하는 RAG 캐시 구조를 PostgreSQL/pgvector 확장 가능 구조로 연결하는 방향을 보고 있습니다.',
+    ].join('\n'),
+    detailedAnswer: [
+      'Spring Boot와 PostgreSQL은 우수의 백엔드 성장 흐름을 보여주는 기술 조합입니다.',
+      '',
+      'Instagram Clone에서는 Spring Boot, PostgreSQL, REST API를 기반으로 SNS 서비스의 핵심 도메인을 다뤘습니다. 사용자 계정, 게시물, 댓글, 팔로우 관계, 검색, 인증 같은 기능을 연결하면서 데이터 모델링과 API 설계가 얼마나 중요한지 체감한 프로젝트입니다.',
+      '',
+      'AskOosu에서는 PostgreSQL이 전통적인 CRUD보다 지식 chunk, metadata, source id, feedback log를 저장하고 retrieval cache로 활용하는 역할에 가깝습니다.',
+    ].join('\n'),
+    renderSpec: {
+      layout: 'project_showcase',
+      density: 'standard',
+      leadVisual: 'ProjectShowcaseCards',
+      components: ['ProjectShowcaseCards', 'SkillChipGroup', 'SourceBadgeList'],
+    },
+    visualBlocks: [
+      {
+        type: 'projectCards',
+        title: 'Backend / DB Usage',
+        dataKey: 'tech.springboot_postgresql.projects',
+        items: [
+          representativeProjectsKo[1],
+          {
+            ...representativeProjectsKo[0],
+            subtitle: 'PostgreSQL 기반 RAG 검색 캐시',
+          },
+        ],
+      },
+      {
+        type: 'skillChips',
+        title: 'Backend / Data Stack',
+        dataKey: 'skills.backend',
+        items: [skillGroupsKo[1], skillGroupsKo[2]],
+      },
+      { type: 'sourceBadges' },
+    ],
+    mediaRefs,
+    sourceChunkIds: [
+      'project.instagram_clone.fact',
+      'project.instagram_clone.story',
+      'project.askoosu.fact',
+      'rag.db.blueprint',
+      'skills.backend',
+    ],
+    hasTodo: false,
+    freshness: 'stable',
+    guardrails: sharedGuardrails,
+    matchedEntityIds: ['instagram_clone', 'askoosu', 'tech'],
+    confidence: 0.97,
+  }),
+  createFaqAnswer({
+    id: 'faq.tech.springboot.postgresql.default',
+    intentId: 'tech.springboot_postgresql',
+    entityId: 'tech',
+    language: 'en',
+    quickLabel: 'Spring/PostgreSQL',
+    displayQuestion: 'Which projects used Spring Boot and PostgreSQL?',
+    patterns: [
+      'Where did you use Spring Boot?',
+      'PostgreSQL projects',
+      'Spring Boot and PostgreSQL',
+      'backend stack',
+      'what projects used spring boot and postgresql',
+    ],
+    shortAnswer:
+      'The clearest Spring Boot and PostgreSQL project is Instagram Clone. PostgreSQL also matters in AskOosu as a retrieval/cache data layer.',
+    defaultAnswer: [
+      'The project where Spring Boot and PostgreSQL were used together most clearly is Instagram Clone.',
+      '',
+      'In that project, Spring Boot and PostgreSQL were used to design and implement the relational flow behind users, posts, comments, follows, and search. PostgreSQL is also important in AskOosu, where it supports a retrieval/cache-oriented data structure for RAG.',
+    ].join('\n'),
+    detailedAnswer: [
+      'Spring Boot and PostgreSQL together show an important part of Oosu’s backend growth.',
+      '',
+      'In Instagram Clone, Spring Boot, PostgreSQL, and REST API were used to build the core domain of an SNS product. Users, posts, comments, follows, search, and auth required data modeling and API design.',
+      '',
+      'In AskOosu, PostgreSQL plays a different role: storing knowledge chunks, metadata, source IDs, and feedback logs for retrieval-oriented AI architecture.',
+    ].join('\n'),
+    renderSpec: {
+      layout: 'project_showcase',
+      density: 'standard',
+      leadVisual: 'ProjectShowcaseCards',
+      components: ['ProjectShowcaseCards', 'SkillChipGroup', 'SourceBadgeList'],
+    },
+    visualBlocks: [
+      {
+        type: 'projectCards',
+        title: 'Backend / DB Usage',
+        dataKey: 'tech.springboot_postgresql.projects',
+        items: [
+          representativeProjectsEn[1],
+          {
+            ...representativeProjectsEn[0],
+            subtitle: 'PostgreSQL-backed RAG retrieval cache',
+          },
+        ],
+      },
+      {
+        type: 'skillChips',
+        title: 'Backend / Data Stack',
+        dataKey: 'skills.backend',
+        items: [skillGroupsEn[1], skillGroupsEn[2]],
+      },
+      { type: 'sourceBadges' },
+    ],
+    mediaRefs,
+    sourceChunkIds: [
+      'project.instagram_clone.fact',
+      'project.instagram_clone.story',
+      'project.askoosu.fact',
+      'rag.db.blueprint',
+      'skills.backend',
+    ],
+    hasTodo: false,
+    freshness: 'stable',
+    guardrails: sharedGuardrails,
+    matchedEntityIds: ['instagram_clone', 'askoosu', 'tech'],
+    confidence: 0.97,
+  }),
+  createFaqAnswer({
+    id: 'faq.recruiter.first_30_days.default',
+    intentId: 'recruiter.first_30_days',
+    entityId: 'recruiter',
+    language: 'ko',
+    quickLabel: 'First 30 days',
+    displayQuestion: '입사 후 첫 30일 동안 어떻게 기여할 수 있나요?',
+    patterns: [
+      '입사 후 30일',
+      '첫 달에 어떻게 기여할 수 있나요?',
+      'onboarding plan',
+      'first 30 days contribution',
+      '처음 합류하면 뭘 할 수 있어요',
+    ],
+    shortAnswer:
+      '첫 30일에는 도메인과 제품 흐름을 빠르게 이해하고, 작은 개선부터 바로 실행에 옮기는 방식으로 기여할 수 있습니다.',
+    defaultAnswer: [
+      '입사 후 첫 30일에는 무리하게 큰 변화를 만들기보다, 팀의 제품 맥락과 사용자 흐름을 빠르게 이해하고 바로 개선 가능한 지점을 찾는 방식으로 기여할 수 있습니다.',
+      '',
+      '우수는 새로운 도구나 구조를 빠르게 익히고 작은 기능이나 UX 개선, 문서화, 문제 구조화부터 실행하는 데 강점이 있습니다. 첫 달의 역할은 “모든 걸 바꾸는 사람”이라기보다 “빠르게 이해하고 바로 도움이 되는 사람”에 가깝습니다.',
+    ].join('\n'),
+    detailedAnswer: [
+      '첫 30일 기여 방식은 세 단계입니다.',
+      '',
+      '0-10일에는 제품을 직접 써보고 사용자 여정, 핵심 지표, 팀이 중요하게 보는 문제를 파악합니다.',
+      '',
+      '10-20일에는 정보 구조, 마이크로카피, 작은 프론트엔드 개선, 간단한 API 연동, 문서화 같은 작은 결과물을 만듭니다.',
+      '',
+      '20-30일에는 AI, 검색, 추천, 운영 효율화와 연결될 수 있는 확장 포인트를 제안합니다.',
+    ].join('\n'),
+    renderSpec: {
+      layout: 'timeline',
+      density: 'standard',
+      leadVisual: 'CareerTimeline',
+      components: ['CareerTimeline', 'SourceBadgeList'],
+    },
+    visualBlocks: [
+      {
+        type: 'timeline',
+        title: 'First 30 days',
+        dataKey: 'recruiter.first_30_days',
+        items: [
+          {
+            title: '0-10일',
+            description: '제품과 도메인, 사용자 흐름을 빠르게 흡수합니다.',
+          },
+          {
+            title: '10-20일',
+            description: '작은 UX/프론트엔드/문서화 개선을 바로 실행합니다.',
+          },
+          {
+            title: '20-30일',
+            description:
+              'AI/search/운영 효율화 확장 포인트를 구조화해 제안합니다.',
+          },
+        ],
+      },
+      { type: 'sourceBadges' },
+    ],
+    sourceChunkIds: [
+      'profile.strengths',
+      'profile.collaboration',
+      'career.target_role',
+      'project.askoosu.fact',
+      'project.instagram_clone.fact',
+    ],
+    hasTodo: false,
+    freshness: 'stable',
+    guardrails: sharedGuardrails,
+    matchedEntityIds: ['recruiter', 'profile', 'career'],
+    confidence: 0.96,
+  }),
+  createFaqAnswer({
+    id: 'faq.recruiter.first_30_days.default',
+    intentId: 'recruiter.first_30_days',
+    entityId: 'recruiter',
+    language: 'en',
+    quickLabel: 'First 30 days',
+    displayQuestion: 'How could you contribute in your first 30 days?',
+    patterns: [
+      'First 30 days',
+      'How would you contribute in your first month?',
+      'onboarding plan',
+      'first 30 days contribution',
+      'what would you do first',
+    ],
+    shortAnswer:
+      'In the first 30 days, Oosu could learn the product and domain quickly, then ship small improvements right away.',
+    defaultAnswer: [
+      'In the first 30 days, the best contribution would not be trying to change everything at once, but understanding the product context and user flow quickly, then finding areas that can be improved immediately.',
+      '',
+      'Oosu is strong at learning new tools and structures fast, and turning that understanding into small execution such as UX fixes, documentation, FAQ/help structure, or a small feature.',
+    ].join('\n'),
+    detailedAnswer: [
+      'Oosu’s contribution in the first 30 days can be divided into three stages.',
+      '',
+      '0-10 days: absorb context by using the product, understanding the user journey, and learning the team’s important problems.',
+      '',
+      '10-20 days: ship small improvements such as microcopy, layout, information hierarchy, frontend components, simple API integration, or documentation.',
+      '',
+      '20-30 days: propose extension points around AI, search, recommendation, or operational efficiency.',
+    ].join('\n'),
+    renderSpec: {
+      layout: 'timeline',
+      density: 'standard',
+      leadVisual: 'CareerTimeline',
+      components: ['CareerTimeline', 'SourceBadgeList'],
+    },
+    visualBlocks: [
+      {
+        type: 'timeline',
+        title: 'First 30 days',
+        dataKey: 'recruiter.first_30_days',
+        items: [
+          {
+            title: '0-10 days',
+            description: 'Absorb product, domain, and user-flow context.',
+          },
+          {
+            title: '10-20 days',
+            description:
+              'Ship small UX, frontend, API, or documentation improvements.',
+          },
+          {
+            title: '20-30 days',
+            description: 'Propose AI/search/operations extension points.',
+          },
+        ],
+      },
+      { type: 'sourceBadges' },
+    ],
+    sourceChunkIds: [
+      'profile.strengths',
+      'profile.collaboration',
+      'career.target_role',
+      'project.askoosu.fact',
+      'project.instagram_clone.fact',
+    ],
+    hasTodo: false,
+    freshness: 'stable',
+    guardrails: sharedGuardrails,
+    matchedEntityIds: ['recruiter', 'profile', 'career'],
+    confidence: 0.96,
+  }),
+  createFaqAnswer({
+    id: 'faq.collaboration.project_yes.default',
+    intentId: 'collaboration.project_yes',
+    entityId: 'collaboration',
+    language: 'ko',
+    quickLabel: 'Say yes project',
+    displayQuestion: '어떤 프로젝트라면 바로 함께하고 싶나요?',
+    patterns: [
+      '어떤 프로젝트에 관심 있어요?',
+      '바로 하고 싶은 프로젝트',
+      'what projects would make you say yes',
+      '어떤 팀과 잘 맞나요?',
+    ],
+    shortAnswer:
+      'AI가 실제 사용자 경험 안에 들어가고, 문제 정의와 구현이 함께 필요한 프로젝트라면 바로 관심이 갑니다.',
+    defaultAnswer: [
+      '바로 함께하고 싶어지는 프로젝트는 “AI가 실제로 사용자 경험을 바꾸는 프로젝트”입니다.',
+      '',
+      '단순히 모델을 붙여보는 데서 끝나는 게 아니라, 사용자가 더 빨리 찾고, 덜 헤매고, 더 나은 결정을 하게 만드는 흐름이 있는 제품에 특히 끌립니다. 그래서 RAG/search, AI application development, 풀스택 웹서비스, 사용자 질문이 많은 제품, 운영 효율을 높이는 도구형 서비스에 관심이 큽니다.',
+    ].join('\n'),
+    detailedAnswer: [
+      '바로 yes 하고 싶은 프로젝트에는 세 가지 공통점이 있습니다.',
+      '',
+      '첫째, AI가 실제 서비스 경험 안에 들어가 있어야 합니다. 둘째, 문제 정의와 구현이 동시에 중요해야 합니다. 셋째, 산업/제조 데이터, 고객 경험, 검색/지식관리, 내부 도구처럼 현실 문제와 연결되어 있으면 더 좋습니다.',
+    ].join('\n'),
+    renderSpec: {
+      layout: 'contact_card',
+      density: 'standard',
+      leadVisual: 'ContactCard',
+      components: ['ContactCard', 'SkillChipGroup', 'CtaButtons'],
+    },
+    visualBlocks: [
+      {
+        type: 'contactCard',
+        title: 'Collaboration Fit',
+        dataKey: 'collaboration.project_yes',
+        items: contactActionsKo,
+      },
+      {
+        type: 'skillChips',
+        title: 'Project types',
+        dataKey: 'collaboration.project_types',
+        items: [
+          {
+            group: 'Say yes areas',
+            skills: [
+              'RAG/Search',
+              'AI Application',
+              'Fullstack Web',
+              'Industrial AI',
+              'Internal tools',
+            ],
+            evidence: ['AskOosu', 'Instagram Clone', 'Business/UX background'],
+          },
+        ],
+      },
+      { type: 'ctaButtons', items: contactActionsKo },
+    ],
+    sourceChunkIds: [
+      'career.target_role',
+      'profile.current_focus',
+      'profile.contact',
+      'project.askoosu.fact',
+      'profile.business_to_dev',
+    ],
+    hasTodo: false,
+    freshness: 'stable',
+    guardrails: sharedGuardrails,
+    matchedEntityIds: ['collaboration', 'career', 'askoosu'],
+    confidence: 0.96,
+  }),
+  createFaqAnswer({
+    id: 'faq.collaboration.project_yes.default',
+    intentId: 'collaboration.project_yes',
+    entityId: 'collaboration',
+    language: 'en',
+    quickLabel: 'Say yes project',
+    displayQuestion: 'What kind of project would make you say yes immediately?',
+    patterns: [
+      'What kind of project interests you?',
+      'Projects you would say yes to',
+      'what projects would make you say yes',
+      'what teams fit you well',
+    ],
+    shortAnswer:
+      'Projects where AI becomes part of the real user experience, and where problem definition and implementation both matter, are the most exciting.',
+    defaultAnswer: [
+      'The kind of project that would make Oosu say yes immediately is one where AI genuinely improves the user experience.',
+      '',
+      'Not just attaching a model for the sake of it, but creating a flow where users can find faster, get less lost, or make better decisions. RAG/search, AI application development, fullstack web services, knowledge-heavy products, and operational efficiency tools are especially interesting.',
+    ].join('\n'),
+    detailedAnswer: [
+      'There are a few common traits in the projects Oosu would say yes to immediately.',
+      '',
+      'First, AI should live inside the real service experience. Second, problem definition and implementation should both matter. Third, the work should connect to real-world problems such as industrial data, customer experience, knowledge management, or internal productivity.',
+    ].join('\n'),
+    renderSpec: {
+      layout: 'contact_card',
+      density: 'standard',
+      leadVisual: 'ContactCard',
+      components: ['ContactCard', 'SkillChipGroup', 'CtaButtons'],
+    },
+    visualBlocks: [
+      {
+        type: 'contactCard',
+        title: 'Collaboration Fit',
+        dataKey: 'collaboration.project_yes',
+        items: contactActionsEn,
+      },
+      {
+        type: 'skillChips',
+        title: 'Project types',
+        dataKey: 'collaboration.project_types',
+        items: [
+          {
+            group: 'Say yes areas',
+            skills: [
+              'RAG/Search',
+              'AI Application',
+              'Fullstack Web',
+              'Industrial AI',
+              'Internal tools',
+            ],
+            evidence: ['AskOosu', 'Instagram Clone', 'Business/UX background'],
+          },
+        ],
+      },
+      { type: 'ctaButtons', items: contactActionsEn },
+    ],
+    sourceChunkIds: [
+      'career.target_role',
+      'profile.current_focus',
+      'profile.contact',
+      'project.askoosu.fact',
+      'profile.business_to_dev',
+    ],
+    hasTodo: false,
+    freshness: 'stable',
+    guardrails: sharedGuardrails,
+    matchedEntityIds: ['collaboration', 'career', 'askoosu'],
+    confidence: 0.96,
+  }),
 ];
 
 export function findFaqAnswerById(
@@ -1743,7 +2789,10 @@ export function findFaqAnswerById(
   );
 }
 
-export function buildAnswerParts(faq: FaqAnswer): FaqAnswerPart[] {
+export function buildAnswerParts(
+  faq: FaqAnswer,
+  answerVariant: 'short' | 'default' | 'detailed' = 'default'
+): FaqAnswerPart[] {
   const visualBlocks = faq.visualBlocks ?? [];
   const leadVisual = faq.renderSpec?.leadVisual;
   const leadBlock = leadVisual
@@ -1758,7 +2807,10 @@ export function buildAnswerParts(faq: FaqAnswer): FaqAnswerPart[] {
 
   return [
     ...(leadBlock ? [componentPartForBlock(leadBlock)] : []),
-    { type: 'markdown' as const, contentKey: 'defaultAnswer' as const },
+    {
+      type: 'markdown' as const,
+      contentKey: toContentKey(answerVariant, faq),
+    },
     ...otherBlocks.map(componentPartForBlock),
     ...(sourceBlock
       ? [
@@ -1769,6 +2821,18 @@ export function buildAnswerParts(faq: FaqAnswer): FaqAnswerPart[] {
         ]
       : []),
   ];
+}
+
+function toContentKey(
+  answerVariant: 'short' | 'default' | 'detailed',
+  faq: FaqAnswer
+) {
+  if (answerVariant === 'short') return 'shortAnswer' as const;
+  if (answerVariant === 'detailed' && faq.detailedAnswer) {
+    return 'detailedAnswer' as const;
+  }
+
+  return 'defaultAnswer' as const;
 }
 
 function createFaqAnswer(input: FaqAnswerInput): FaqAnswer {
