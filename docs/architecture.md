@@ -18,7 +18,7 @@ The chat API uses AI SDK 6 `streamText` and returns `toUIMessageStreamResponse()
 Chat orchestration is intentionally cache-first:
 
 1. `/api/chat` validates the request and applies rate limits.
-2. `src/lib/chat/orchestrator.ts` detects language, matches FAQ/deterministic answers, checks `answer_cache`, then builds RAG context only on cache miss.
+2. `src/lib/chat/orchestrator.ts` detects language, routes FAQ intent semantically, checks `answer_cache`, then builds RAG context only on cache miss.
 3. `src/lib/ai/providers.ts` selects the provider and keeps Groq key-pool/cooldown behavior isolated from the route.
 4. Generated answers are written back to `answer_cache`, while provider success/failure is logged in `ai_provider_usage` and `ai_provider_status`.
 
@@ -40,6 +40,16 @@ The xAI path uses `@ai-sdk/xai`. `xai.responses(model)` is the default because i
 The Groq path uses `@ai-sdk/groq` with a local in-process key pool. `GROQ_API_KEYS` accepts comma- or newline-separated entries in `label:key` format. Each request selects the next active key. Provider/network failures increment that key's failure count; once `GROQ_KEY_FAILURE_THRESHOLD` is reached, the key is disabled until `GROQ_KEY_COOLDOWN_MS` has elapsed. Quota and rate-limit responses disable the key immediately until `GROQ_KEY_QUOTA_COOLDOWN_MS` has elapsed. Reactivation is lazy: the next request after the cooldown resets the key and makes it eligible again.
 
 FAQ and deterministic answers return through the same AI SDK UI message stream shape but set `answerSource=faq_cache` or `deterministic_rule`, `skippedGroq=true`, and language metadata. This keeps starter-question traffic fast and nearly free.
+
+FAQ routing now lives in `src/lib/faq/semantic-router.ts`. It builds canonical candidate text from FAQ ids, intent ids, entity ids, labels, display questions, alternatives, patterns, and safe short-answer summaries, then ranks those candidates with provider-agnostic embeddings. OpenAI embeddings are used only when `OPENAI_API_KEY` is present; otherwise the router falls back to a stricter token-overlap path in `src/lib/faq/match.ts`. Route metadata includes `matchedFaqId`, `intentScore`, `intentSecondScore`, `intentMargin`, and `routeDecision`.
+
+Routing modes:
+
+- `direct`: high-confidence, unambiguous FAQ match. The direct threshold defaults to `ASKOOSU_FAQ_SEMANTIC_DIRECT_MIN=0.88`, and the top result must beat the second result by `ASKOOSU_FAQ_SEMANTIC_MARGIN_MIN=0.12`.
+- `rewrite`: medium-confidence FAQ match. The app records the likely intent but still lets the normal RAG/generation path answer instead of blindly returning FAQ text.
+- `rag_required`: low-confidence or ambiguous input, including very short entity-only text such as `우수`.
+
+Quick-question requests are trusted only when `source=quick_question` and `starterQuestionId` resolves to a known server-side suggested question. The API does not directly trust client-sent `faqId`; it re-derives the FAQ id from `src/lib/suggested-questions.ts`.
 
 ## Stage C: Notion and RAG
 
@@ -121,6 +131,10 @@ ASKOOSU_WIKI_VERSION=v10
 ASKOOSU_ANSWER_CACHE_TTL_HOURS=24
 ASKOOSU_RAG_SYNC_LOCK_TTL_SECONDS=300
 ASKOOSU_CHAT_MAX_REQUEST_BYTES=32768
+ASKOOSU_FAQ_SEMANTIC_ROUTER_ENABLED=true
+ASKOOSU_FAQ_SEMANTIC_DIRECT_MIN=0.88
+ASKOOSU_FAQ_SEMANTIC_REWRITE_MIN=0.76
+ASKOOSU_FAQ_SEMANTIC_MARGIN_MIN=0.12
 ASKOOSU_EMBEDDING_MODEL=text-embedding-3-small
 ASKOOSU_EMBEDDING_DIMENSIONS=1536
 # ASKOOSU_RAG_STORE=postgres

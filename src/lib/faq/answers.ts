@@ -780,6 +780,8 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
       "Could you show Oosu's representative projects and how they connect to his growth?",
       'representative projects',
       'best projects',
+      "Which portfolio projects best show Oosu's growth as a developer?",
+      "projects that show Oosu's growth",
       'AskOosu Instagram Clone Sticks & Stones',
     ],
     shortAnswer:

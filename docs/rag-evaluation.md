@@ -16,17 +16,25 @@ Then run the search-only evaluation:
 pnpm rag:eval
 ```
 
+`pnpm rag:eval` also checks the FAQ semantic intent router through `/api/chat` by default. To run only those FAQ intent checks:
+
+```bash
+pnpm faq:eval
+```
+
 Useful options:
 
 ```bash
 pnpm rag:eval -- --base-url http://localhost:3001
 pnpm rag:eval -- --limit 8
 pnpm rag:eval -- --chat
+pnpm rag:eval -- --no-faq
+pnpm rag:eval -- --faq-only
 pnpm rag:eval -- --json
 pnpm rag:eval -- --strict
 ```
 
-The script calls `/api/rag/search` by default. If `RAG_SYNC_SECRET` or `ASKOOSU_RAG_ADMIN_TOKEN` is present in the shell or `.env.local`, it sends the token as a Bearer header. `--chat` also calls `/api/chat`, but only when a Groq key is configured; otherwise it stays in search-only mode.
+The script calls `/api/rag/search` by default. If `RAG_SYNC_SECRET` or `ASKOOSU_RAG_ADMIN_TOKEN` is present in the shell or `.env.local`, it sends the token as a Bearer header. `--chat` also asks `/api/chat` for answer previews only when a Groq key is configured. FAQ intent checks always call `/api/chat` and read route metadata; use `--no-faq` to skip them.
 
 ## Evaluation Set
 
@@ -44,6 +52,18 @@ The script calls `/api/rag/search` by default. If `RAG_SYNC_SECRET` or `ASKOOSU_
 | 10  | 현재 관심 있는 포지션은?                           | Current target role, AI-connected fullstack/frontend direction, portfolio visitor framing     | `profile.career`, `profile.identity`     | Should mark uncertain/TODO evidence as tentative                                        |
 | 11  | 이력서 URL 알려줘.                                 | Resume KO/EN TODO and fallback contact/GitHub/LinkedIn guidance                               | `profile.identity`, `policy.guardrail`   | Should not invent a resume URL when Wiki says TODO                                      |
 | 12  | 라이브 URL이 없는 프로젝트는 어떻게 답해야 하나요? | Guardrail/public answer policy, TODO handling, private repo/live URL fallback                 | `policy.guardrail`                       | Should say unavailable/not public instead of fabricating links                          |
+
+## FAQ Intent Evaluation Set
+
+These cases check `src/lib/faq/semantic-router.ts` routing metadata rather than RAG chunk retrieval.
+
+| #   | Question                                                         | Expected Route | Expected FAQ                                 | Watch For                                                       |
+| --- | ---------------------------------------------------------------- | -------------- | -------------------------------------------- | --------------------------------------------------------------- |
+| 1   | 우수님은 어떤 개발자인가요?                                      | `direct`       | `faq.profile.intro.default`                  | Korean honorific/particle variation should not miss profile FAQ |
+| 2   | 포트폴리오오 만든 사람 누구야?                                   | `direct`       | `faq.portfolio.creator.default`              | Repeated final syllable typo should still match creator intent  |
+| 3   | 우수                                                             | `rag_required` | none                                         | Short entity-only input should not blindly return a direct FAQ  |
+| 4   | Portfoli-Oh랑 AskOosu는 뭐가 달라?                               | `direct`       | `faq.project.portfoliooh_vs_askoosu.default` | Mixed entity comparison should map to comparison FAQ            |
+| 5   | Which portfolio projects best show Oosu's growth as a developer? | `direct`       | `faq.project.top_three.default`              | English paraphrase should map to representative projects        |
 
 ## Console Output Checklist
 

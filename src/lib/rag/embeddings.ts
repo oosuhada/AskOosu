@@ -8,13 +8,7 @@ import {
 import type { RagChunk } from './types';
 
 export async function embedRagChunks(chunks: RagChunk[]) {
-  const model = openai.embeddingModel(getEmbeddingModelName());
-  const { embeddings } = await embedMany({
-    model,
-    values: chunks.map(getChunkEmbeddingInput),
-    maxParallelCalls: getPositiveIntEnv('ASKOOSU_EMBEDDING_PARALLELISM', 2),
-    providerOptions: getEmbeddingProviderOptions(),
-  });
+  const embeddings = await embedTexts(chunks.map(getChunkEmbeddingInput));
 
   return chunks.map((chunk, index) => ({
     ...chunk,
@@ -23,14 +17,35 @@ export async function embedRagChunks(chunks: RagChunk[]) {
 }
 
 export async function embedRagQuery(query: string) {
+  const [embedding] = await embedTexts([query]);
+  return embedding;
+}
+
+export async function embedTexts(values: string[]) {
+  const model = openai.embeddingModel(getEmbeddingModelName());
+  const { embeddings } = await embedMany({
+    model,
+    values,
+    maxParallelCalls: getPositiveIntEnv('ASKOOSU_EMBEDDING_PARALLELISM', 2),
+    providerOptions: getEmbeddingProviderOptions(),
+  });
+
+  return embeddings;
+}
+
+export async function embedText(value: string) {
   const model = openai.embeddingModel(getEmbeddingModelName());
   const { embedding } = await embed({
     model,
-    value: query,
+    value,
     providerOptions: getEmbeddingProviderOptions(),
   });
 
   return embedding;
+}
+
+export function hasEmbeddingCredentials() {
+  return Boolean(process.env.OPENAI_API_KEY?.trim());
 }
 
 function getChunkEmbeddingInput(chunk: RagChunk) {
