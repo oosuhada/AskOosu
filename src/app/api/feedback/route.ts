@@ -4,6 +4,7 @@ import {
   createAnswerFeedback,
   hasPostgresDatabaseUrl,
 } from '@/lib/feedback/database';
+import { checkRateLimit, rateLimitHeaders } from '@/lib/rate-limit';
 
 export const maxDuration = 10;
 
@@ -20,6 +21,23 @@ const feedbackRequestSchema = z.object({
 });
 
 export async function POST(req: Request) {
+  const rateLimit = checkRateLimit(req, {
+    scope: 'api:feedback',
+    windowMs: 60 * 1000,
+    max: 30,
+  });
+
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: 'Too many feedback requests. Please wait and try again.',
+        retryAfter: rateLimit.retryAfter,
+      },
+      { status: 429, headers: rateLimitHeaders(rateLimit) }
+    );
+  }
+
   if (!hasPostgresDatabaseUrl()) {
     return NextResponse.json(
       {

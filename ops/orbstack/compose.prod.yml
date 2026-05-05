@@ -1,0 +1,43 @@
+name: askoosu-orbstack
+
+services:
+  app:
+    container_name: askoosu-app
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    image: askoosu-app:prod
+    restart: unless-stopped
+    env_file:
+      - ../../.env.production
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://oosu.dev}
+    ports:
+      - "127.0.0.1:3010:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    container_name: askoosu-postgres
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    env_file:
+      - ../../.env.production
+    volumes:
+      - askoosu-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\"",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  askoosu-postgres-data:
