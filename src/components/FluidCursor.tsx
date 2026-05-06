@@ -5,7 +5,11 @@ import fluidCursor from '@/hooks/use-FluidCursor';
 
 const FluidCursor = () => {
   useEffect(() => {
-    fluidCursor();
+    try {
+      fluidCursor();
+    } catch (error) {
+      console.warn('Fluid cursor disabled:', error);
+    }
   }, []);
 
   return (
