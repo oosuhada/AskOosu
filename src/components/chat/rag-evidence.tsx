@@ -42,8 +42,8 @@ type RagMetadata = {
 type ProjectCardInfo = {
   id: string;
   title: string;
-  category: string;
-  description: string;
+  category: Record<'ko' | 'en', string>;
+  description: Record<'ko' | 'en', string>;
   tags: string[];
 };
 
@@ -66,49 +66,79 @@ const PROJECT_CARDS: Record<string, ProjectCardInfo> = {
   askoosu: {
     id: 'askoosu',
     title: 'AskOosu',
-    category: 'AI Portfolio',
-    description:
-      'Notion Wiki, RAG search, and Groq chat are connected into a conversational portfolio.',
+    category: {
+      ko: 'AI 포트폴리오',
+      en: 'AI Portfolio',
+    },
+    description: {
+      ko: 'Notion Wiki, RAG 검색, Groq 채팅을 연결한 대화형 포트폴리오입니다.',
+      en: 'Notion Wiki, RAG search, and Groq chat are connected into a conversational portfolio.',
+    },
     tags: ['Next.js', 'AI SDK', 'RAG'],
   },
   instagram_clone: {
     id: 'instagram_clone',
     title: 'Instagram Clone',
-    category: 'Fullstack SNS',
-    description:
-      'A fullstack practice project for feed, follow, comment, API, and database flows.',
+    category: {
+      ko: '풀스택 SNS',
+      en: 'Fullstack SNS',
+    },
+    description: {
+      ko: '피드, 팔로우, 댓글, API, 데이터베이스 흐름을 직접 연결한 풀스택 프로젝트입니다.',
+      en: 'A fullstack practice project for feed, follow, comment, API, and database flows.',
+    },
     tags: ['Spring Boot', 'React', 'PostgreSQL'],
   },
   sticks_and_stones: {
     id: 'sticks_and_stones',
     title: 'Sticks & Stones',
-    category: 'Real Service Migration',
-    description:
-      'A real homepage renewal and migration project from WordPress into a modern frontend stack.',
+    category: {
+      ko: '실서비스 마이그레이션',
+      en: 'Real Service Migration',
+    },
+    description: {
+      ko: 'WordPress 기반 실제 홈페이지를 TypeScript/Vite 기반 프론트엔드로 옮긴 리뉴얼 작업입니다.',
+      en: 'A real homepage renewal and migration project from WordPress into a modern frontend stack.',
+    },
     tags: ['TypeScript', 'Vite', 'Migration'],
   },
   portfoli_oh: {
     id: 'portfoli_oh',
     title: 'Portfoli-Oh!',
-    category: 'Frontend Portfolio',
-    description:
-      'The 2025 interactive portfolio focused on motion, experimental UI, and storytelling.',
+    category: {
+      ko: '프론트엔드 포트폴리오',
+      en: 'Frontend Portfolio',
+    },
+    description: {
+      ko: '모션, 실험적인 UI, 스토리텔링에 집중한 2025 인터랙티브 포트폴리오입니다.',
+      en: 'The 2025 interactive portfolio focused on motion, experimental UI, and storytelling.',
+    },
     tags: ['HTML', 'CSS', 'JavaScript'],
   },
   ez_air: {
     id: 'ez_air',
     title: 'EZ Air',
-    category: 'AI Travel Search',
-    description:
-      'A project entity reserved for natural-language flight search and travel product evidence.',
+    category: {
+      ko: 'AI 여행 검색',
+      en: 'AI Travel Search',
+    },
+    description: {
+      ko: '자연어 항공권 검색과 여행 상품 UX를 다루는 프로젝트 엔티티입니다.',
+      en: 'A project entity reserved for natural-language flight search and travel product evidence.',
+    },
     tags: ['AI Search', 'Travel UX', 'API'],
   },
   uncorked: {
     id: 'uncorked',
     title: 'Uncorked',
-    category: 'Wine Bar Concept',
-    description:
-      'A project entity for wine-bar service design, brand direction, and polished web presence.',
+    category: {
+      ko: '와인바 콘셉트',
+      en: 'Wine Bar Concept',
+    },
+    description: {
+      ko: '와인바 서비스 디자인, 브랜드 방향성, 웹 프레즌스를 정리한 프로젝트 엔티티입니다.',
+      en: 'A project entity for wine-bar service design, brand direction, and polished web presence.',
+    },
     tags: ['Figma', 'Brand UX', 'Website'],
   },
 };
@@ -164,20 +194,28 @@ export function RagEvidencePanel({
     ragMetadata.sources.some((source) => source.has_todo);
   const hasWarnings = ragMetadata.warnings.length > 0;
   const projectCards = getProjectCards(ragMetadata);
-  const confidenceTone = getConfidenceTone(ragMetadata.confidence);
-  const answerSourceLabel = getAnswerSourceLabel(ragMetadata);
+  const displayLanguage = ragMetadata.language ?? 'en';
+  const confidenceTone = getConfidenceTone(
+    ragMetadata.confidence,
+    displayLanguage
+  );
+  const answerSourceLabel = getAnswerSourceLabel(ragMetadata, displayLanguage);
 
   return (
     <section
       className="mt-5 space-y-3 border-t pt-4"
-      aria-label="RAG answer evidence"
+      aria-label={
+        displayLanguage === 'ko' ? 'RAG 답변 근거' : 'RAG answer evidence'
+      }
     >
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="outline" className="rounded-lg px-2.5 py-1">
           <BookOpenCheck className="h-3.5 w-3.5" />
           {ragMetadata.sources.length > 0
-            ? `${ragMetadata.sources.length} sources`
-            : 'Wiki source not found'}
+            ? formatSourceCount(ragMetadata.sources.length, displayLanguage)
+            : displayLanguage === 'ko'
+              ? 'Wiki 근거 없음'
+              : 'Wiki source not found'}
         </Badge>
 
         {answerSourceLabel && (
@@ -201,7 +239,7 @@ export function RagEvidencePanel({
             className="rounded-lg border-amber-300 bg-amber-50 px-2.5 py-1 text-amber-800 dark:border-amber-700/70 dark:bg-amber-950/30 dark:text-amber-200"
           >
             <AlertTriangle className="h-3.5 w-3.5" />
-            TODO evidence
+            {displayLanguage === 'ko' ? 'TODO 근거' : 'TODO evidence'}
           </Badge>
         )}
 
@@ -211,7 +249,7 @@ export function RagEvidencePanel({
             className="rounded-lg border-rose-300 bg-rose-50 px-2.5 py-1 text-rose-800 dark:border-rose-700/70 dark:bg-rose-950/30 dark:text-rose-200"
           >
             <ShieldAlert className="h-3.5 w-3.5" />
-            needs review
+            {displayLanguage === 'ko' ? '검토 필요' : 'needs review'}
           </Badge>
         )}
 
@@ -220,8 +258,7 @@ export function RagEvidencePanel({
             variant="outline"
             className="rounded-lg border-sky-300 bg-sky-50 px-2.5 py-1 text-sky-800 dark:border-sky-700/70 dark:bg-sky-950/30 dark:text-sky-200"
           >
-            {ragMetadata.warnings.length} warning
-            {ragMetadata.warnings.length === 1 ? '' : 's'}
+            {formatWarningCount(ragMetadata.warnings.length, displayLanguage)}
           </Badge>
         )}
       </div>
@@ -245,12 +282,12 @@ export function RagEvidencePanel({
                     {project.title}
                   </p>
                   <p className="text-muted-foreground text-xs">
-                    {project.category}
+                    {project.category[displayLanguage]}
                   </p>
                 </div>
               </div>
               <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-                {project.description}
+                {project.description[displayLanguage]}
               </p>
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {project.tags.map((tag) => (
@@ -274,7 +311,7 @@ export function RagEvidencePanel({
               key={entityId}
               className="bg-background text-muted-foreground rounded-md border px-2 py-0.5 text-xs"
             >
-              {entityId}
+              {formatEntityLabel(entityId, displayLanguage)}
             </span>
           ))}
         </div>
@@ -290,7 +327,7 @@ export function RagEvidencePanel({
             >
               <BookOpenCheck className="text-foreground h-3.5 w-3.5 shrink-0" />
               <span className="min-w-0 truncate">
-                S{index + 1}. {source.title}
+                S{index + 1}. {formatSourceBadgeTitle(source, displayLanguage)}
               </span>
               <span className="shrink-0 text-[11px]">
                 {formatScore(source.score)}
@@ -300,7 +337,9 @@ export function RagEvidencePanel({
 
           {hiddenSourceCount > 0 && (
             <span className="bg-background text-muted-foreground inline-flex items-center rounded-lg border px-2.5 py-1 text-xs">
-              +{hiddenSourceCount} more
+              {displayLanguage === 'ko'
+                ? `+${hiddenSourceCount}개 더`
+                : `+${hiddenSourceCount} more`}
             </span>
           )}
         </div>
@@ -308,7 +347,11 @@ export function RagEvidencePanel({
 
       <div className="text-muted-foreground flex flex-col gap-2 border-t pt-3 text-xs sm:flex-row sm:items-center sm:justify-between">
         <span aria-live="polite">
-          {getFeedbackStatusText(feedbackState, feedbackRating)}
+          {getFeedbackStatusText(
+            feedbackState,
+            feedbackRating,
+            displayLanguage
+          )}
         </span>
         <div className="flex items-center gap-2">
           <Button
@@ -316,7 +359,11 @@ export function RagEvidencePanel({
             size="sm"
             variant={feedbackRating === 'up' ? 'secondary' : 'outline'}
             aria-pressed={feedbackRating === 'up'}
-            aria-label="Mark this answer as helpful"
+            aria-label={
+              displayLanguage === 'ko'
+                ? '이 답변을 좋음으로 평가'
+                : 'Mark this answer as helpful'
+            }
             className="h-8 rounded-lg"
             disabled={feedbackState === 'saving'}
             onClick={() => {
@@ -331,14 +378,18 @@ export function RagEvidencePanel({
             }}
           >
             <ThumbsUp className="h-4 w-4" />
-            Helpful
+            {displayLanguage === 'ko' ? '좋아요' : 'Helpful'}
           </Button>
           <Button
             type="button"
             size="sm"
             variant={feedbackRating === 'down' ? 'secondary' : 'outline'}
             aria-pressed={feedbackRating === 'down'}
-            aria-label="Mark this answer as needing improvement"
+            aria-label={
+              displayLanguage === 'ko'
+                ? '이 답변을 개선 필요로 평가'
+                : 'Mark this answer as needing improvement'
+            }
             className="h-8 rounded-lg"
             disabled={feedbackState === 'saving'}
             onClick={() => {
@@ -347,7 +398,7 @@ export function RagEvidencePanel({
             }}
           >
             <ThumbsDown className="h-4 w-4" />
-            Improve
+            {displayLanguage === 'ko' ? '개선 필요' : 'Improve'}
           </Button>
         </div>
       </div>
@@ -358,14 +409,18 @@ export function RagEvidencePanel({
             className="text-muted-foreground text-xs"
             htmlFor={feedbackReasonId}
           >
-            Optional note
+            {displayLanguage === 'ko' ? '선택 메모' : 'Optional note'}
           </label>
           <textarea
             id={feedbackReasonId}
             value={feedbackReason}
             maxLength={MAX_CLIENT_REASON_LENGTH}
             onChange={(event) => setFeedbackReason(event.target.value)}
-            placeholder="What felt missing or inaccurate?"
+            placeholder={
+              displayLanguage === 'ko'
+                ? '부족하거나 부정확했던 부분이 있나요?'
+                : 'What felt missing or inaccurate?'
+            }
             className="border-input bg-background focus-visible:ring-ring/50 min-h-20 w-full resize-y rounded-lg border px-3 py-2 text-sm outline-none focus-visible:ring-[3px]"
           />
           <div className="flex justify-end">
@@ -386,7 +441,7 @@ export function RagEvidencePanel({
               }}
             >
               <Send className="h-4 w-4" />
-              Save feedback
+              {displayLanguage === 'ko' ? '피드백 저장' : 'Save feedback'}
             </Button>
           </div>
         </div>
@@ -459,8 +514,20 @@ async function submitFeedback({
 
 function getFeedbackStatusText(
   state: FeedbackState,
-  rating: FeedbackRating | null
+  rating: FeedbackRating | null,
+  language: 'ko' | 'en'
 ) {
+  if (language === 'ko') {
+    if (state === 'saving') return '피드백 저장 중...';
+    if (state === 'saved') return '고마워요. 피드백이 저장됐어요.';
+    if (state === 'error') return '피드백 저장에 실패했어요.';
+    if (state === 'editing-down') return '어떤 점을 개선하면 좋을까요?';
+    if (rating === 'up') return '피드백 고마워요.';
+    if (rating === 'down') return '고마워요. 이 답변은 개선할 수 있어요.';
+
+    return '이 답변이 도움이 되었나요?';
+  }
+
   if (state === 'saving') return 'Saving feedback...';
   if (state === 'saved') return 'Thanks. Feedback saved.';
   if (state === 'error') return 'Feedback could not be saved.';
@@ -552,10 +619,10 @@ function normalizeProjectEntityId(entityId: string) {
   return PROJECT_ENTITY_ALIASES[normalized];
 }
 
-function getConfidenceTone(confidence: number) {
+function getConfidenceTone(confidence: number, language: 'ko' | 'en') {
   if (confidence >= 0.75) {
     return {
-      label: 'High confidence',
+      label: language === 'ko' ? '높은 신뢰도' : 'High confidence',
       className:
         'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-700/70 dark:bg-emerald-950/30 dark:text-emerald-200',
     };
@@ -563,44 +630,83 @@ function getConfidenceTone(confidence: number) {
 
   if (confidence >= 0.5) {
     return {
-      label: 'Medium confidence',
+      label: language === 'ko' ? '중간 신뢰도' : 'Medium confidence',
       className:
         'border-blue-300 bg-blue-50 text-blue-800 dark:border-blue-700/70 dark:bg-blue-950/30 dark:text-blue-200',
     };
   }
 
   return {
-    label: 'Low confidence',
+    label: language === 'ko' ? '낮은 신뢰도' : 'Low confidence',
     className:
       'border-zinc-300 bg-zinc-50 text-zinc-800 dark:border-zinc-700/70 dark:bg-zinc-900/40 dark:text-zinc-200',
   };
 }
 
-function getAnswerSourceLabel(metadata: RagMetadata) {
-  const labels: Record<string, string> = {
-    faq_cache: 'FAQ cache',
-    answer_cache: 'Answer cache',
-    deterministic_rule: 'Policy rule',
-    rag_groq: 'Wiki + Groq',
-    rag_google: 'Wiki + Google',
-    rag_openai: 'Wiki + OpenAI',
-    rag_xai: 'Wiki + xAI',
-    fallback: 'Safe fallback',
+function getAnswerSourceLabel(metadata: RagMetadata, language: 'ko' | 'en') {
+  const labels: Record<string, Record<'ko' | 'en', string>> = {
+    faq_cache: { ko: 'FAQ 캐시', en: 'FAQ cache' },
+    answer_cache: { ko: '답변 캐시', en: 'Answer cache' },
+    deterministic_rule: { ko: '공개 정책 규칙', en: 'Policy rule' },
+    rag_groq: { ko: 'Wiki + Groq', en: 'Wiki + Groq' },
+    rag_google: { ko: 'Wiki + Google', en: 'Wiki + Google' },
+    rag_openai: { ko: 'Wiki + OpenAI', en: 'Wiki + OpenAI' },
+    rag_xai: { ko: 'Wiki + xAI', en: 'Wiki + xAI' },
+    fallback: { ko: '안전 fallback', en: 'Safe fallback' },
   };
 
   if (!metadata.answerSource) return null;
-  const sourceLabel = labels[metadata.answerSource] ?? metadata.answerSource;
+  const sourceLabel =
+    labels[metadata.answerSource]?.[language] ?? metadata.answerSource;
   const languageLabel = metadata.language
-    ? metadata.language.toUpperCase()
+    ? language === 'ko' && metadata.language === 'ko'
+      ? '한국어'
+      : metadata.language.toUpperCase()
     : '';
   const modelLabel =
     metadata.provider && !metadata.skippedGroq
       ? metadata.provider
       : metadata.skippedGroq
-        ? 'no Groq'
+        ? language === 'ko'
+          ? 'Groq 미사용'
+          : 'no Groq'
         : '';
 
   return [sourceLabel, languageLabel, modelLabel].filter(Boolean).join(' · ');
+}
+
+function formatSourceCount(count: number, language: 'ko' | 'en') {
+  if (language === 'ko') return `근거 ${count}개`;
+  return `${count} source${count === 1 ? '' : 's'}`;
+}
+
+function formatWarningCount(count: number, language: 'ko' | 'en') {
+  if (language === 'ko') return `경고 ${count}개`;
+  return `${count} warning${count === 1 ? '' : 's'}`;
+}
+
+function formatEntityLabel(entityId: string, language: 'ko' | 'en') {
+  const projectId = normalizeProjectEntityId(entityId);
+  if (projectId) return PROJECT_CARDS[projectId].title;
+
+  const labels: Record<string, Record<'ko' | 'en', string>> = {
+    'profile.identity': { ko: '프로필', en: 'Profile' },
+    'profile.career': { ko: '커리어', en: 'Career' },
+    'career.oosu_salon': { ko: '우수살롱', en: 'Oosu Salon' },
+    'policy.guardrail': { ko: '답변 정책', en: 'Answer policy' },
+  };
+
+  return labels[entityId]?.[language] ?? entityId;
+}
+
+function formatSourceBadgeTitle(source: RagSource, language: 'ko' | 'en') {
+  const titleMap: Record<string, Record<'ko' | 'en', string>> = {
+    'FAQ answer bank': { ko: 'FAQ 답변 뱅크', en: 'FAQ answer bank' },
+    'Answer cache': { ko: '답변 캐시', en: 'Answer cache' },
+    'Public policy rule': { ko: '공개 정책 규칙', en: 'Public policy rule' },
+  };
+
+  return titleMap[source.title]?.[language] ?? source.title;
 }
 
 function formatConfidence(confidence: number) {

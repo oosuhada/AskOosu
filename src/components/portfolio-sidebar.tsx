@@ -115,7 +115,7 @@ export function PortfolioSidebar({
       <Drawer direction="left" open={open} onOpenChange={setOpen}>
         <aside
           className={cn(
-            'bg-sidebar text-sidebar-foreground fixed inset-y-0 left-0 z-[60] flex w-[72px] flex-col items-center border-r py-7 shadow-sm',
+            'bg-sidebar text-sidebar-foreground fixed inset-y-0 left-0 z-[60] hidden w-[72px] flex-col items-center border-r py-7 shadow-sm md:flex',
             className
           )}
         >
@@ -145,7 +145,14 @@ export function PortfolioSidebar({
           </button>
         </aside>
 
-        <DrawerContent className="bg-sidebar text-sidebar-foreground z-[70] w-[min(420px,calc(100vw-24px))] max-w-none rounded-none border-r">
+        <DrawerTrigger
+          aria-label={text.menu}
+          className="bg-sidebar text-sidebar-foreground hover:bg-sidebar-accent fixed top-4 left-4 z-[60] inline-flex h-11 w-11 items-center justify-center rounded-xl border shadow-sm transition-colors md:hidden"
+        >
+          <Menu className="h-6 w-6" />
+        </DrawerTrigger>
+
+        <DrawerContent className="bg-sidebar text-sidebar-foreground z-[70] flex w-[min(420px,calc(100vw-24px))] max-w-none flex-col rounded-none border-r">
           <DrawerHeader className="flex flex-row items-center justify-between px-8 pt-8 pb-5">
             <DrawerTitle className="flex items-center gap-3 text-2xl">
               <PanelLeft className="h-5 w-5" />
@@ -205,19 +212,19 @@ export function PortfolioSidebar({
                   </p>
                 )}
               </section>
-
-              <Separator />
-
-              <button
-                type="button"
-                onClick={openSettings}
-                className="hover:bg-sidebar-accent flex w-full items-center gap-4 rounded-lg px-4 py-3 text-left text-base font-medium transition-colors"
-              >
-                <Settings className="h-5 w-5" />
-                {text.settings} & {text.help}
-              </button>
             </div>
           </ScrollArea>
+
+          <div className="border-t px-6 py-5">
+            <button
+              type="button"
+              onClick={openSettings}
+              className="hover:bg-sidebar-accent flex w-full items-center gap-4 rounded-lg px-4 py-3 text-left text-base font-medium transition-colors"
+            >
+              <Settings className="h-5 w-5" />
+              {text.settings} & {text.help}
+            </button>
+          </div>
         </DrawerContent>
       </Drawer>
 
@@ -229,7 +236,7 @@ export function PortfolioSidebar({
             className="fixed inset-0 z-[70] cursor-default bg-transparent"
             onClick={() => setSettingsOpen(false)}
           />
-          <aside className="bg-popover text-popover-foreground fixed bottom-4 left-[84px] z-[80] max-h-[calc(100vh-2rem)] w-[min(420px,calc(100vw-104px))] overflow-y-auto rounded-2xl border p-3 shadow-2xl">
+          <aside className="bg-popover text-popover-foreground fixed bottom-4 left-4 z-[80] max-h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border p-3 shadow-2xl md:left-[84px] md:w-[min(420px,calc(100vw-104px))]">
             <SettingsPanel
               text={text}
               language={language}

@@ -63,6 +63,7 @@ export default function HelperBoost({
                   if (!submitQuery || hasReachedLimit) return;
                   markQuestionAsked(question.id);
                   submitQuery(question.text);
+                  setIsVisible(false);
                 }}
                 variant="outline"
                 className={`h-auto min-w-[100px] flex-shrink-0 rounded-lg border px-4 py-3 whitespace-normal shadow-none backdrop-blur-sm transition-none ${

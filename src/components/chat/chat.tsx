@@ -152,35 +152,35 @@ const Chat = () => {
     setConversations(nextConversations);
   }, [activeConversationId, messages]);
 
-  const { currentAIMessage, latestUserMessage, hasActiveTool } = useMemo(() => {
-    const latestAIMessageIndex = messages.findLastIndex(
-      (m) => m.role === 'assistant'
-    );
-    const latestUserMessageIndex = messages.findLastIndex(
-      (m) => m.role === 'user'
-    );
+  const { latestUserMessage, hasActiveTool, latestAssistantMessageIndex } =
+    useMemo(() => {
+      const latestAIMessageIndex = messages.findLastIndex(
+        (m) => m.role === 'assistant'
+      );
+      const latestUserMessageIndex = messages.findLastIndex(
+        (m) => m.role === 'user'
+      );
 
-    const result = {
-      currentAIMessage:
-        latestAIMessageIndex !== -1 ? messages[latestAIMessageIndex] : null,
-      latestUserMessage:
-        latestUserMessageIndex !== -1 ? messages[latestUserMessageIndex] : null,
-      hasActiveTool: false,
-    };
+      const result = {
+        latestUserMessage:
+          latestUserMessageIndex !== -1
+            ? messages[latestUserMessageIndex]
+            : null,
+        hasActiveTool: false,
+        latestAssistantMessageIndex: latestAIMessageIndex,
+      };
 
-    if (result.currentAIMessage) {
-      result.hasActiveTool =
-        result.currentAIMessage.parts?.some((part) =>
-          isCompletedToolPart(part)
-        ) || false;
-    }
+      const currentAIMessage =
+        latestAIMessageIndex !== -1 ? messages[latestAIMessageIndex] : null;
 
-    if (latestAIMessageIndex < latestUserMessageIndex) {
-      result.currentAIMessage = null;
-    }
+      if (currentAIMessage) {
+        result.hasActiveTool =
+          currentAIMessage.parts?.some((part) => isCompletedToolPart(part)) ||
+          false;
+      }
 
-    return result;
-  }, [messages]);
+      return result;
+    }, [messages]);
 
   const isToolInProgress = messages.some(
     (m) =>
@@ -279,13 +279,9 @@ const Chat = () => {
       (message) => message.role === 'user' || message.role === 'assistant'
     );
   const isEmptyState = !hasConversationContent;
-  const shouldShowFixedHeader = hasConversationContent;
-
-  // Calculate header height based on hasActiveTool
-  const headerHeight = !shouldShowFixedHeader ? 24 : hasActiveTool ? 100 : 180;
 
   return (
-    <div className="relative h-screen overflow-hidden pl-[72px]">
+    <div className="relative h-screen overflow-hidden md:pl-[72px]">
       <PortfolioSidebar
         conversations={conversations}
         activeConversationId={activeConversationId}
@@ -293,7 +289,7 @@ const Chat = () => {
         onSelectConversation={handleSelectConversation}
       />
 
-      <div className="absolute top-6 right-8 z-51 flex flex-col-reverse items-center justify-center gap-1 md:flex-row">
+      <div className="absolute top-4 right-4 z-51 flex flex-col-reverse items-center justify-center gap-1 md:top-6 md:right-8 md:flex-row">
         <WelcomeModal
           trigger={
             <div className="hover:bg-accent cursor-pointer rounded-2xl px-3 py-1.5">
@@ -303,37 +299,10 @@ const Chat = () => {
         />
       </div>
 
-      {/* Fixed Avatar Header with Gradient */}
-      {shouldShowFixedHeader && (
-        <div className="from-background via-background/95 to-background/0 fixed top-0 right-0 left-[72px] z-50 bg-gradient-to-b">
-          <div
-            className={`transition-all duration-300 ease-in-out ${hasActiveTool ? 'pt-6 pb-0' : 'py-6'}`}
-          >
-            <div className="flex justify-center">
-              <button
-                className="cursor-pointer"
-                onClick={() => (window.location.href = '/')}
-                aria-label="Go to AskOosu home"
-              >
-                <OosuAvatar
-                  priority
-                  variant="static"
-                  animate={false}
-                  className={`transition-all duration-300 ${hasActiveTool ? 'h-20 w-20' : 'h-28 w-28'}`}
-                />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Main Content Area */}
       <div className="container mx-auto flex h-full max-w-3xl flex-col">
         {/* Scrollable Chat Content */}
-        <div
-          className="flex-1 overflow-y-auto px-2"
-          style={{ paddingTop: `${headerHeight}px` }}
-        >
+        <div className="flex-1 overflow-y-auto px-2 pt-4">
           <AnimatePresence mode="wait">
             {isEmptyState ? (
               <motion.div
@@ -346,31 +315,45 @@ const Chat = () => {
             ) : (
               <motion.div
                 key="conversation"
-                className="flex min-h-full flex-col justify-start pb-4"
+                className="flex min-h-full flex-col justify-start gap-4 pb-4"
                 {...MOTION_CONFIG}
               >
-                {latestUserText && (
-                  <UserQuestionBubble content={latestUserText} />
+                <ConversationAvatarHeader compact={hasActiveTool} />
+
+                {messages.map((message, index) =>
+                  message.role === 'user' ? (
+                    <UserQuestionBubble
+                      key={message.id}
+                      content={getMessageText(message)}
+                    />
+                  ) : message.role === 'assistant' ? (
+                    <SimplifiedChatView
+                      key={message.id}
+                      message={message}
+                      isLoading={
+                        isLoading && index === latestAssistantMessageIndex
+                      }
+                      regenerate={regenerate}
+                      sessionId={activeConversationId}
+                      question={getPreviousUserText(messages, index)}
+                    />
+                  ) : null
                 )}
 
-                {currentAIMessage ? (
-                  <SimplifiedChatView
-                    message={currentAIMessage}
-                    isLoading={isLoading}
-                    regenerate={regenerate}
-                    sessionId={activeConversationId}
-                    question={latestUserText}
-                  />
-                ) : loadingSubmit ? (
+                {loadingSubmit &&
+                latestAssistantMessageIndex <
+                  messages.findLastIndex(
+                    (message) => message.role === 'user'
+                  ) ? (
                   <div className="px-4 pt-4">
                     <ChatBubble variant="received">
                       <ChatBubbleMessage isLoading />
                     </ChatBubble>
                   </div>
-                ) : (
-                  chatErrorMessage && (
-                    <AssistantNoticeBubble content={chatErrorMessage} />
-                  )
+                ) : null}
+
+                {chatErrorMessage && (
+                  <AssistantNoticeBubble content={chatErrorMessage} />
                 )}
               </motion.div>
             )}
@@ -413,6 +396,25 @@ function UserQuestionBubble({ content }: { content: string }) {
   );
 }
 
+function ConversationAvatarHeader({ compact }: { compact: boolean }) {
+  return (
+    <div className="flex justify-center pt-4">
+      <button
+        className="cursor-pointer"
+        onClick={() => (window.location.href = '/')}
+        aria-label="Go to AskOosu home"
+      >
+        <OosuAvatar
+          priority
+          variant="static"
+          animate={false}
+          className={`transition-all duration-300 ${compact ? 'h-20 w-20' : 'h-28 w-28'}`}
+        />
+      </button>
+    </div>
+  );
+}
+
 function AssistantNoticeBubble({ content }: { content: string }) {
   return (
     <div className="mx-auto flex w-full max-w-3xl justify-start px-4 pt-2">
@@ -431,6 +433,15 @@ function getMessageText(message: UIMessage) {
     .map((part) => part.text)
     .join('\n')
     .trim();
+}
+
+function getPreviousUserText(messages: UIMessage[], assistantIndex: number) {
+  for (let index = assistantIndex - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message.role === 'user') return getMessageText(message);
+  }
+
+  return null;
 }
 
 function isToolPart(part: UIMessage['parts'][number]) {
