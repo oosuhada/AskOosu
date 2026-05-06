@@ -47,7 +47,7 @@ export default function HelperBoost({
     5,
     activeSurface
   );
-  const shouldCenterQuestionRow = visibleQuestions.length <= 2;
+  const shouldCenterQuestionRow = visibleQuestions.length <= 4;
 
   useEffect(() => {
     setIsVisible(true);
