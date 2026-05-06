@@ -65,7 +65,7 @@ export default function HelperBoost({
                   setIsVisible(false);
                 }}
                 variant="outline"
-                className={`h-auto w-[78vw] max-w-[23rem] shrink-0 snap-center justify-start gap-2.5 rounded-2xl border px-3.5 py-2.5 text-left whitespace-normal shadow-[0_8px_24px_rgba(15,23,42,0.08)] backdrop-blur-xl transition-all md:w-auto ${
+                className={`h-auto w-fit max-w-[82vw] shrink-0 snap-center justify-start gap-2.5 rounded-2xl border px-3.5 py-2.5 text-left whitespace-normal shadow-[0_8px_24px_rgba(15,23,42,0.08)] backdrop-blur-xl transition-all md:max-w-[25rem] md:px-4 md:py-3 ${
                   hasReachedLimit
                     ? 'border-border/60 bg-muted/50 cursor-not-allowed opacity-50'
                     : 'bg-background/35 hover:bg-background/60 text-foreground/90 cursor-pointer border-white/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_30px_rgba(15,23,42,0.1)] active:scale-[0.98] dark:border-white/15 dark:bg-white/[0.11] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_10px_30px_rgba(0,0,0,0.28)] dark:hover:bg-white/[0.16]'
@@ -73,14 +73,14 @@ export default function HelperBoost({
                 disabled={hasReachedLimit}
                 aria-label={`Ask starter question: ${question.text}`}
               >
-                <div className="flex items-center gap-2.5">
+                <div className="flex min-w-0 items-center gap-2.5">
                   <Icon
                     className="shrink-0"
                     size={17}
                     strokeWidth={2}
                     color={color}
                   />
-                  <span className="text-sm leading-snug font-medium">
+                  <span className="line-clamp-2 min-w-0 text-sm leading-snug font-medium md:text-base">
                     {question.text}
                   </span>
                 </div>
