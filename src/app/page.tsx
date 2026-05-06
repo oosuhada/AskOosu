@@ -23,6 +23,7 @@ import {
   Sparkles,
   UserRoundSearch,
 } from 'lucide-react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { ElementType } from 'react';
 import { Suspense, useRef, useState } from 'react';
@@ -88,7 +89,7 @@ function HomeContent() {
   };
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-start overflow-hidden px-4 pt-10 pb-52 pl-24 md:pt-12 md:pb-64">
+    <div className="relative flex min-h-dvh flex-col items-center justify-start overflow-x-hidden px-4 pt-20 pb-32 md:min-h-screen md:px-8 md:pt-12 md:pb-44 md:pl-24">
       <PortfolioSidebar onNewChat={startNewChat} />
 
       {/* big blurred footer word */}
@@ -103,9 +104,9 @@ function HomeContent() {
 
       {/* header */}
       <motion.div
-        className="z-1 mt-8 mb-7 flex w-full max-w-7xl flex-col items-center text-center md:mt-4 md:mb-9"
+        className="relative z-10 mb-6 flex w-full max-w-7xl flex-col items-center text-center md:mt-4 md:mb-9"
         variants={topElementVariants}
-        initial="hidden"
+        initial={false}
         animate="visible"
       >
         <div className="z-100 mb-5">
@@ -115,7 +116,7 @@ function HomeContent() {
         <h2 className="text-secondary-foreground text-base font-semibold md:text-xl">
           {oosuProfile.name}
         </h2>
-        <h1 className="mt-3 max-w-[min(90vw,1120px)] text-[clamp(2.45rem,5.4vw,4.75rem)] leading-[0.98] font-bold">
+        <h1 className="mt-3 max-w-[22rem] text-4xl leading-tight font-bold sm:max-w-2xl sm:text-5xl md:max-w-4xl md:text-6xl lg:text-7xl">
           <span className="block">AI-connected</span>
           <span className="block">Fullstack Developer</span>
         </h1>
@@ -124,33 +125,39 @@ function HomeContent() {
       <OosuAvatar
         priority
         interval={150}
-        className="relative z-10 h-32 w-32 sm:h-56 sm:w-52 md:h-64 md:w-64 lg:h-72 lg:w-72"
+        className="relative z-10 h-32 w-32 sm:h-44 sm:w-44 md:h-64 md:w-64 lg:h-72 lg:w-72"
       />
 
-      {/* input + quick buttons */}
+      {/* quick buttons */}
       <motion.div
         variants={bottomElementVariants}
-        initial="hidden"
+        initial={false}
         animate="visible"
-        className="fixed right-4 bottom-4 left-20 z-40 flex flex-col items-center justify-end md:right-8 md:left-24"
+        className="fixed inset-x-0 bottom-[calc(max(1rem,env(safe-area-inset-bottom))+4.75rem)] z-30 flex w-full flex-col items-center px-4 md:relative md:inset-auto md:mt-8 md:max-w-3xl md:px-0"
       >
-        {/* quick-question grid */}
         {isQuickQuestionsVisible && (
-          <div className="mb-2 grid w-full max-w-3xl grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <div
+            id="home-quick-questions"
+            className="flex w-full snap-x gap-2 overflow-x-auto pb-1 md:grid md:grid-cols-2 md:overflow-visible lg:grid-cols-3"
+          >
             {visibleQuestions.map((question) => {
               const { color, icon: Icon } = questionConfig[question.id];
 
               return (
                 <Button
                   key={question.id}
-                  onClick={() => {
-                    markQuestionAsked(question.id);
-                    goToChat(question.text);
-                  }}
+                  asChild
                   variant="outline"
-                  className="border-border hover:bg-accent bg-background/80 min-h-12 w-full cursor-pointer rounded-lg border px-4 py-3 whitespace-normal shadow-none backdrop-blur-lg active:scale-95"
+                  className="bg-background/35 hover:bg-background/60 text-foreground/90 min-h-12 w-[78vw] max-w-[23rem] shrink-0 cursor-pointer snap-center justify-start gap-2.5 rounded-2xl border border-white/55 px-3.5 py-2.5 text-left whitespace-normal shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_30px_rgba(15,23,42,0.1)] backdrop-blur-xl active:scale-[0.98] md:w-full md:max-w-none dark:border-white/15 dark:bg-white/[0.11] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_10px_30px_rgba(0,0,0,0.28)] dark:hover:bg-white/[0.16]"
                 >
-                  <div className="text-foreground flex h-full w-full items-center justify-start gap-3 text-left">
+                  <Link
+                    href={buildChatHref({
+                      query: question.text,
+                      language,
+                      theme,
+                    })}
+                    onClick={() => markQuestionAsked(question.id)}
+                  >
                     <Icon
                       className="shrink-0"
                       size={18}
@@ -160,7 +167,7 @@ function HomeContent() {
                     <span className="text-foreground text-sm leading-snug font-medium">
                       {question.text}
                     </span>
-                  </div>
+                  </Link>
                 </Button>
               );
             })}
@@ -172,7 +179,9 @@ function HomeContent() {
           onClick={() =>
             setIsQuickQuestionsVisible((currentValue) => !currentValue)
           }
-          className="text-muted-foreground hover:text-foreground mb-2 flex items-center gap-1 px-3 py-1 text-xs transition-colors"
+          aria-controls="home-quick-questions"
+          aria-expanded={isQuickQuestionsVisible}
+          className="text-muted-foreground hover:text-foreground bg-background/20 mt-2 flex items-center gap-1 rounded-full border border-transparent px-3 py-1 text-xs backdrop-blur-xl transition-colors dark:border-white/10 dark:bg-white/[0.06]"
         >
           {isQuickQuestionsVisible ? (
             <>
@@ -186,23 +195,30 @@ function HomeContent() {
             </>
           )}
         </button>
+      </motion.div>
 
-        {/* free-form question */}
+      {/* free-form question */}
+      <motion.div
+        variants={bottomElementVariants}
+        initial={false}
+        animate="visible"
+        className="fixed inset-x-4 bottom-[max(1rem,env(safe-area-inset-bottom))] z-40 md:right-8 md:left-24"
+      >
         <form
           onSubmit={(e) => {
             e.preventDefault();
             if (input.trim()) goToChat(input.trim());
           }}
-          className="relative w-full max-w-xl"
+          className="relative mx-auto w-full max-w-xl"
         >
-          <div className="border-border bg-background/85 hover:border-ring mx-auto flex items-center rounded-full border py-2.5 pr-2 pl-6 shadow-lg backdrop-blur-lg transition-all">
+          <div className="hover:border-ring bg-background/50 mx-auto flex min-h-14 items-center rounded-full border border-white/55 py-2 pr-2 pl-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_12px_36px_rgba(15,23,42,0.14)] backdrop-blur-2xl transition-all dark:border-white/10 dark:bg-white/[0.08] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_14px_40px_rgba(0,0,0,0.32)]">
             <input
               ref={inputRef}
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder={text.askAnything}
-              className="text-foreground placeholder:text-muted-foreground w-full border-none bg-transparent text-base focus:outline-none"
+              className="text-foreground placeholder:text-muted-foreground/80 h-9 w-full border-none bg-transparent text-base focus:outline-none"
             />
             <button
               type="submit"

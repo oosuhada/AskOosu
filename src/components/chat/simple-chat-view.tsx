@@ -26,7 +26,7 @@ interface SimplifiedChatViewProps {
 }
 
 const MOTION_CONFIG = {
-  initial: { opacity: 0, y: 20 },
+  initial: false,
   animate: { opacity: 1, y: 0 },
   exit: { opacity: 0, y: 20 },
   transition: {
@@ -63,21 +63,26 @@ export function SimplifiedChatView({
         )}
 
         {/* Text content */}
-        {hasTextContent && (
+        {(hasTextContent || isLoading) && (
           <div className="w-full">
             <ChatBubble variant="received" className="w-full">
-              <ChatBubbleMessage className="bg-background/85 w-full rounded-2xl border px-4 py-3 shadow-sm backdrop-blur-sm">
-                <ChatMessageContent
-                  message={message}
-                  isLast={true}
-                  isLoading={isLoading}
-                  regenerate={regenerate}
-                  skipToolRendering={true}
-                  feedbackContext={{
-                    sessionId,
-                    question,
-                  }}
-                />
+              <ChatBubbleMessage
+                isLoading={!hasTextContent && isLoading}
+                className="bg-background/85 w-full rounded-2xl border px-4 py-3 shadow-sm backdrop-blur-sm"
+              >
+                {hasTextContent ? (
+                  <ChatMessageContent
+                    message={message}
+                    isLast={true}
+                    isLoading={isLoading}
+                    regenerate={regenerate}
+                    skipToolRendering={true}
+                    feedbackContext={{
+                      sessionId,
+                      question,
+                    }}
+                  />
+                ) : null}
               </ChatBubbleMessage>
             </ChatBubble>
           </div>

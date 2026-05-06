@@ -36,7 +36,7 @@ export default function ChatLanding({
   return (
     <motion.div
       className="flex w-full flex-col items-center px-4 py-6"
-      initial="hidden"
+      initial={false}
       animate="visible"
       variants={containerVariants}
     >

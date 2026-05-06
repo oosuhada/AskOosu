@@ -27,7 +27,7 @@ export const uiText = {
     moreQuestions: '질문 더보기',
     chatLoading: '채팅을 불러오는 중...',
     aiResponseUnavailable:
-      '지금은 AI 응답 설정이 연결되지 않았어요. API 키 또는 Grok 연결이 준비되면 이 자리에서 바로 답변이 이어집니다.',
+      '지금은 AI 응답 설정이 연결되지 않았어요. API 연결을 확인하고 다시 시도해주세요.',
     close: '닫기',
     startChatting: '대화 시작하기',
     feedback: '좋게 보셨다면 공유해 주세요. 피드백도 언제든 환영합니다.',
@@ -81,7 +81,7 @@ export const uiText = {
     siteStackQuestion: '이 사이트 구현에 어떤 기술 스택 사용했는지',
     siteStackTitle: 'AskOosu 구현 스택',
     siteStackBody:
-      '현재 화면은 Next.js, React, TypeScript, Tailwind CSS, shadcn/ui, Vercel AI SDK로 구성되어 있어요. API는 스트리밍 응답과 툴 호출을 사용하고, Grok API 전환 및 Notion/RAG 지식 연결을 고려한 구조로 정리 중입니다.',
+      '현재 화면은 Next.js, React, TypeScript, Tailwind CSS, shadcn/ui, Vercel AI SDK로 구성되어 있어요. API는 스트리밍 응답과 툴 호출을 사용하고, Groq API 전환 및 Notion/RAG 지식 연결을 고려한 구조로 정리 중입니다.',
     presentationDescription:
       'AskOosu는 우수의 2026 포트폴리오 인터페이스입니다. 우수는 프론트엔드 경험, 백엔드 로직, LLM 응답이 하나의 제품처럼 연결되는 풀스택 경험을 만들고 있습니다.',
     resumeTitle: 'Oosu Jang 이력서',
@@ -105,7 +105,7 @@ export const uiText = {
     moreQuestions: 'More questions',
     chatLoading: 'Loading chat...',
     aiResponseUnavailable:
-      'The AI response is not connected right now. Once the API key or Grok setup is ready, the answer will continue here.',
+      'The AI response connection is unavailable right now. Please check the API connection and try again.',
     close: 'Close',
     startChatting: 'Start chatting',
     feedback: 'If this was useful, sharing and feedback are always welcome.',
@@ -161,7 +161,7 @@ export const uiText = {
     siteStackQuestion: 'What tech stack was used to build this site?',
     siteStackTitle: 'AskOosu Tech Stack',
     siteStackBody:
-      'The current interface uses Next.js, React, TypeScript, Tailwind CSS, shadcn/ui, and the Vercel AI SDK. The API uses streaming responses and tool calls, with a structure prepared for Grok API switching and future Notion/RAG knowledge retrieval.',
+      'The current interface uses Next.js, React, TypeScript, Tailwind CSS, shadcn/ui, and the Vercel AI SDK. The API uses streaming responses and tool calls, with a structure prepared for Groq API switching and future Notion/RAG knowledge retrieval.',
     presentationDescription:
       'AskOosu is Oosu’s 2026 portfolio interface: a conversational portfolio connected to an AI backend. Oosu builds fullstack experiences where frontend interaction, backend logic, and LLM responses work together as one product.',
     resumeTitle: "Oosu Jang's Resume",

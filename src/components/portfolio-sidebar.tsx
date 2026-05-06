@@ -115,7 +115,7 @@ export function PortfolioSidebar({
       <Drawer direction="left" open={open} onOpenChange={setOpen}>
         <aside
           className={cn(
-            'bg-sidebar text-sidebar-foreground fixed inset-y-0 left-0 z-[60] hidden w-[72px] flex-col items-center border-r py-7 shadow-sm md:flex',
+            'text-sidebar-foreground bg-background/50 fixed inset-y-0 left-0 z-[60] hidden w-[72px] flex-col items-center border-r border-white/45 py-7 shadow-[inset_1px_0_0_rgba(255,255,255,0.18),0_18px_50px_rgba(15,23,42,0.12)] backdrop-blur-2xl md:flex dark:border-white/10 dark:bg-white/[0.08] dark:shadow-[inset_1px_0_0_rgba(255,255,255,0.08),0_18px_50px_rgba(0,0,0,0.35)]',
             className
           )}
         >
@@ -147,12 +147,12 @@ export function PortfolioSidebar({
 
         <DrawerTrigger
           aria-label={text.menu}
-          className="bg-sidebar text-sidebar-foreground hover:bg-sidebar-accent fixed top-4 left-4 z-[60] inline-flex h-11 w-11 items-center justify-center rounded-xl border shadow-sm transition-colors md:hidden"
+          className="text-sidebar-foreground bg-background/50 hover:bg-background/65 fixed top-4 left-4 z-[60] inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_12px_30px_rgba(15,23,42,0.12)] backdrop-blur-2xl transition-colors md:hidden dark:border-white/10 dark:bg-white/[0.08] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_12px_30px_rgba(0,0,0,0.32)] dark:hover:bg-white/[0.12]"
         >
           <Menu className="h-6 w-6" />
         </DrawerTrigger>
 
-        <DrawerContent className="bg-sidebar text-sidebar-foreground z-[70] flex w-[min(420px,calc(100vw-24px))] max-w-none flex-col rounded-none border-r">
+        <DrawerContent className="text-sidebar-foreground bg-background/70 z-[70] flex w-[min(420px,calc(100vw-24px))] max-w-none flex-col rounded-none border-r border-white/45 shadow-[inset_1px_0_0_rgba(255,255,255,0.16),0_24px_70px_rgba(15,23,42,0.18)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.08] dark:shadow-[inset_1px_0_0_rgba(255,255,255,0.08),0_24px_70px_rgba(0,0,0,0.42)]">
           <DrawerHeader className="flex flex-row items-center justify-between px-8 pt-8 pb-5">
             <DrawerTitle className="flex items-center gap-3 text-2xl">
               <PanelLeft className="h-5 w-5" />
@@ -189,9 +189,9 @@ export function PortfolioSidebar({
                         key={conversation.id}
                         onClick={() => handleSelectConversation(conversation)}
                         className={cn(
-                          'hover:bg-sidebar-accent flex w-full flex-col rounded-lg px-4 py-3 text-left transition-colors',
+                          'flex w-full flex-col rounded-lg px-4 py-3 text-left transition-colors hover:bg-white/35 dark:hover:bg-white/[0.07]',
                           activeConversationId === conversation.id &&
-                            'bg-sidebar-primary text-sidebar-primary-foreground'
+                            'text-foreground bg-white/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.16)] dark:bg-white/[0.1]'
                         )}
                       >
                         <span className="line-clamp-2 text-sm font-medium">
@@ -215,7 +215,7 @@ export function PortfolioSidebar({
             </div>
           </ScrollArea>
 
-          <div className="border-t px-6 py-5">
+          <div className="border-t border-white/40 px-6 py-5 dark:border-white/10">
             <button
               type="button"
               onClick={openSettings}
@@ -236,7 +236,7 @@ export function PortfolioSidebar({
             className="fixed inset-0 z-[70] cursor-default bg-transparent"
             onClick={() => setSettingsOpen(false)}
           />
-          <aside className="bg-popover text-popover-foreground fixed bottom-4 left-4 z-[80] max-h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border p-3 shadow-2xl md:left-[84px] md:w-[min(420px,calc(100vw-104px))]">
+          <aside className="text-popover-foreground bg-background/70 fixed bottom-4 left-4 z-[80] max-h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border border-white/45 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_24px_70px_rgba(15,23,42,0.18)] backdrop-blur-2xl md:left-[84px] md:w-[min(420px,calc(100vw-104px))] dark:border-white/10 dark:bg-white/[0.08] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_24px_70px_rgba(0,0,0,0.42)]">
             <SettingsPanel
               text={text}
               language={language}
