@@ -43,7 +43,8 @@ export default function ChatLanding({
       <motion.div variants={itemVariants} className="text-center">
         <OosuAvatar
           animate={!hasReachedLimit}
-          interval={180}
+          interval={1000}
+          frameStep={3}
           className="mx-auto mb-5 h-28 w-28"
         />
         <p className="text-sm font-medium text-neutral-500">

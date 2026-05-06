@@ -66,6 +66,9 @@ const PRIVATE_OR_UNSAFE_PATTERNS = [
   /(집|자택|우수살롱|oosu\s*salon).*(주소|위치).*(알려|보내|공개|줘)/i,
   /(주소|위치).*(알려|보내|공개|줘).*(우수살롱|oosu\s*salon|집|자택)/i,
   /(주민등록|여권|계좌|카드번호|전화번호)/,
+  /(가족|가족관계|부모|아버지|어머니|형제|자매|배우자|결혼|자녀|아이).*(알려|말해|공개|누구|어떻게|되|있|궁금)/,
+  /(우수|oosu|jang).*(family|parents?|mother|father|siblings?|spouse|married|children|kids)/i,
+  /(family|parents?|mother|father|siblings?|spouse|married|children|kids).*(oosu|우수|jang)/i,
 ];
 
 const GREETING_SMALLTALK_PATTERNS = [
@@ -558,8 +561,8 @@ const CONVERSATION_DIRECT_ANSWERS: Record<
     en: 'Sure. Which angle should we explore: representative projects, tech stack, career story, or contact options?',
   },
   private_or_unsafe: {
-    ko: '그 정보는 공개 포트폴리오에서 안내할 수 없어요. 대신 공개된 프로젝트 설명이나 연락 방법은 알려드릴 수 있어요.',
-    en: 'I cannot share that through a public portfolio. I can still help with public project details or contact options.',
+    ko: '그 정보는 공개 Wiki에서 안내할 수 없는 비공개 정보예요. 대신 공개된 프로젝트 설명, 기술 스택, 커리어 방향, 연락 방법은 알려드릴 수 있어요.',
+    en: 'That is not public Wiki information I can share. I can still help with public project details, tech stack, career direction, or contact options.',
   },
   prompt_attack: {
     ko: '내부 프롬프트나 시스템 설정은 공개할 수 없어요. 대신 AskOosu가 어떤 구조로 동작하는지는 공개 가능한 수준에서 설명해드릴 수 있어요.',

@@ -27,7 +27,8 @@ const InternshipCard = () => {
           <OosuAvatar
             variant="hover"
             animate
-            interval={180}
+            interval={1000}
+            frameStep={3}
             className="h-16 w-16 shadow-md"
           />
           <div>
