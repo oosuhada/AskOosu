@@ -19,7 +19,10 @@ import { PortfolioSidebar } from '@/components/portfolio-sidebar';
 import { OosuAvatar } from '@/components/oosu-avatar';
 import { SimplifiedChatView } from '@/components/chat/simple-chat-view';
 import { getUiText } from '@/lib/i18n';
-import type { QuestionSurface } from '@/data/question-surfaces.shared';
+import type {
+  AnswerVariant,
+  QuestionSurface,
+} from '@/data/question-surfaces.shared';
 import { useDisplayPreferences } from '@/lib/use-display-preferences';
 import { useSuggestedQuestions } from '@/hooks/use-suggested-questions';
 import {
@@ -297,13 +300,25 @@ const Chat = () => {
       !autoSubmitted &&
       autoSubmittedQueryRef.current !== trimmedInitialQuery
     ) {
+      const suggestedQuestion = buildInitialSuggestedQuestion(
+        searchParams,
+        trimmedInitialQuery
+      );
+
       autoSubmittedQueryRef.current = trimmedInitialQuery;
       setAutoSubmitted(true);
       setInput('');
-      submitQuery(trimmedInitialQuery);
+      submitQuery(trimmedInitialQuery, suggestedQuestion);
       replaceChatUrl();
     }
-  }, [initialQuery, autoSubmitted, replaceChatUrl, setInput, submitQuery]);
+  }, [
+    initialQuery,
+    autoSubmitted,
+    replaceChatUrl,
+    searchParams,
+    setInput,
+    submitQuery,
+  ]);
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -607,4 +622,37 @@ function isCompletedToolPart(part: UIMessage['parts'][number]) {
 
 function isPendingToolPart(part: UIMessage['parts'][number]) {
   return isToolPart(part) && !isCompletedToolPart(part);
+}
+
+function buildInitialSuggestedQuestion(
+  searchParams: Pick<URLSearchParams, 'get'>,
+  query: string
+): SuggestedQuestion | undefined {
+  if (searchParams.get('source') !== 'quick_question') return undefined;
+
+  const faqId = searchParams.get('faqId');
+  if (!faqId) return undefined;
+
+  const displayQuestion = searchParams.get('displayQuestion') ?? query;
+  const quickLabel =
+    searchParams.get('originalQuickLabel') ?? displayQuestion ?? query;
+
+  return {
+    id: searchParams.get('starterQuestionId') ?? faqId,
+    faqId,
+    surface: 'typed_only',
+    priority: 0,
+    quickLabel,
+    displayQuestion,
+    text: quickLabel,
+    intentId: searchParams.get('intentId') ?? faqId,
+    answerVariant: toAnswerVariant(searchParams.get('answerVariant')),
+    renderSpec: searchParams.get('renderSpec') ?? undefined,
+    visibleByDefault: false,
+  };
+}
+
+function toAnswerVariant(value: string | null): AnswerVariant {
+  if (value === 'short' || value === 'detailed') return value;
+  return 'default';
 }

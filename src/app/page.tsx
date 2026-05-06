@@ -9,7 +9,6 @@ import { useSuggestedQuestions } from '@/hooks/use-suggested-questions';
 import { getUiText } from '@/lib/i18n';
 import { buildChatHref } from '@/lib/navigation';
 import { oosuProfile } from '@/lib/oosu-profile';
-import type { SuggestedQuestionId } from '@/lib/suggested-questions';
 import { useDisplayPreferences } from '@/lib/use-display-preferences';
 import { motion } from 'framer-motion';
 import {
@@ -29,9 +28,14 @@ import type { ElementType } from 'react';
 import { Suspense, useRef, useState } from 'react';
 
 const questionConfig: Record<
-  SuggestedQuestionId,
+  string,
   { color: string; icon: ElementType }
 > = {
+  'home.profile.intro': { color: '#188B75', icon: MessageSquareText },
+  'home.projects.top3': { color: '#246BFE', icon: BriefcaseBusiness },
+  'home.skills.level': { color: '#6E57C9', icon: Layers },
+  'home.ai.workflow': { color: '#0F8AA3', icon: LibraryBig },
+  'home.contact': { color: '#C19433', icon: UserRoundSearch },
   bestProjects: { color: '#246BFE', icon: BriefcaseBusiness },
   developerType: { color: '#188B75', icon: MessageSquareText },
   nowBuilding: { color: '#D04E6B', icon: Sparkles },
@@ -141,7 +145,10 @@ function HomeContent() {
             className="flex w-full max-w-5xl snap-x gap-2 overflow-x-auto pb-1 md:flex-wrap md:justify-center md:gap-3 md:overflow-visible md:pb-0"
           >
             {visibleQuestions.map((question) => {
-              const { color, icon: Icon } = questionConfig[question.id];
+              const { color, icon: Icon } = questionConfig[question.id] ?? {
+                color: '#64748B',
+                icon: Sparkles,
+              };
 
               return (
                 <Button
@@ -152,11 +159,20 @@ function HomeContent() {
                 >
                   <Link
                     href={buildChatHref({
-                      query: question.text,
+                      query: question.displayQuestion,
                       language,
                       theme,
+                      starterQuestionId: question.id,
+                      faqId: question.faqId,
+                      intentId: question.intentId,
+                      displayQuestion: question.displayQuestion,
+                      originalQuickLabel: question.quickLabel,
+                      answerVariant: question.answerVariant,
+                      renderSpec: question.renderSpec,
+                      source: 'quick_question',
                     })}
                     onClick={() => markQuestionAsked(question.id)}
+                    aria-label={`Ask starter question: ${question.displayQuestion}`}
                   >
                     <Icon
                       className="shrink-0"
@@ -165,7 +181,7 @@ function HomeContent() {
                       color={color}
                     />
                     <span className="text-foreground line-clamp-2 min-w-0 text-sm leading-snug font-medium md:text-base">
-                      {question.text}
+                      {question.quickLabel}
                     </span>
                   </Link>
                 </Button>
