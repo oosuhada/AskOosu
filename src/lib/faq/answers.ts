@@ -1015,7 +1015,7 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
     shortAnswer:
       '우수에게 연락하려면 이메일, LinkedIn, GitHub를 사용할 수 있습니다.',
     defaultAnswer: [
-      '연락은 공개 채널 기준으로 안내할게요. 우수는 AI를 붙인 웹 제품, RAG/검색 UX, 풀스택 프로토타입처럼 “아이디어를 실제로 만져지는 화면까지 끌고 가는” 협업에 특히 잘 맞습니다.',
+      '우수에게 연락하려면 이메일, LinkedIn, GitHub가 가장 깔끔합니다. AI를 붙인 웹 제품, RAG/검색 UX, 풀스택 프로토타입처럼 “아이디어를 실제로 만져지는 화면까지 끌고 가는” 협업에 특히 잘 맞습니다.',
       '',
       `- Email: ${oosuProfile.email}`,
       `- GitHub: ${oosuProfile.github}`,
@@ -1065,10 +1065,9 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
       'contact oosu',
       'github link',
     ],
-    shortAnswer:
-      'The safest public contact channels are email, LinkedIn, and GitHub.',
+    shortAnswer: 'You can reach Oosu by email, LinkedIn, or GitHub.',
     defaultAnswer: [
-      'Contact is shown through public channels only. Oosu is a good fit for AI-connected web products, RAG/search UX, and fullstack prototypes where an idea needs to become a working screen.',
+      'Email, LinkedIn, and GitHub are the clearest ways to reach Oosu. He is a good fit for AI-connected web products, RAG/search UX, and fullstack prototypes where an idea needs to become a working screen.',
       '',
       `- Email: ${oosuProfile.email}`,
       `- GitHub: ${oosuProfile.github}`,

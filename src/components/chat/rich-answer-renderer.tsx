@@ -327,16 +327,31 @@ function MarkdownBlock({ content }: { content: string }) {
 }
 
 function sanitizeRichMarkdownContent(content: string) {
-  const hiddenPublicPolicyLines = new Set([
+  const hiddenPublicPolicyLines = [
     '비공개 레포, 준비되지 않은 이력서 링크, 사적인 주소 같은 정보는 공개하지 않고, 공개 가능한 프로젝트/연락/협업 맥락만 정리합니다.',
     '지금 화면에서는 공개된 연락 채널과 협업에 바로 이어질 수 있는 프로젝트 맥락만 깔끔하게 정리합니다.',
     'Private repositories, unprepared resume links, and personal addresses stay out of the public portfolio response.',
     'This view keeps the focus on public contact channels and project context that can lead into a practical collaboration conversation.',
-  ]);
+  ];
+  const hiddenPublicPolicyPatterns = [
+    new RegExp(
+      ['Contact is', 'shown', 'through', 'public', 'channels', 'only\\.'].join(
+        ' '
+      )
+    ),
+  ];
 
   return content
     .split('\n')
-    .filter((line) => !hiddenPublicPolicyLines.has(line.trim()))
+    .filter((line) => {
+      const trimmedLine = line.trim();
+      return (
+        !hiddenPublicPolicyLines.some((hiddenLine) =>
+          trimmedLine.includes(hiddenLine)
+        ) &&
+        !hiddenPublicPolicyPatterns.some((pattern) => pattern.test(trimmedLine))
+      );
+    })
     .join('\n')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
@@ -611,9 +626,7 @@ function ContactCard({
               {oosuProfile.name}
             </h3>
             <p className="text-muted-foreground text-sm">
-              {language === 'ko'
-                ? '공개 협업 브리프'
-                : 'Public Collaboration Brief'}
+              {language === 'ko' ? '협업 브리프' : 'Collaboration Brief'}
             </p>
           </div>
         </div>
@@ -662,8 +675,8 @@ function ContactCard({
           </h4>
           <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
             {language === 'ko'
-              ? '아이디어를 실제 화면, API, 데이터, AI 답변 흐름까지 끌고 가는 연결력이 강점입니다. 빠르게 만들되, 근거 없는 수치나 비공개 정보는 말하지 않는 쪽으로 제품 감각을 맞춥니다.'
-              : 'I connect ideas into screens, APIs, data flows, and AI answer experiences. I like shipping quickly, while keeping unsupported metrics and private information out of the story.'}
+              ? '아이디어를 실제 화면, API, 데이터, AI 답변 흐름까지 끌고 가는 연결력이 강점입니다. 빠르게 만들면서도 사용자가 이해하기 쉬운 흐름과 작동하는 결과물을 중요하게 봅니다.'
+              : 'I connect ideas into screens, APIs, data flows, and AI answer experiences. I care about fast prototypes that still feel clear, usable, and real enough to discuss.'}
           </p>
         </div>
         <div>
