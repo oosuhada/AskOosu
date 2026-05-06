@@ -216,6 +216,18 @@ export const questionSurfacesEn = [
     visibleByDefault: false,
   },
   {
+    id: 'fun.public_notes',
+    faqId: 'faq.profile.public_life_notes.default',
+    surface: 'fun',
+    priority: 1,
+    quickLabel: 'Work taste',
+    displayQuestion:
+      'Can you share Oosu’s working style or public personal interests lightly?',
+    answerVariant: 'default',
+    renderSpec: 'public_life_notes',
+    visibleByDefault: false,
+  },
+  {
     id: 'recruiter.first_30_days',
     faqId: 'faq.recruiter.first_30_days.default',
     surface: 'recruiter',

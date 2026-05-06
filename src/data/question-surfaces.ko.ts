@@ -218,6 +218,18 @@ export const questionSurfacesKo = [
     visibleByDefault: false,
   },
   {
+    id: 'fun.public_notes',
+    faqId: 'faq.profile.public_life_notes.default',
+    surface: 'fun',
+    priority: 1,
+    quickLabel: '작업 취향',
+    displayQuestion:
+      '우수님의 작업 성향이나 공개 가능한 취향을 가볍게 알려줄 수 있나요?',
+    answerVariant: 'default',
+    renderSpec: 'public_life_notes',
+    visibleByDefault: false,
+  },
+  {
     id: 'recruiter.first_30_days',
     faqId: 'faq.recruiter.first_30_days.default',
     surface: 'recruiter',

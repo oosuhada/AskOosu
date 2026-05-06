@@ -122,11 +122,18 @@ export async function prepareChatOrchestration({
     });
   }
 
+  const intentStarterQuestionId =
+    getStarterQuestionIdForConversationIntent(conversationIntent);
   const faqRoute = await routeFaqIntent({
     question,
     language,
-    starterQuestionId: requestContext.triggerId,
-    source: requestContext.source,
+    starterQuestionId: requestContext.triggerId ?? intentStarterQuestionId,
+    source:
+      requestContext.triggerId && requestContext.source
+        ? requestContext.source
+        : intentStarterQuestionId
+          ? 'quick_question'
+          : requestContext.source,
   });
 
   if (
@@ -347,6 +354,18 @@ function buildConversationDirectOrchestration({
       metadata,
     },
   };
+}
+
+function getStarterQuestionIdForConversationIntent({
+  intent,
+  reason,
+}: ConversationIntentResult) {
+  if (reason === 'broad_project_request') return 'home.projects.top3';
+  if (reason === 'broad_skill_request') return 'home.skills.level';
+  if (reason === 'public_life_notes_request') return 'fun.public_notes';
+  if (intent === 'contact_or_link_request') return 'home.contact';
+
+  return null;
 }
 
 function buildFaqDirectRouteDecision({
