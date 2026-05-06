@@ -363,6 +363,7 @@ function getStarterQuestionIdForConversationIntent({
   if (reason === 'broad_project_request') return 'home.projects.top3';
   if (reason === 'broad_skill_request') return 'home.skills.level';
   if (reason === 'public_life_notes_request') return 'fun.public_notes';
+  if (reason === 'profile_intro_request') return 'home.profile.intro';
   if (intent === 'contact_or_link_request') return 'home.contact';
 
   return null;

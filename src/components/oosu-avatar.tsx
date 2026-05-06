@@ -26,19 +26,18 @@ export function OosuAvatar({
   className,
   imageClassName,
   priority = false,
-  variant,
+  variant = 'static',
 }: OosuAvatarProps) {
   const [frame, setFrame] = useState(0);
   const [imageFailed, setImageFailed] = useState(false);
-  const resolvedVariant = variant ?? (animate ? 'hover' : 'static');
   const normalizedFrameStep = Math.max(1, Math.floor(frameStep));
   const currentFrame = useMemo(
-    () => (resolvedVariant === 'hover' ? frames[frame] : '/oosuhada.png'),
-    [frame, resolvedVariant]
+    () => (variant === 'hover' ? frames[frame] : '/oosuhada.png'),
+    [frame, variant]
   );
 
   useEffect(() => {
-    if (resolvedVariant !== 'hover' || !animate) {
+    if (variant !== 'hover' || !animate) {
       setFrame(0);
       return;
     }
@@ -48,7 +47,7 @@ export function OosuAvatar({
     }, interval);
 
     return () => window.clearInterval(timer);
-  }, [animate, interval, normalizedFrameStep, resolvedVariant]);
+  }, [animate, interval, normalizedFrameStep, variant]);
 
   useEffect(() => {
     setImageFailed(false);
