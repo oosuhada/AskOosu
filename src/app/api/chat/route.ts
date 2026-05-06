@@ -2,6 +2,8 @@ import { convertToModelMessages, streamText, stepCountIs } from 'ai';
 import type { UIMessage } from 'ai';
 import {
   getChatModel,
+  getChatProviderErrorCode,
+  getFallbackChatModel,
   isChatModelRateLimitError,
   recordChatModelFailure,
   recordChatModelSuccess,
@@ -16,10 +18,30 @@ import { getProjects } from './tools/getProjects';
 import { getResume } from './tools/getResume';
 import { getSkills } from './tools/getSkills';
 import { getSports } from './tools/getSport';
-import { buildRagChatContext } from '@/lib/rag/chat-context';
+import { createDirectAnswerResponse } from '@/lib/chat/direct-response';
+import {
+  prepareChatOrchestration,
+  getLatestUserText,
+} from '@/lib/chat/orchestrator';
+import {
+  recordAiProviderStatus,
+  recordAiProviderUsage,
+  upsertCachedAnswer,
+} from '@/lib/chat/database';
+import type { ChatAnswerSource } from '@/lib/chat/types';
+import { parsePreferredLanguage } from '@/lib/i18n/detect-language';
 import { checkRateLimit, rateLimitHeaders } from '@/lib/rate-limit';
 
+export const runtime = 'nodejs';
 export const maxDuration = 30;
+
+type ChatRequestBody = {
+  messages?: UIMessage[];
+  locale?: unknown;
+  language?: unknown;
+  starterQuestionId?: string | null;
+  conversationId?: string | null;
+};
 
 function errorHandler(error: unknown) {
   if (error == null) {
@@ -55,8 +77,34 @@ export async function POST(req: Request) {
       );
     }
 
-    const body = (await req.json()) as { messages?: UIMessage[] };
+    const body = (await req.json()) as ChatRequestBody;
     messages = Array.isArray(body.messages) ? body.messages : [];
+    const orchestration = await prepareChatOrchestration({
+      messages,
+      preferredLanguage:
+        parsePreferredLanguage(body.language) ??
+        parsePreferredLanguage(body.locale),
+      starterQuestionId: body.starterQuestionId,
+    });
+
+    if (orchestration.mode === 'direct') {
+      void recordAiProviderUsage({
+        provider: 'cache',
+        model: orchestration.directAnswer.metadata.answerSource,
+        route: 'api/chat',
+        answerSource: orchestration.directAnswer.metadata.answerSource,
+        latencyMs: 0,
+        success: true,
+      }).catch((error) => {
+        console.warn('Unable to record cache usage:', error);
+      });
+
+      return createDirectAnswerResponse({
+        messages,
+        answer: orchestration.directAnswer.answer,
+        metadata: orchestration.directAnswer.metadata,
+      });
+    }
 
     const tools = {
       getProjects,
@@ -69,13 +117,20 @@ export async function POST(req: Request) {
       getSports,
     };
 
-    const latestUserText = getLatestUserText(messages);
-    const ragContext = await buildRagChatContext(latestUserText);
     const promptMessages = await convertToModelMessages(messages, {
       tools,
       ignoreIncompleteToolCalls: true,
     });
-    const chatModel = getChatModel();
+    const chatModel = selectChatModelWithFallback();
+    const answerSource = getGeneratedAnswerSource(chatModel.provider);
+    const responseMetadata = {
+      ...orchestration.metadata,
+      answerSource,
+      provider: chatModel.provider,
+      model: chatModel.modelName,
+      skippedGroq: chatModel.provider !== 'groq',
+    };
+    const startedAt = Date.now();
     let generatedAnswer = '';
 
     const result = streamText({
@@ -83,7 +138,7 @@ export async function POST(req: Request) {
       system: [
         SYSTEM_PROMPT_TEXT,
         RAG_CHAT_SYSTEM_PROMPT,
-        ragContext.contextText,
+        orchestration.ragContext.contextText,
       ]
         .filter(Boolean)
         .join('\n\n'),
@@ -93,19 +148,71 @@ export async function POST(req: Request) {
       maxRetries: chatModel.provider === 'groq' ? 0 : undefined,
       onError: ({ error }) => {
         recordChatModelFailure(chatModel, error);
+        void recordAiProviderUsage({
+          provider: chatModel.provider,
+          model: chatModel.modelName,
+          route: 'api/chat',
+          answerSource,
+          latencyMs: Date.now() - startedAt,
+          success: false,
+          errorCode: getChatProviderErrorCode(error),
+        }).catch((usageError) => {
+          console.warn('Unable to record provider failure:', usageError);
+        });
+        void recordAiProviderStatus({
+          provider: chatModel.provider,
+          status: isChatModelRateLimitError(error) ? 'cooldown' : 'error',
+          errorCode: getChatProviderErrorCode(error),
+        }).catch((statusError) => {
+          console.warn('Unable to record provider status:', statusError);
+        });
       },
-      onFinish: ({ text }) => {
+      onFinish: ({ text, usage }) => {
         generatedAnswer = text;
         recordChatModelSuccess(chatModel);
+        const usageValues = normalizeUsage(usage);
+        void recordAiProviderUsage({
+          provider: chatModel.provider,
+          model: chatModel.modelName,
+          route: 'api/chat',
+          answerSource,
+          inputTokens: usageValues.inputTokens,
+          outputTokens: usageValues.outputTokens,
+          totalTokens: usageValues.totalTokens,
+          latencyMs: Date.now() - startedAt,
+          success: true,
+        }).catch((error) => {
+          console.warn('Unable to record provider usage:', error);
+        });
+        void recordAiProviderStatus({
+          provider: chatModel.provider,
+          status: 'ok',
+        }).catch((error) => {
+          console.warn('Unable to record provider status:', error);
+        });
+        void upsertCachedAnswer({
+          normalizedQuestion: orchestration.normalizedQuestion,
+          language: orchestration.language,
+          answer: text,
+          answerSource,
+          matchedEntityIds: responseMetadata.matchedEntityIds,
+          sourceChunkIds: responseMetadata.sourceChunkIds,
+          confidence: responseMetadata.confidence,
+          provider: chatModel.provider,
+          model: chatModel.modelName,
+        }).catch((error) => {
+          console.warn('Unable to write answer cache:', error);
+        });
       },
     });
 
     return result.toUIMessageStreamResponse({
-      onError: (error) => getSafeChatErrorMessage(error, latestUserText),
+      onError: (error) =>
+        getSafeChatErrorMessage(error, orchestration.question),
       messageMetadata: ({ part }) => {
         if (part.type === 'finish') {
           return {
-            ...ragContext.metadata,
+            ...responseMetadata,
             answer: generatedAnswer,
           };
         }
@@ -114,16 +221,30 @@ export async function POST(req: Request) {
   } catch (err) {
     console.error('Global error:', err);
     const latestUserText = getLatestUserText(messages);
-    const ragContext = await buildRagChatContext(latestUserText);
+    const orchestration = await prepareChatOrchestration({
+      messages,
+    });
+    const retrievedContext =
+      orchestration.mode === 'generate'
+        ? orchestration.ragContext.contextText
+        : '';
+    const metadata =
+      orchestration.mode === 'generate'
+        ? orchestration.metadata
+        : orchestration.directAnswer.metadata;
 
     return createStaticFallbackResponse({
       messages,
       query: latestUserText,
-      retrievedContext: ragContext.contextText,
+      retrievedContext,
       reason: isChatModelRateLimitError(err)
         ? 'rate_limit'
         : 'model_unavailable',
-      metadata: ragContext.metadata,
+      metadata: {
+        ...metadata,
+        answerSource: 'fallback',
+        skippedGroq: true,
+      },
     });
   }
 }
@@ -138,19 +259,6 @@ const RAG_CHAT_SYSTEM_PROMPT = `
 - Do not output raw JSON metadata. Metadata is attached by the API separately.
 `;
 
-function getLatestUserText(messages: UIMessage[]) {
-  const latestUserMessage = [...messages]
-    .reverse()
-    .find((message) => message.role === 'user');
-
-  return (
-    latestUserMessage?.parts
-      .filter((part) => part.type === 'text')
-      .map((part) => part.text)
-      .join('\n') ?? ''
-  );
-}
-
 function getSafeChatErrorMessage(error: unknown, query: string) {
   if (isChatModelRateLimitError(error)) {
     return [
@@ -163,4 +271,44 @@ function getSafeChatErrorMessage(error: unknown, query: string) {
   }
 
   return errorHandler(error);
+}
+
+function selectChatModelWithFallback() {
+  try {
+    return getChatModel();
+  } catch (error) {
+    const fallbackModel = getFallbackChatModel();
+    if (fallbackModel) return fallbackModel;
+    throw error;
+  }
+}
+
+function getGeneratedAnswerSource(provider: string): ChatAnswerSource {
+  if (provider === 'groq') return 'rag_groq';
+  if (provider === 'google_vertex') return 'rag_google';
+  if (provider === 'xai') return 'rag_xai';
+  if (provider === 'openai') return 'rag_openai';
+  return 'fallback';
+}
+
+function normalizeUsage(usage: unknown) {
+  if (!usage || typeof usage !== 'object') {
+    return {};
+  }
+
+  const usageRecord = usage as Record<string, unknown>;
+  return {
+    inputTokens: parseUsageNumber(
+      usageRecord.inputTokens ?? usageRecord.promptTokens
+    ),
+    outputTokens: parseUsageNumber(
+      usageRecord.outputTokens ?? usageRecord.completionTokens
+    ),
+    totalTokens: parseUsageNumber(usageRecord.totalTokens),
+  };
+}
+
+function parseUsageNumber(value: unknown) {
+  const parsedValue = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(parsedValue) ? parsedValue : null;
 }

@@ -16,6 +16,7 @@ Instead of a static portfolio, this project uses a chat-first interface: visitor
 - RAG sync/search API routes with memory storage by default and optional Postgres + pgvector storage
 - Optional Grok/xAI provider mode through AI SDK 6, using xAI Responses by default
 - Optional Groq provider mode with multiple API keys, lazy cooldown, and automatic reactivation after failures or quota/rate-limit errors
+- Cache-first chat orchestration with FAQ/deterministic answers, answer cache, RAG context, and optional Google Vertex fallback
 
 ## Links
 
@@ -56,6 +57,14 @@ GROQ_KEY_FAILURE_THRESHOLD=3
 GROQ_KEY_COOLDOWN_MS=900000
 GROQ_KEY_QUOTA_COOLDOWN_MS=3600000
 
+# Optional Google Vertex provider/fallback
+# ASKOOSU_AI_PROVIDER=google_vertex
+GOOGLE_VERTEX_API_KEY=
+GOOGLE_VERTEX_PROJECT=
+GOOGLE_VERTEX_LOCATION=us-central1
+GOOGLE_VERTEX_MODEL=gemini-2.5-flash
+GOOGLE_APPLICATION_CREDENTIALS=
+
 # Optional Notion RAG
 NOTION_API_KEY=your_notion_integration_secret
 NOTION_VERSION=2026-03-11
@@ -68,6 +77,8 @@ ASKOOSU_RAG_AUTO_SYNC=true
 ASKOOSU_RAG_RETRIEVAL=lexical
 ASKOOSU_RAG_TOP_K=5
 ASKOOSU_RAG_ADMIN_TOKEN=local_or_server_secret
+ASKOOSU_WIKI_VERSION=v10
+ASKOOSU_ANSWER_CACHE_TTL_HOURS=24
 
 # Optional embedding/vector search
 # ASKOOSU_RAG_RETRIEVAL=embedding

@@ -15,6 +15,7 @@ import { SimplifiedChatView } from '@/components/chat/simple-chat-view';
 import { getUiText } from '@/lib/i18n';
 import { useDisplayPreferences } from '@/lib/use-display-preferences';
 import { useSuggestedQuestions } from '@/hooks/use-suggested-questions';
+import { findSuggestedQuestionId } from '@/lib/suggested-questions';
 import {
   createConversationId,
   readStoredConversations,
@@ -206,6 +207,8 @@ const Chat = () => {
         {
           body: {
             conversationId,
+            locale: language,
+            starterQuestionId: findSuggestedQuestionId(trimmedQuery) ?? null,
           },
         }
       );
@@ -214,6 +217,7 @@ const Chat = () => {
       activeConversationId,
       clearError,
       isToolInProgress,
+      language,
       markQueryAsked,
       sendMessage,
     ]

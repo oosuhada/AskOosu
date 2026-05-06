@@ -1,0 +1,343 @@
+import { oosuProfile } from '@/lib/oosu-profile';
+import type { ChatLanguage } from '@/lib/i18n/detect-language';
+import type { ChatAnswerSource } from '@/lib/chat/types';
+
+export type FaqAnswer = {
+  id: string;
+  intentId: string;
+  language: ChatLanguage;
+  patterns: string[];
+  answer: string;
+  answerSource: ChatAnswerSource;
+  matchedEntityIds: string[];
+  sourceChunkIds: string[];
+  confidence: number;
+};
+
+export const FAQ_ANSWERS: FaqAnswer[] = [
+  {
+    id: 'profile.intro.ko',
+    intentId: 'developerType',
+    language: 'ko',
+    patterns: ['우수는 어떤 개발자예요?', '우수는 어떤 개발자', '장우수 소개'],
+    answer: [
+      '우수는 프론트엔드에서 출발해 백엔드, 데이터베이스, AI 연결까지 확장하고 있는 AI-connected Fullstack Developer예요.',
+      '',
+      '강점은 새 도메인을 빠르게 구조화하고, 배운 내용을 실제 서비스 흐름으로 연결하는 쪽에 있습니다. AskOosu 자체도 그 방향을 보여주는 프로젝트예요. Next.js UI, API Route Handler, Notion RAG, PostgreSQL, Groq를 하나로 묶어서 포트폴리오가 직접 질문에 답하게 만들고 있습니다.',
+    ].join('\n'),
+    answerSource: 'faq_cache',
+    matchedEntityIds: ['profile', 'career'],
+    sourceChunkIds: ['faq.profile.intro.ko'],
+    confidence: 0.98,
+  },
+  {
+    id: 'profile.intro.en',
+    intentId: 'developerType',
+    language: 'en',
+    patterns: ['What kind of developer is Oosu?', 'who is oosu'],
+    answer: [
+      'Oosu is an AI-connected fullstack developer who started from frontend work and is expanding into backend systems, databases, and AI-powered product flows.',
+      '',
+      'His strength is turning new domains into practical service structures. AskOosu demonstrates that directly by connecting a Next.js chat UI, API Route Handlers, Notion RAG, PostgreSQL, and Groq into a conversational portfolio.',
+    ].join('\n'),
+    answerSource: 'faq_cache',
+    matchedEntityIds: ['profile', 'career'],
+    sourceChunkIds: ['faq.profile.intro.en'],
+    confidence: 0.98,
+  },
+  {
+    id: 'project.askoosu.ko',
+    intentId: 'bestProjects',
+    language: 'ko',
+    patterns: [
+      'AskOosu 프로젝트를 설명해줘',
+      'askoosu 설명',
+      'ask oosu 프로젝트',
+    ],
+    answer: [
+      'AskOosu는 우수의 2026 대화형 AI 포트폴리오입니다.',
+      '',
+      `방문자는 ${oosuProfile.currentPortfolioUrl}에서 스크롤 대신 질문으로 프로젝트와 경험을 탐색할 수 있어요. 구조는 Next.js App Router 기반 프론트엔드와 API Route Handler, Notion Wiki, PostgreSQL RAG cache, Groq 생성 모델을 연결한 형태입니다.`,
+      '',
+      '핵심 의도는 포트폴리오가 단순 소개 페이지가 아니라, 프론트엔드·백엔드·DB·AI orchestration·홈서버 배포 역량을 한 화면에서 증명하는 것입니다.',
+    ].join('\n'),
+    answerSource: 'faq_cache',
+    matchedEntityIds: ['askoosu'],
+    sourceChunkIds: ['faq.project.askoosu.ko'],
+    confidence: 0.98,
+  },
+  {
+    id: 'project.askoosu.en',
+    intentId: 'bestProjects',
+    language: 'en',
+    patterns: ['Explain the AskOosu project', 'what is askoosu'],
+    answer: [
+      'AskOosu is Oosu’s 2026 conversational AI portfolio.',
+      '',
+      `At ${oosuProfile.currentPortfolioUrl}, visitors can explore projects and experience by asking questions instead of scrolling through a static portfolio. The system connects a Next.js App Router frontend, API Route Handlers, a Notion Wiki, PostgreSQL-backed RAG cache, and Groq generation.`,
+      '',
+      'The point is to make the portfolio itself demonstrate frontend, backend, database, AI orchestration, and home-server deployment ability.',
+    ].join('\n'),
+    answerSource: 'faq_cache',
+    matchedEntityIds: ['askoosu'],
+    sourceChunkIds: ['faq.project.askoosu.en'],
+    confidence: 0.98,
+  },
+  {
+    id: 'project.instagram.ko',
+    intentId: 'nowBuilding',
+    language: 'ko',
+    patterns: [
+      'Instagram Clone에서 뭘 배웠나요?',
+      'instagram clone 배운 점',
+      '인스타그램 클론',
+    ],
+    answer: [
+      'Instagram Clone은 우수가 SNS의 핵심 흐름을 풀스택으로 직접 연결해 본 프로젝트예요.',
+      '',
+      '피드, 팔로우, 댓글 같은 기능을 만들면서 React UI만이 아니라 Spring Boot API, PostgreSQL 데이터 구조, 배포된 프론트와 백엔드의 연결까지 경험했습니다. 그래서 “화면을 잘 만드는 개발자”에서 “데이터와 API 흐름까지 생각하는 개발자”로 확장하는 근거가 됩니다.',
+      '',
+      'Live: https://aigram.oosu.dev',
+    ].join('\n'),
+    answerSource: 'faq_cache',
+    matchedEntityIds: ['instagram_clone'],
+    sourceChunkIds: ['faq.project.instagram.ko'],
+    confidence: 0.96,
+  },
+  {
+    id: 'project.instagram.en',
+    intentId: 'nowBuilding',
+    language: 'en',
+    patterns: [
+      'What did you learn from Instagram Clone?',
+      'instagram clone learning',
+    ],
+    answer: [
+      'Instagram Clone shows Oosu’s fullstack practice around core SNS flows.',
+      '',
+      'By building feed, follow, and comment features, he worked across React UI, Spring Boot APIs, PostgreSQL data structure, and deployed frontend/backend connectivity. It is evidence that he is moving beyond frontend-only work into product and system flow.',
+      '',
+      'Live: https://aigram.oosu.dev',
+    ].join('\n'),
+    answerSource: 'faq_cache',
+    matchedEntityIds: ['instagram_clone'],
+    sourceChunkIds: ['faq.project.instagram.en'],
+    confidence: 0.96,
+  },
+  {
+    id: 'project.sticks.ko',
+    intentId: 'techStack',
+    language: 'ko',
+    patterns: [
+      'Sticks & Stones 프로젝트가 왜 중요한가요?',
+      'sticks stones 중요',
+      '스틱스앤스톤스',
+    ],
+    answer: [
+      'Sticks & Stones는 실서비스 마이그레이션 경험이라는 점에서 중요합니다.',
+      '',
+      '단순 연습 프로젝트가 아니라 기존 WordPress 기반 홈페이지를 TypeScript/Vite 기반으로 옮기며, 실제 브랜드 사이트의 구조와 배포를 다룬 작업이에요. 그래서 우수가 “실제 사용자와 운영 맥락이 있는 웹사이트”를 다뤄봤다는 근거가 됩니다.',
+      '',
+      'Live: https://stks.oosu.dev',
+    ].join('\n'),
+    answerSource: 'faq_cache',
+    matchedEntityIds: ['sticks_and_stones'],
+    sourceChunkIds: ['faq.project.sticks.ko'],
+    confidence: 0.96,
+  },
+  {
+    id: 'project.sticks.en',
+    intentId: 'techStack',
+    language: 'en',
+    patterns: [
+      'Why does the Sticks & Stones project matter?',
+      'sticks and stones project',
+    ],
+    answer: [
+      'Sticks & Stones matters because it is real service migration work, not just a practice project.',
+      '',
+      'Oosu migrated a WordPress-based company homepage into a TypeScript/Vite frontend, handling the structure and deployment of a real brand site. It shows practical web delivery in an operational context.',
+      '',
+      'Live: https://stks.oosu.dev',
+    ].join('\n'),
+    answerSource: 'faq_cache',
+    matchedEntityIds: ['sticks_and_stones'],
+    sourceChunkIds: ['faq.project.sticks.en'],
+    confidence: 0.96,
+  },
+  {
+    id: 'business.connection.ko',
+    intentId: 'aiUsage',
+    language: 'ko',
+    patterns: [
+      '비즈니스 경험이 개발에 어떻게 연결되나요?',
+      '경영학 개발 도움',
+      '우수살롱 개발 연결',
+    ],
+    answer: [
+      '우수의 비즈니스 경험은 개발에서 “무엇을 만들지”와 “왜 그렇게 설계해야 하는지”를 판단하는 데 연결됩니다.',
+      '',
+      '경영학 배경, GfK Korea의 POS 데이터 분석 컨설팅, 우수살롱 운영 경험은 사용자·시장·운영 관점에서 문제를 보는 힘을 줬어요. 그래서 기능 구현만 보는 것이 아니라 서비스 구조, 우선순위, 실제 사용 맥락을 함께 생각하는 편입니다.',
+    ].join('\n'),
+    answerSource: 'faq_cache',
+    matchedEntityIds: ['career', 'oosu_salon'],
+    sourceChunkIds: ['faq.business.connection.ko'],
+    confidence: 0.94,
+  },
+  {
+    id: 'business.connection.en',
+    intentId: 'aiUsage',
+    language: 'en',
+    patterns: [
+      'How does business experience connect to development?',
+      'business background development',
+    ],
+    answer: [
+      'Oosu’s business background helps him think about what to build and why a product should be structured a certain way.',
+      '',
+      'His business major, POS data consulting experience at GfK Korea, and Oosu Salon operation experience give him a user, market, and operations lens. That makes him look beyond implementation details toward service structure, priority, and real usage context.',
+    ].join('\n'),
+    answerSource: 'faq_cache',
+    matchedEntityIds: ['career', 'oosu_salon'],
+    sourceChunkIds: ['faq.business.connection.en'],
+    confidence: 0.94,
+  },
+  {
+    id: 'ai.usage.ko',
+    intentId: 'fullstackAiGrowth',
+    language: 'ko',
+    patterns: [
+      'AI 도구를 어떻게 활용하나요?',
+      'ai 실제 개발 활용',
+      'Claude Code Gemini CLI Codex',
+    ],
+    answer: [
+      '우수는 AI를 단순 질문 도구보다 개발 파트너에 가깝게 씁니다.',
+      '',
+      'Claude Code, Gemini CLI, Codex 같은 도구를 활용해 요구사항을 쪼개고, 코드 구조를 탐색하고, 구현·검증·문서화를 반복합니다. AskOosu 자체도 AI를 “붙였다”기보다 RAG, provider fallback, feedback log, home-server deployment까지 서비스 흐름에 넣어보는 실험입니다.',
+    ].join('\n'),
+    answerSource: 'faq_cache',
+    matchedEntityIds: ['career', 'askoosu'],
+    sourceChunkIds: ['faq.ai.usage.ko'],
+    confidence: 0.94,
+  },
+  {
+    id: 'ai.usage.en',
+    intentId: 'fullstackAiGrowth',
+    language: 'en',
+    patterns: [
+      'How do you actually use AI in development?',
+      'ai tools development',
+    ],
+    answer: [
+      'Oosu uses AI less like a search box and more like a development partner.',
+      '',
+      'He uses tools such as Claude Code, Gemini CLI, and Codex to break down requirements, inspect code structure, implement changes, verify behavior, and document decisions. AskOosu is also an experiment in putting AI into a real product flow through RAG, provider fallback, feedback logs, and home-server deployment.',
+    ].join('\n'),
+    answerSource: 'faq_cache',
+    matchedEntityIds: ['career', 'askoosu'],
+    sourceChunkIds: ['faq.ai.usage.en'],
+    confidence: 0.94,
+  },
+  {
+    id: 'contact.collab.ko',
+    intentId: 'contactCollab',
+    language: 'ko',
+    patterns: [
+      '협업하거나 연락하려면 어떻게 해요?',
+      '연락처',
+      'contact',
+      'github',
+    ],
+    answer: [
+      '우수에게 연락하거나 작업을 확인하려면 아래 링크가 가장 좋아요.',
+      '',
+      `- GitHub: ${oosuProfile.github}`,
+      `- LinkedIn: ${oosuProfile.linkedin}`,
+      `- Instagram: ${oosuProfile.instagram}`,
+      `- Email: ${oosuProfile.email}`,
+    ].join('\n'),
+    answerSource: 'deterministic_rule',
+    matchedEntityIds: ['profile'],
+    sourceChunkIds: ['faq.contact.collab.ko'],
+    confidence: 0.99,
+  },
+  {
+    id: 'contact.collab.en',
+    intentId: 'contactCollab',
+    language: 'en',
+    patterns: [
+      'How can I get in touch or collaborate?',
+      'contact oosu',
+      'github link',
+    ],
+    answer: [
+      'The best places to contact Oosu or review his work are:',
+      '',
+      `- GitHub: ${oosuProfile.github}`,
+      `- LinkedIn: ${oosuProfile.linkedin}`,
+      `- Instagram: ${oosuProfile.instagram}`,
+      `- Email: ${oosuProfile.email}`,
+    ].join('\n'),
+    answerSource: 'deterministic_rule',
+    matchedEntityIds: ['profile'],
+    sourceChunkIds: ['faq.contact.collab.en'],
+    confidence: 0.99,
+  },
+  {
+    id: 'resume.url.ko',
+    intentId: 'resumeUrl',
+    language: 'ko',
+    patterns: ['이력서 URL 알려줘', '이력서 링크', 'resume url', 'cv'],
+    answer:
+      '현재 공개 이력서 URL은 아직 준비 중입니다. 공개 가능한 한국어/영어 이력서 링크가 준비되면 AskOosu와 Notion Wiki에 연결할 예정이에요.',
+    answerSource: 'deterministic_rule',
+    matchedEntityIds: ['profile', 'career'],
+    sourceChunkIds: ['faq.resume.url.ko'],
+    confidence: 0.99,
+  },
+  {
+    id: 'resume.url.en',
+    intentId: 'resumeUrl',
+    language: 'en',
+    patterns: ['resume URL', 'resume link', 'CV link'],
+    answer:
+      'The public resume URL is not available yet. Once Korean and English resume links are ready, they will be connected to AskOosu and the Notion Wiki.',
+    answerSource: 'deterministic_rule',
+    matchedEntityIds: ['profile', 'career'],
+    sourceChunkIds: ['faq.resume.url.en'],
+    confidence: 0.99,
+  },
+  {
+    id: 'live-url.policy.ko',
+    intentId: 'liveUrlPolicy',
+    language: 'ko',
+    patterns: [
+      '라이브 URL이 없는 프로젝트는 어떻게 답해야 하나요?',
+      '라이브 URL 없는 프로젝트',
+      'private 프로젝트',
+    ],
+    answer:
+      '라이브 URL이 없는 프로젝트는 배포된 것처럼 단정하지 않고, GitHub 공개 여부나 Private 상태를 그대로 말하는 게 원칙입니다. TODO, needs_review, Private 표시가 있는 정보는 확정 표현 대신 “준비 중”, “비공개”, “확인이 필요함”처럼 답해야 합니다.',
+    answerSource: 'deterministic_rule',
+    matchedEntityIds: ['guardrail'],
+    sourceChunkIds: ['faq.live-url.policy.ko'],
+    confidence: 0.99,
+  },
+  {
+    id: 'live-url.policy.en',
+    intentId: 'liveUrlPolicy',
+    language: 'en',
+    patterns: [
+      'How should you answer projects without live URLs?',
+      'project without live url',
+      'private project',
+    ],
+    answer:
+      'Projects without live URLs should not be described as deployed. AskOosu should state the public/private status as-is, and treat TODO, needs_review, or Private evidence as unconfirmed rather than final.',
+    answerSource: 'deterministic_rule',
+    matchedEntityIds: ['guardrail'],
+    sourceChunkIds: ['faq.live-url.policy.en'],
+    confidence: 0.99,
+  },
+];

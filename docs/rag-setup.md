@@ -48,6 +48,7 @@ AskOosu uses raw SQL with `pg` for the RAG database path. Apply the migration af
 ```bash
 psql "$DATABASE_URL" -f db/migrations/001_create_rag_database_schema.sql
 psql "$DATABASE_URL" -f db/migrations/002_create_answer_feedback.sql
+psql "$DATABASE_URL" -f db/migrations/003_create_chat_cache_and_provider_usage.sql
 ```
 
 For the Mac mini Docker Compose deployment, run:
@@ -62,10 +63,15 @@ The migration creates:
 - `rag_chunks`
 - `rag_sync_runs`
 - `answer_feedback`
+- `answer_cache`
+- `ai_provider_usage`
+- `ai_provider_status`
 
 It also adds PostgreSQL indexes for `chunk_id`, `entity_id`, `source_id`, `has_todo`, metadata JSON, full-text search, and pgvector embedding search.
 
 `answer_feedback` stores lightweight answer quality signals from the chat UI: session/message ids, truncated question and answer text, up/down rating, optional reason, matched entity ids, source chunk ids, confidence, and creation time. It intentionally does not store IP addresses, user agents, or authenticated user identity.
+
+`answer_cache` stores generated RAG answers by normalized question, language, and wiki version so repeat questions can skip the provider call. `ai_provider_usage` and `ai_provider_status` record provider latency, token usage, success/failure, and recent status for Groq/Google fallback operations.
 
 ## Sync Step
 

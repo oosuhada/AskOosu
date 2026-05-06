@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import {
   AlertTriangle,
   BookOpenCheck,
+  BrainCircuit,
   CheckCircle2,
   FolderKanban,
   ShieldAlert,
@@ -31,6 +32,11 @@ type RagMetadata = {
   matchedEntityIds: string[];
   hasTodoEvidence: boolean;
   warnings: string[];
+  answerSource?: string;
+  language?: 'ko' | 'en';
+  skippedGroq?: boolean;
+  provider?: string;
+  model?: string;
 };
 
 type ProjectCardInfo = {
@@ -159,6 +165,7 @@ export function RagEvidencePanel({
   const hasWarnings = ragMetadata.warnings.length > 0;
   const projectCards = getProjectCards(ragMetadata);
   const confidenceTone = getConfidenceTone(ragMetadata.confidence);
+  const answerSourceLabel = getAnswerSourceLabel(ragMetadata);
 
   return (
     <section
@@ -172,6 +179,13 @@ export function RagEvidencePanel({
             ? `${ragMetadata.sources.length} sources`
             : 'Wiki source not found'}
         </Badge>
+
+        {answerSourceLabel && (
+          <Badge variant="outline" className="rounded-lg px-2.5 py-1">
+            <BrainCircuit className="h-3.5 w-3.5" />
+            {answerSourceLabel}
+          </Badge>
+        )}
 
         <Badge
           variant="outline"
@@ -479,6 +493,16 @@ function parseRagMetadata(value: unknown): RagMetadata | null {
     matchedEntityIds: parseStringArray(value.matchedEntityIds),
     hasTodoEvidence: value.hasTodoEvidence === true,
     warnings: parseStringArray(value.warnings),
+    answerSource: parseString(value.answerSource) ?? undefined,
+    language:
+      value.language === 'en'
+        ? 'en'
+        : value.language === 'ko'
+          ? 'ko'
+          : undefined,
+    skippedGroq: value.skippedGroq === true,
+    provider: parseString(value.provider) ?? undefined,
+    model: parseString(value.model) ?? undefined,
   };
 }
 
@@ -550,6 +574,33 @@ function getConfidenceTone(confidence: number) {
     className:
       'border-zinc-300 bg-zinc-50 text-zinc-800 dark:border-zinc-700/70 dark:bg-zinc-900/40 dark:text-zinc-200',
   };
+}
+
+function getAnswerSourceLabel(metadata: RagMetadata) {
+  const labels: Record<string, string> = {
+    faq_cache: 'FAQ cache',
+    answer_cache: 'Answer cache',
+    deterministic_rule: 'Policy rule',
+    rag_groq: 'Wiki + Groq',
+    rag_google: 'Wiki + Google',
+    rag_openai: 'Wiki + OpenAI',
+    rag_xai: 'Wiki + xAI',
+    fallback: 'Safe fallback',
+  };
+
+  if (!metadata.answerSource) return null;
+  const sourceLabel = labels[metadata.answerSource] ?? metadata.answerSource;
+  const languageLabel = metadata.language
+    ? metadata.language.toUpperCase()
+    : '';
+  const modelLabel =
+    metadata.provider && !metadata.skippedGroq
+      ? metadata.provider
+      : metadata.skippedGroq
+        ? 'no Groq'
+        : '';
+
+  return [sourceLabel, languageLabel, modelLabel].filter(Boolean).join(' · ');
 }
 
 function formatConfidence(confidence: number) {

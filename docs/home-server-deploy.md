@@ -43,11 +43,17 @@ ASKOOSU_NOTION_PAGE_IDS=
 ASKOOSU_AI_PROVIDER=groq
 GROQ_API_KEY=
 GROQ_API_KEYS=
+GOOGLE_VERTEX_API_KEY=
+GOOGLE_VERTEX_PROJECT=
+GOOGLE_VERTEX_LOCATION=us-central1
+GOOGLE_VERTEX_MODEL=gemini-2.5-flash
 
 RAG_SYNC_SECRET=
 ASKOOSU_RAG_ADMIN_TOKEN=
 ASKOOSU_RAG_STORE=postgres
 ASKOOSU_RAG_AUTO_SYNC=false
+ASKOOSU_WIKI_VERSION=v10
+ASKOOSU_ANSWER_CACHE_TTL_HOURS=24
 ```
 
 Use real values only in `.env.production` or the shell environment. Do not commit secrets.
@@ -90,6 +96,7 @@ This applies:
 
 - `db/migrations/001_create_rag_database_schema.sql`
 - `db/migrations/002_create_answer_feedback.sql`
+- `db/migrations/003_create_chat_cache_and_provider_usage.sql`
 
 The script runs `psql` inside the `postgres` Compose service and reads `POSTGRES_USER` and `POSTGRES_DB` from `.env.production`.
 
