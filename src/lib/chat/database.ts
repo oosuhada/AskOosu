@@ -50,6 +50,13 @@ export type AiProviderDailyUsage = {
   failureCount: number;
 };
 
+export type AiProviderStatusRecord = {
+  provider: string;
+  status: 'ok' | 'cooldown' | 'error';
+  lastErrorCode: string | null;
+  cooldownUntil: Date | null;
+};
+
 export { hasPostgresDatabaseUrl };
 
 export async function ensureChatRuntimeSchema() {
@@ -344,6 +351,42 @@ export async function getAiProviderDailyUsage(
     callCount: parseCount(row?.call_count),
     successCount: parseCount(row?.success_count),
     failureCount: parseCount(row?.failure_count),
+  };
+}
+
+export async function getAiProviderStatus(
+  provider: string
+): Promise<AiProviderStatusRecord | null> {
+  if (!hasPostgresDatabaseUrl()) return null;
+
+  await ensureChatRuntimeSchema();
+  const pool = await getPostgresPool();
+  const result = await pool.query<{
+    provider: string;
+    status: 'ok' | 'cooldown' | 'error';
+    last_error_code: string | null;
+    cooldown_until: Date | null;
+  }>(
+    `
+      SELECT
+        provider,
+        status,
+        last_error_code,
+        cooldown_until
+      FROM ai_provider_status
+      WHERE provider = $1
+      LIMIT 1
+    `,
+    [truncateText(provider, MAX_PROVIDER_LENGTH)]
+  );
+  const row = result.rows[0];
+  if (!row) return null;
+
+  return {
+    provider: row.provider,
+    status: row.status,
+    lastErrorCode: row.last_error_code,
+    cooldownUntil: row.cooldown_until,
   };
 }
 

@@ -2,6 +2,7 @@ import { generateText } from 'ai';
 import type { ModelMessage } from 'ai';
 import {
   getAiProviderDailyUsage,
+  getAiProviderStatus,
   recordAiProviderStatus,
   recordAiProviderUsage,
 } from '@/lib/chat/database';
@@ -41,6 +42,19 @@ export async function generateAnswerWithFallback({
   tools: GenerateTextOptions['tools'];
   stopWhen: GenerateTextOptions['stopWhen'];
 }): Promise<AiAnswerResult> {
+  if (await isProviderCoolingDown(primaryModel.provider)) {
+    const fallbackModel = await getUsableFallbackModel(primaryModel);
+    if (fallbackModel) {
+      return generateWithModel({
+        selection: fallbackModel,
+        system,
+        messages,
+        tools,
+        stopWhen,
+      });
+    }
+  }
+
   try {
     return await generateWithModel({
       selection: primaryModel,
@@ -52,14 +66,8 @@ export async function generateAnswerWithFallback({
   } catch (error) {
     await recordProviderFailure(primaryModel, error);
 
-    const fallbackModel = getFallbackChatModel();
-    if (
-      !fallbackModel ||
-      fallbackModel.provider === primaryModel.provider ||
-      !(await canUseFallbackModel(fallbackModel))
-    ) {
-      throw error;
-    }
+    const fallbackModel = await getUsableFallbackModel(primaryModel);
+    if (!fallbackModel) throw error;
 
     try {
       return await generateWithModel({
@@ -152,14 +160,27 @@ async function recordProviderFailure(
       provider: selection.provider,
       status: isRateLimit ? 'cooldown' : 'error',
       errorCode,
-      cooldownUntil: isRateLimit ? new Date(Date.now() + 60_000) : null,
+      cooldownUntil: isRateLimit
+        ? new Date(Date.now() + getProviderCooldownMs(selection.provider))
+        : null,
     }),
   ]);
 }
 
+async function getUsableFallbackModel(primaryModel: ChatModelSelection) {
+  const fallbackModel = getFallbackChatModel();
+  if (!fallbackModel || fallbackModel.provider === primaryModel.provider) {
+    return null;
+  }
+
+  if (await canUseFallbackModel(fallbackModel)) return fallbackModel;
+  return null;
+}
+
 async function canUseFallbackModel(selection: ChatModelSelection) {
   if (selection.provider !== 'google_vertex') return true;
-  if (process.env.GOOGLE_AI_ENABLED === 'false') return false;
+  if (!isGoogleAiEnabled()) return false;
+  if (await isProviderCoolingDown(selection.provider)) return false;
 
   const maxCalls = getPositiveIntegerEnv('GOOGLE_AI_MAX_CALLS_PER_DAY', 100);
   if (maxCalls <= 0) return false;
@@ -173,12 +194,40 @@ async function canUseFallbackModel(selection: ChatModelSelection) {
   }
 }
 
+async function isProviderCoolingDown(provider: string) {
+  try {
+    const status = await getAiProviderStatus(provider);
+    if (!status?.cooldownUntil) return false;
+    return status.status === 'cooldown' && status.cooldownUntil > new Date();
+  } catch (error) {
+    console.warn('Unable to read provider cooldown status:', error);
+    return false;
+  }
+}
+
 function getGeneratedAnswerSource(provider: string): ChatAnswerSource {
   if (provider === 'groq') return 'rag_groq';
   if (provider === 'google_vertex') return 'rag_google';
   if (provider === 'xai') return 'rag_xai';
   if (provider === 'openai') return 'rag_openai';
   return 'fallback';
+}
+
+function isGoogleAiEnabled() {
+  const value = process.env.GOOGLE_AI_ENABLED?.toLowerCase();
+  return value === '1' || value === 'true' || value === 'yes';
+}
+
+function getProviderCooldownMs(provider: string) {
+  if (provider === 'groq') {
+    return getPositiveIntegerEnv('GROQ_KEY_QUOTA_COOLDOWN_MS', 60 * 60 * 1000);
+  }
+
+  if (provider === 'google_vertex') {
+    return getPositiveIntegerEnv('GOOGLE_AI_COOLDOWN_MS', 60 * 1000);
+  }
+
+  return 60 * 1000;
 }
 
 function normalizeUsage(usage: unknown) {

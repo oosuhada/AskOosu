@@ -1,4 +1,5 @@
 import { getRagTopK, getPositiveIntEnv } from './config';
+import { getCachedRagSearch, upsertCachedRagSearch } from './search-cache';
 import { getPostgresPool, hasPostgresDatabaseUrl } from '@/lib/db/postgres';
 import type { RagChunkMetadata } from './types';
 
@@ -104,6 +105,19 @@ export async function searchRagChunks(
   }
 
   const searchMode = query.q ? 'postgres_fts' : 'entity_filter';
+  const cachedSearch = await getCachedRagSearch(query).catch((error) => {
+    warnings.push('RAG search cache read failed; used live DB search.');
+    console.warn('Unable to read RAG search cache:', error);
+    return null;
+  });
+
+  if (cachedSearch) {
+    return {
+      ...cachedSearch,
+      warnings: mergeWarnings(cachedSearch.warnings, warnings),
+    };
+  }
+
   let rows: RagChunkSearchRow[] = [];
   let resolvedSearchMode: RagChunkRankingDetail['searchMode'] = searchMode;
 
@@ -136,7 +150,7 @@ export async function searchRagChunks(
     warnings.push('No rag_chunks matched the search query.');
   }
 
-  return {
+  const payload = {
     ok: true,
     query,
     results: rows.map((row) =>
@@ -151,6 +165,12 @@ export async function searchRagChunks(
     warnings,
     searchMode: resolvedSearchMode,
   };
+
+  void upsertCachedRagSearch({ query, payload }).catch((error) => {
+    console.warn('Unable to write RAG search cache:', error);
+  });
+
+  return payload;
 }
 
 export function normalizeSearchLimit(value: number | undefined) {
@@ -483,4 +503,16 @@ function toLikePattern(value: string) {
 function toNumber(value: number | string) {
   const numberValue = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(numberValue) ? numberValue : 0;
+}
+
+function mergeWarnings(...groups: string[][]) {
+  const warnings: string[] = [];
+
+  for (const group of groups) {
+    for (const warning of group) {
+      if (warning && !warnings.includes(warning)) warnings.push(warning);
+    }
+  }
+
+  return warnings;
 }

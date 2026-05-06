@@ -1,3 +1,6 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { homedir } from 'node:os';
+import path from 'node:path';
 import { APICallError, RetryError, type LanguageModel } from 'ai';
 import { createVertex } from '@ai-sdk/google-vertex';
 import { createGroq } from '@ai-sdk/groq';
@@ -63,7 +66,7 @@ export function getChatModel(): ChatModelSelection {
 }
 
 export function getFallbackChatModel() {
-  if (process.env.GOOGLE_AI_ENABLED === 'false') return null;
+  if (!isGoogleAiEnabled()) return null;
 
   if (hasGoogleVertexCredentials()) {
     return getGoogleVertexChatModel();
@@ -192,7 +195,7 @@ function getGoogleVertexChatModel(): ChatModelSelection {
     process.env.GOOGLE_VERTEX_MODEL ?? DEFAULT_GOOGLE_VERTEX_MODEL;
   const vertex = createVertex({
     ...(apiKey ? { apiKey } : {}),
-    project: process.env.GOOGLE_VERTEX_PROJECT,
+    project: getGoogleVertexProject(),
     location:
       process.env.GOOGLE_VERTEX_LOCATION ?? DEFAULT_GOOGLE_VERTEX_LOCATION,
   });
@@ -208,7 +211,65 @@ function hasGoogleVertexCredentials() {
   return Boolean(
     process.env.GOOGLE_VERTEX_API_KEY ||
       process.env.GOOGLE_APPLICATION_CREDENTIALS ||
-      process.env.GOOGLE_VERTEX_PROJECT
+      getGoogleVertexProject() ||
+      hasApplicationDefaultCredentialsFile()
+  );
+}
+
+function isGoogleAiEnabled() {
+  const value = process.env.GOOGLE_AI_ENABLED?.toLowerCase();
+  return value === '1' || value === 'true' || value === 'yes';
+}
+
+function getGoogleVertexProject() {
+  return (
+    process.env.GOOGLE_VERTEX_PROJECT ||
+    process.env.GOOGLE_CLOUD_PROJECT ||
+    process.env.GCLOUD_PROJECT ||
+    getApplicationDefaultCredentialsProject()
+  );
+}
+
+function hasApplicationDefaultCredentialsFile() {
+  const credentialsPath = getApplicationDefaultCredentialsPath();
+  return Boolean(credentialsPath && existsSync(credentialsPath));
+}
+
+function getApplicationDefaultCredentialsProject() {
+  const credentialsPath = getApplicationDefaultCredentialsPath();
+  if (!credentialsPath || !existsSync(credentialsPath)) return undefined;
+
+  try {
+    const rawCredentials = readFileSync(credentialsPath, 'utf8');
+    const credentials = JSON.parse(rawCredentials) as {
+      quota_project_id?: unknown;
+      project_id?: unknown;
+    };
+    const project =
+      typeof credentials.quota_project_id === 'string'
+        ? credentials.quota_project_id
+        : credentials.project_id;
+
+    return typeof project === 'string' && project.trim()
+      ? project.trim()
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function getApplicationDefaultCredentialsPath() {
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    return process.env.GOOGLE_APPLICATION_CREDENTIALS;
+  }
+
+  const homeDirectory = process.env.HOME || homedir();
+  if (!homeDirectory) return undefined;
+  return path.join(
+    homeDirectory,
+    '.config',
+    'gcloud',
+    'application_default_credentials.json'
   );
 }
 
