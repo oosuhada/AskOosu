@@ -9,6 +9,7 @@ import {
   findFaqAnswerById,
   type FaqAnswer,
 } from '@/lib/faq/answers';
+import type { AnswerVariant } from '@/data/question-surfaces.shared';
 import { matchFaqAnswer } from '@/lib/faq/match';
 import { getCachedAnswer } from './database';
 import { normalizeQuestion } from './text';
@@ -22,6 +23,8 @@ export type ChatOrchestrationInput = {
   intentId?: string | null;
   displayQuestion?: string | null;
   originalQuickLabel?: string | null;
+  answerVariant?: string | null;
+  renderSpec?: string | null;
   source?: string | null;
 };
 
@@ -49,6 +52,8 @@ export async function prepareChatOrchestration({
   intentId,
   displayQuestion,
   originalQuickLabel,
+  answerVariant,
+  renderSpec,
   source,
 }: ChatOrchestrationInput): Promise<ChatOrchestration> {
   const question = getLatestUserText(messages);
@@ -59,6 +64,8 @@ export async function prepareChatOrchestration({
     intentId: normalizeOptionalString(intentId),
     displayQuestion: normalizeOptionalString(displayQuestion),
     originalQuickLabel: normalizeOptionalString(originalQuickLabel),
+    answerVariant: normalizeAnswerVariant(answerVariant),
+    renderSpec: normalizeOptionalString(renderSpec),
     source: normalizeOptionalString(source),
   };
 
@@ -83,7 +90,7 @@ export async function prepareChatOrchestration({
         question,
         language,
         directAnswer: {
-          answer: faqAnswer.defaultAnswer,
+          answer: getFaqAnswerText(faqAnswer, requestContext.answerVariant),
           metadata,
         },
       };
@@ -114,7 +121,7 @@ export async function prepareChatOrchestration({
       question,
       language,
       directAnswer: {
-        answer: faqMatch.answer.answer,
+        answer: getFaqAnswerText(faqMatch.answer, requestContext.answerVariant),
         metadata,
       },
     };
@@ -164,6 +171,8 @@ export async function prepareChatOrchestration({
     intentId: requestContext.intentId ?? undefined,
     originalQuickLabel: requestContext.originalQuickLabel ?? undefined,
     displayQuestion: requestContext.displayQuestion ?? undefined,
+    answerVariant: requestContext.answerVariant ?? undefined,
+    renderSpecKey: requestContext.renderSpec ?? undefined,
   };
 
   return {
@@ -204,6 +213,8 @@ function buildDirectMetadata({
     intentId: string | null;
     displayQuestion: string | null;
     originalQuickLabel: string | null;
+    answerVariant: AnswerVariant | null;
+    renderSpec: string | null;
     source: string | null;
   };
 }): ChatAnswerMetadata {
@@ -228,23 +239,38 @@ function buildDirectMetadata({
     answerSource,
     matchedFaqId,
     faqId: faqAnswer?.id ?? requestContext?.faqId ?? matchedFaqId,
-    intentId:
-      requestContext?.intentId ??
-      faqAnswer?.intentId ??
-      matchedFaqId ??
-      undefined,
+    intentId: getResolvedIntentId({
+      requestIntentId: requestContext?.intentId,
+      requestFaqId: requestContext?.faqId,
+      faqAnswer,
+      matchedFaqId,
+    }),
     quickLabel: faqAnswer?.quickLabel,
     originalQuickLabel:
       requestContext?.originalQuickLabel ?? faqAnswer?.quickLabel,
     displayQuestion:
       requestContext?.displayQuestion ?? faqAnswer?.displayQuestion,
+    answerVariant: requestContext?.answerVariant ?? 'default',
     badge: getAnswerSourceBadge(answerSource, language),
     todoBadge: faqAnswer?.hasTodo ? getTodoBadge(language) : undefined,
     cacheMode: faqAnswer?.cacheMode,
     renderSpec: faqAnswer?.renderSpec,
+    renderSpecKey:
+      requestContext?.renderSpec ?? faqAnswer?.renderSpec?.leadVisual,
+    richAnswerData: faqAnswer
+      ? {
+          faqId: faqAnswer.id,
+          renderSpec: requestContext?.renderSpec,
+          visualBlocks: faqAnswer.visualBlocks,
+          mediaRefs: faqAnswer.mediaRefs,
+          sourceChunkIds: faqAnswer.sourceChunkIds,
+        }
+      : undefined,
     visualBlocks: faqAnswer?.visualBlocks,
     mediaRefs: faqAnswer?.mediaRefs,
-    answerParts: faqAnswer ? buildAnswerParts(faqAnswer) : undefined,
+    answerParts: faqAnswer
+      ? buildAnswerParts(faqAnswer, requestContext?.answerVariant ?? 'default')
+      : undefined,
     usedVisualBlocks,
     mediaReadyCount: mediaCounts.ready,
     mediaTodoCount: mediaCounts.todo,
@@ -308,9 +334,50 @@ function countMediaRefs(mediaRefs: FaqAnswer['mediaRefs']) {
   };
 }
 
+function getResolvedIntentId({
+  requestIntentId,
+  requestFaqId,
+  faqAnswer,
+  matchedFaqId,
+}: {
+  requestIntentId?: string | null;
+  requestFaqId?: string | null;
+  faqAnswer?: FaqAnswer;
+  matchedFaqId?: string;
+}) {
+  if (
+    requestIntentId &&
+    requestIntentId !== requestFaqId &&
+    requestIntentId !== matchedFaqId &&
+    requestIntentId !== faqAnswer?.id &&
+    !faqAnswer?.legacyIds?.includes(requestIntentId)
+  ) {
+    return requestIntentId;
+  }
+
+  return faqAnswer?.intentId ?? matchedFaqId ?? undefined;
+}
+
 function normalizeOptionalString(value: string | null | undefined) {
   const normalizedValue = value?.trim();
   return normalizedValue ? normalizedValue : null;
+}
+
+function normalizeAnswerVariant(value: string | null | undefined) {
+  if (value === 'short' || value === 'default' || value === 'detailed') {
+    return value as AnswerVariant;
+  }
+
+  return null;
+}
+
+function getFaqAnswerText(faqAnswer: FaqAnswer, variant: AnswerVariant | null) {
+  if (variant === 'short') return faqAnswer.shortAnswer;
+  if (variant === 'detailed') {
+    return faqAnswer.detailedAnswer ?? faqAnswer.defaultAnswer;
+  }
+
+  return faqAnswer.defaultAnswer;
 }
 
 export function getLatestUserText(messages: UIMessage[]) {

@@ -1,4 +1,5 @@
 import { Separator } from '@/components/ui/separator';
+import type { QuestionSurface } from '@/data/question-surfaces.shared';
 import { oosuProjects } from '@/lib/oosu-profile';
 import { ChevronRight, Link } from 'lucide-react';
 import Image from 'next/image';
@@ -89,5 +90,24 @@ export const data = oosuProjects.map((project) => ({
   category: project.category,
   title: project.title,
   src: project.images[0]?.src ?? '/oosu-avatar/hover-01.webp',
+  surface: questionSurfaceForProjectTitle(project.title),
   content: <ProjectContent project={project} />,
 }));
+
+function questionSurfaceForProjectTitle(
+  title: string
+): QuestionSurface | undefined {
+  const normalizedTitle = title.toLowerCase();
+
+  if (normalizedTitle.includes('askoosu')) return 'project.askoosu';
+  if (normalizedTitle.includes('instagram')) return 'project.instagram';
+  if (normalizedTitle.includes('sticks')) return 'project.sticks';
+  if (
+    normalizedTitle.includes('portfoli-oh') ||
+    normalizedTitle.includes('portfolio')
+  ) {
+    return 'project.portfoliooh';
+  }
+
+  return undefined;
+}

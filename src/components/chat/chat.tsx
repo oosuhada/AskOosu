@@ -19,6 +19,7 @@ import { PortfolioSidebar } from '@/components/portfolio-sidebar';
 import { OosuAvatar } from '@/components/oosu-avatar';
 import { SimplifiedChatView } from '@/components/chat/simple-chat-view';
 import { getUiText } from '@/lib/i18n';
+import type { QuestionSurface } from '@/data/question-surfaces.shared';
 import { useDisplayPreferences } from '@/lib/use-display-preferences';
 import { useSuggestedQuestions } from '@/hooks/use-suggested-questions';
 import {
@@ -69,6 +70,7 @@ const Chat = () => {
     []
   );
   const [input, setInput] = useState('');
+  const [activeSurface, setActiveSurface] = useState<QuestionSurface>('home');
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const conversationEndRef = useRef<HTMLDivElement>(null);
@@ -151,6 +153,23 @@ const Chat = () => {
 
   useEffect(() => {
     setConversations(readStoredConversations());
+  }, []);
+
+  useEffect(() => {
+    const handleSurfaceChange = (event: Event) => {
+      const detail = (event as CustomEvent<{ surface?: QuestionSurface }>)
+        .detail;
+      if (!detail?.surface) return;
+      setActiveSurface(detail.surface);
+    };
+
+    window.addEventListener('askoosu:question-surface', handleSurfaceChange);
+    return () => {
+      window.removeEventListener(
+        'askoosu:question-surface',
+        handleSurfaceChange
+      );
+    };
   }, []);
 
   useEffect(() => {
@@ -254,6 +273,8 @@ const Chat = () => {
             intentId: suggestedQuestion?.intentId,
             displayQuestion: suggestedQuestion?.displayQuestion,
             originalQuickLabel: suggestedQuestion?.quickLabel,
+            answerVariant: suggestedQuestion?.answerVariant,
+            renderSpec: suggestedQuestion?.renderSpec,
             source: suggestedQuestion ? 'quick_question' : 'typed_question',
           },
         }
@@ -301,6 +322,7 @@ const Chat = () => {
     setMessages([]);
     setInput('');
     setActiveConversationId(null);
+    setActiveSurface('home');
     setLastSubmittedQuery(null);
     setChatErrorMessage(null);
     setLoadingSubmit(false);
@@ -484,7 +506,11 @@ const Chat = () => {
                 </motion.div>
               )}
             </AnimatePresence>
-            <HelperBoost submitQuery={submitQuery} setInput={setInput} />
+            <HelperBoost
+              submitQuery={submitQuery}
+              setInput={setInput}
+              activeSurface={activeSurface}
+            />
             <ChatBottombar
               input={input}
               handleInputChange={handleInputChange}

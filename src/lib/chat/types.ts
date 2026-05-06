@@ -21,10 +21,13 @@ export type ChatAnswerMetadata = RagChatMetadata & {
   quickLabel?: string;
   originalQuickLabel?: string;
   displayQuestion?: string;
+  answerVariant?: 'short' | 'default' | 'detailed';
   badge?: string;
   todoBadge?: string;
   cacheMode?: string;
   renderSpec?: unknown;
+  renderSpecKey?: string;
+  richAnswerData?: unknown;
   visualBlocks?: unknown[];
   mediaRefs?: unknown[];
   answerParts?: unknown[];
