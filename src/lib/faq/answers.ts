@@ -1021,8 +1021,6 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
       `- GitHub: ${oosuProfile.github}`,
       `- LinkedIn: ${oosuProfile.linkedin}`,
       `- Portfolio: ${oosuProfile.currentPortfolioUrl}`,
-      '',
-      '지금 화면에서는 공개된 연락 채널과 협업에 바로 이어질 수 있는 프로젝트 맥락만 깔끔하게 정리합니다.',
     ].join('\n'),
     renderSpec: {
       layout: 'contact_card',
@@ -1076,8 +1074,6 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
       `- GitHub: ${oosuProfile.github}`,
       `- LinkedIn: ${oosuProfile.linkedin}`,
       `- Portfolio: ${oosuProfile.currentPortfolioUrl}`,
-      '',
-      'This view keeps the focus on public contact channels and project context that can lead into a practical collaboration conversation.',
     ].join('\n'),
     renderSpec: {
       layout: 'contact_card',
