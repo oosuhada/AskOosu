@@ -180,16 +180,16 @@ const mediaRefs: FaqMediaRef[] = [
   {
     assetKey: 'project.webtoon_translate.cover',
     kind: 'project',
-    src: '/oosu-avatar/hover-12.webp',
+    src: 'TODO_ASSET',
     alt: 'Webtoon AI Translate project preview',
-    status: 'ready',
+    status: 'todo',
   },
   {
     assetKey: 'project.pyjavalingo.cover',
     kind: 'project',
-    src: '/oosu-avatar/hover-08.webp',
+    src: 'TODO_ASSET',
     alt: 'Pylingo and Javalingo project preview',
-    status: 'ready',
+    status: 'todo',
   },
   {
     assetKey: 'life.oosu_salon.cover',
@@ -449,7 +449,11 @@ const skillGroupsKo = [
       { name: 'RAG', proficiency: 'learning' },
       { name: 'Groq', proficiency: 'usable' },
     ],
-    evidence: ['AskOosu', 'Aigram / Instagram Clone', 'Sticks & Stones'],
+    evidence: [
+      'AskOosu: Next.js, RAG, Groq, Notion API, PostgreSQL 연결 흐름',
+      'Aigram: Spring Boot + PostgreSQL 기반 SNS 데이터 흐름',
+      'Sticks & Stones: TypeScript/Vite 기반 실서비스 리빌드',
+    ],
   },
   {
     group: 'Project-Proven Stack',
@@ -469,10 +473,9 @@ const skillGroupsKo = [
       { name: 'Lottie', proficiency: 'usable' },
     ],
     evidence: [
-      'Onjung',
-      'Nomad Market',
-      'Webtoon AI Translate',
-      'Portfoli-Oh!',
+      'Onjung/Nomad Market: Flutter, Dart, Firebase 모바일 앱 흐름',
+      'Webtoon AI Translate: Python/FastAPI, OCR, DeepL 실험',
+      'Portfoli-Oh!: GSAP, Three.js, Lottie 인터랙션 실험',
     ],
   },
   {
@@ -487,7 +490,11 @@ const skillGroupsKo = [
       { name: 'DeepL', proficiency: 'experimental' },
       { name: 'OCR APIs', proficiency: 'experimental' },
     ],
-    evidence: ['AskOosu', 'Webtoon AI Translate', 'daily dev workflow'],
+    evidence: [
+      'AskOosu: AI SDK, Groq, Notion RAG 답변 파이프라인',
+      'Webtoon AI Translate: OCR/DeepL/Groq 기반 번역 후보 흐름',
+      'daily dev workflow: Codex, Claude Code, Gemini CLI로 구현/검증 보조',
+    ],
   },
   {
     group: 'Design / UX / Business',
@@ -499,7 +506,11 @@ const skillGroupsKo = [
       { name: 'Brand Operation', proficiency: 'confident' },
       { name: 'Service Planning', proficiency: 'usable' },
     ],
-    evidence: ['GfK Korea', 'OOSU SALON', 'UX/UI projects'],
+    evidence: [
+      'GfK Korea: 고객/시장 데이터를 읽는 업무 경험',
+      'OOSU SALON: 브랜드 운영과 고객 경험 감각',
+      'UX/UI projects: 화면 흐름과 서비스 기획으로 연결',
+    ],
   },
 ];
 
@@ -517,7 +528,11 @@ const skillGroupsEn = [
       { name: 'RAG', proficiency: 'learning' },
       { name: 'Groq', proficiency: 'usable' },
     ],
-    evidence: ['AskOosu', 'Aigram / Instagram Clone', 'Sticks & Stones'],
+    evidence: [
+      'AskOosu: Next.js, RAG, Groq, Notion API, and PostgreSQL connected in one answer flow',
+      'Aigram: Spring Boot and PostgreSQL in a fullstack SNS data flow',
+      'Sticks & Stones: TypeScript/Vite used in a real service rebuild',
+    ],
   },
   {
     group: 'Project-Proven Stack',
@@ -537,10 +552,9 @@ const skillGroupsEn = [
       { name: 'Lottie', proficiency: 'usable' },
     ],
     evidence: [
-      'Onjung',
-      'Nomad Market',
-      'Webtoon AI Translate',
-      'Portfoli-Oh!',
+      'Onjung/Nomad Market: Flutter, Dart, and Firebase in mobile app flows',
+      'Webtoon AI Translate: Python/FastAPI, OCR, and DeepL experiments',
+      'Portfoli-Oh!: GSAP, Three.js, and Lottie interaction experiments',
     ],
   },
   {
@@ -555,7 +569,11 @@ const skillGroupsEn = [
       { name: 'DeepL', proficiency: 'experimental' },
       { name: 'OCR APIs', proficiency: 'experimental' },
     ],
-    evidence: ['AskOosu', 'Webtoon AI Translate', 'daily dev workflow'],
+    evidence: [
+      'AskOosu: AI SDK, Groq, and Notion RAG in the answer pipeline',
+      'Webtoon AI Translate: OCR/DeepL/Groq translation-candidate flow',
+      'daily dev workflow: Codex, Claude Code, and Gemini CLI for implementation and verification support',
+    ],
   },
   {
     group: 'Design / UX / Business',
@@ -567,7 +585,11 @@ const skillGroupsEn = [
       { name: 'Brand Operation', proficiency: 'confident' },
       { name: 'Service Planning', proficiency: 'usable' },
     ],
-    evidence: ['GfK Korea', 'OOSU SALON', 'UX/UI projects'],
+    evidence: [
+      'GfK Korea: customer and market-data reading experience',
+      'OOSU SALON: brand operation and customer-experience taste',
+      'UX/UI projects: service planning connected to screen flows',
+    ],
   },
 ];
 
@@ -3349,13 +3371,20 @@ export function buildAnswerParts(
   const sourceBlock = visualBlocks.find(
     (block) => block.type === 'sourceBadges'
   );
+  const leadBlockContainsAnswerCopy = leadBlock
+    ? componentNameForBlock(leadBlock) === 'ProfileHeroCard'
+    : false;
 
   return [
     ...(leadBlock ? [componentPartForBlock(leadBlock)] : []),
-    {
-      type: 'markdown' as const,
-      contentKey: toContentKey(answerVariant, faq),
-    },
+    ...(leadBlockContainsAnswerCopy
+      ? []
+      : [
+          {
+            type: 'markdown' as const,
+            contentKey: toContentKey(answerVariant, faq),
+          },
+        ]),
     ...otherBlocks.map(componentPartForBlock),
     ...(sourceBlock
       ? [

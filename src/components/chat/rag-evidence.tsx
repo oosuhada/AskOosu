@@ -265,6 +265,94 @@ const SOURCE_WORD_LABELS: Record<string, string> = {
   oosu: 'Oosu',
 };
 
+const SOURCE_CHUNK_LABELS: Record<string, Record<'ko' | 'en', string>> = {
+  'profile.basic_info': { ko: '프로필 기본 정보', en: 'Profile basics' },
+  'profile.summary': { ko: '프로필 요약', en: 'Profile summary' },
+  'profile.career': { ko: '커리어 전환 맥락', en: 'Career context' },
+  'profile.current_focus': { ko: '현재 집중 영역', en: 'Current focus' },
+  'profile.business_to_dev': {
+    ko: '비즈니스 경험에서 개발로',
+    en: 'Business-to-development path',
+  },
+  'profile.contact': { ko: '공개 연락 채널', en: 'Public contact channels' },
+  'profile.faq.contact': {
+    ko: '연락/협업 FAQ',
+    en: 'Contact and collaboration FAQ',
+  },
+  'profile.links.resume_policy': {
+    ko: '이력서 공개 정책',
+    en: 'Resume sharing policy',
+  },
+  'project.askoosu.overview': {
+    ko: 'AskOosu 프로젝트 개요',
+    en: 'AskOosu project overview',
+  },
+  'project.askoosu.story': {
+    ko: 'AskOosu 제작 맥락',
+    en: 'AskOosu build story',
+  },
+  'project.instagram_clone.overview': {
+    ko: 'Aigram/SNS 프로젝트 개요',
+    en: 'Aigram/SNS project overview',
+  },
+  'project.sticks_and_stones.overview': {
+    ko: 'Sticks & Stones 리빌드',
+    en: 'Sticks & Stones rebuild',
+  },
+  'project.portfolioh': {
+    ko: 'Portfoli-Oh! 인터랙션 실험',
+    en: 'Portfoli-Oh! interaction work',
+  },
+  'project.portfolio_oh.story': {
+    ko: 'Portfoli-Oh! 제작 맥락',
+    en: 'Portfoli-Oh! story',
+  },
+  'project.onjung': { ko: 'Onjung 모바일 앱', en: 'Onjung mobile app' },
+  'project.nomad_market': {
+    ko: 'Nomad Market 모바일 앱',
+    en: 'Nomad Market mobile app',
+  },
+  'project.webtoon_translate': {
+    ko: 'Webtoon AI Translate 파이프라인',
+    en: 'Webtoon AI Translate pipeline',
+  },
+  'project.links.public': {
+    ko: '공개 프로젝트 링크',
+    en: 'Public project links',
+  },
+  'skills.current_stack': {
+    ko: '현재 핵심 기술 스택',
+    en: 'Current core stack',
+  },
+  'career.oosu_salon': {
+    ko: 'OOSU SALON 운영 경험',
+    en: 'OOSU SALON operating experience',
+  },
+  'profile.public_interests': {
+    ko: '공개 가능한 작업 취향',
+    en: 'Public work-adjacent interests',
+  },
+  'profile.strengths': {
+    ko: '작업 강점과 성향',
+    en: 'Working strengths',
+  },
+  'policy.live_url': {
+    ko: '공개 링크 안내 정책',
+    en: 'Public URL policy',
+  },
+};
+
+const SOURCE_CHUNK_CONTEXTS: Record<string, Record<'ko' | 'en', string>> = {
+  'faq.project.top_three.default': {
+    ko: '대표 프로젝트 답변',
+    en: 'Representative projects answer',
+  },
+  'faq.skills.tech_stack.default': {
+    ko: '기술 스택 답변',
+    en: 'Tech stack answer',
+  },
+};
+
 export function RagEvidencePanel({
   metadata,
   feedbackContext,
@@ -1120,6 +1208,9 @@ function formatEntityLabel(entityId: string, language: 'ko' | 'en') {
 }
 
 function formatPublicSourceTitle(source: RagSource, language: 'ko' | 'en') {
+  const chunkLabel = formatPublicChunkLabel(source.chunk_id, language);
+  if (chunkLabel) return chunkLabel;
+
   const entityLabel = source.entity_id
     ? formatEntityLabel(source.entity_id, language)
     : null;
@@ -1137,6 +1228,9 @@ function formatPublicSourceTitle(source: RagSource, language: 'ko' | 'en') {
 }
 
 function formatSectionPathLabel(source: RagSource, language: 'ko' | 'en') {
+  const chunkContext = formatPublicChunkContext(source.chunk_id, language);
+  if (chunkContext) return chunkContext;
+
   const path =
     source.section_path.length > 0
       ? source.section_path
@@ -1147,6 +1241,56 @@ function formatSectionPathLabel(source: RagSource, language: 'ko' | 'en') {
 
   if (label) return label;
   return language === 'ko' ? 'Oosu Wiki' : 'Oosu Wiki';
+}
+
+function formatPublicChunkLabel(chunkId: string, language: 'ko' | 'en') {
+  const exactLabel = SOURCE_CHUNK_LABELS[chunkId]?.[language];
+  if (exactLabel) return exactLabel;
+
+  if (chunkId.startsWith('faq.')) {
+    return language === 'ko' ? 'FAQ 답변 근거' : 'FAQ answer source';
+  }
+
+  if (chunkId.startsWith('project.')) {
+    return humanizeSourcePathSegment(chunkId.replace(/^project\./, ''));
+  }
+
+  if (chunkId.startsWith('profile.')) {
+    return language === 'ko' ? '프로필 Wiki 항목' : 'Profile Wiki entry';
+  }
+
+  if (chunkId.startsWith('skills.')) {
+    return language === 'ko' ? '기술 스택 Wiki 항목' : 'Skills Wiki entry';
+  }
+
+  if (chunkId.startsWith('career.')) {
+    return language === 'ko' ? '커리어 Wiki 항목' : 'Career Wiki entry';
+  }
+
+  return null;
+}
+
+function formatPublicChunkContext(chunkId: string, language: 'ko' | 'en') {
+  const exactContext = SOURCE_CHUNK_CONTEXTS[chunkId]?.[language];
+  if (exactContext) return exactContext;
+
+  if (chunkId.startsWith('project.')) {
+    return language === 'ko' ? '프로젝트 Wiki' : 'Project Wiki';
+  }
+
+  if (chunkId.startsWith('profile.')) {
+    return language === 'ko' ? '프로필 Wiki' : 'Profile Wiki';
+  }
+
+  if (chunkId.startsWith('skills.')) {
+    return language === 'ko' ? '기술 Wiki' : 'Skills Wiki';
+  }
+
+  if (chunkId.startsWith('career.')) {
+    return language === 'ko' ? '커리어 Wiki' : 'Career Wiki';
+  }
+
+  return null;
 }
 
 function humanizeSourcePathSegment(segment: string) {

@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useMemo, useState } from 'react';
+import { OosuAvatar } from '@/components/oosu-avatar';
 import { oosuProfile } from '@/lib/oosu-profile';
 import { cn } from '@/lib/utils';
 import { isAskOosuDebugUiEnabled } from '@/lib/debug-ui';
@@ -129,10 +130,11 @@ export function RichAnswerRenderer({
   const payload = parseRichPayload(metadata);
   if (!payload) return null;
 
-  const parts =
+  const parts = normalizeAnswerPartsForDisplay(
     payload.answerParts.length > 0
       ? payload.answerParts
-      : buildFallbackParts(payload);
+      : buildFallbackParts(payload)
+  );
 
   return (
     <div className="w-full space-y-4">
@@ -219,7 +221,13 @@ function renderPart({
   }
 
   if (block.type === 'skillChips') {
-    return <SkillChipGroup key={`${block.type}-${index}`} block={block} />;
+    return (
+      <SkillChipGroup
+        key={`${block.type}-${index}`}
+        block={block}
+        language={payload.language}
+      />
+    );
   }
 
   if (block.type === 'contactCard') {
@@ -277,7 +285,6 @@ function renderPart({
     return (
       <ProfileHeroCard
         key={`${block.type}-${index}`}
-        mediaRefs={payload.mediaRefs}
         language={payload.language}
       />
     );
@@ -367,8 +374,9 @@ function ProjectShowcaseCards({
             <MediaPreview
               assetKey={project.image}
               mediaRefs={mediaRefs}
-              className={isMoreProjectsRail ? 'aspect-[4/3]' : 'aspect-[4/5]'}
-              preferMobile
+              className={
+                isMoreProjectsRail ? 'aspect-[4/3]' : 'aspect-[16/10]'
+              }
               language={language}
             />
             <div className="space-y-3 p-3">
@@ -494,7 +502,13 @@ function ComparisonGrid({
   );
 }
 
-function SkillChipGroup({ block }: { block: VisualBlock }) {
+function SkillChipGroup({
+  block,
+  language,
+}: {
+  block: VisualBlock;
+  language: 'ko' | 'en';
+}) {
   const skillGroups = block.items.map(parseSkillGroup).filter(isDefined);
   if (skillGroups.length === 0) return null;
 
@@ -533,9 +547,18 @@ function SkillChipGroup({ block }: { block: VisualBlock }) {
               ))}
             </div>
             {group.evidence.length > 0 && (
-              <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
-                {group.evidence.join(' -> ')}
-              </p>
+              <div className="text-muted-foreground mt-3 space-y-1.5 text-xs leading-relaxed">
+                <p className="font-medium text-slate-600 dark:text-slate-300">
+                  {language === 'ko' ? '사용 맥락' : 'Used in context'}
+                </p>
+                <ul className="space-y-1">
+                  {group.evidence.map((evidence) => (
+                    <li key={evidence} className="break-words">
+                      {evidence}
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
           </div>
         ))}
@@ -789,23 +812,17 @@ function ImageFallbackCards({
   );
 }
 
-function ProfileHeroCard({
-  mediaRefs,
-  language,
-}: {
-  mediaRefs: MediaRef[];
-  language: 'ko' | 'en';
-}) {
+function ProfileHeroCard({ language }: { language: 'ko' | 'en' }) {
   return (
     <section className="overflow-hidden rounded-lg border bg-white/80 shadow-sm dark:bg-white/[0.05]">
       <div className="grid gap-4 p-4 md:grid-cols-[0.95fr_1.15fr] md:items-center">
         <div className="overflow-hidden rounded-lg border bg-slate-100 dark:bg-slate-900">
-          <MediaPreview
-            assetKey="profile.oosu.portrait"
-            mediaRefs={mediaRefs}
-            className="aspect-[4/3] md:aspect-[5/4]"
-            preferMobile
-            language={language}
+          <OosuAvatar
+            animate
+            variant="hover"
+            interval={140}
+            className="aspect-[4/3] h-full w-full md:aspect-[5/4]"
+            imageClassName="object-contain object-bottom"
           />
         </div>
         <div className="min-w-0 space-y-3">
@@ -1031,6 +1048,17 @@ function buildFallbackParts(payload: RichPayload): RichAnswerPart[] {
       dataKey: block.dataKey,
     })),
   ];
+}
+
+function normalizeAnswerPartsForDisplay(parts: RichAnswerPart[]) {
+  const hasProfileHeroCard = parts.some(
+    (part) =>
+      part.type === 'component' && part.component === 'ProfileHeroCard'
+  );
+
+  if (!hasProfileHeroCard) return parts;
+
+  return parts.filter((part) => part.type !== 'markdown');
 }
 
 function findVisualBlock(part: RichAnswerPart, blocks: VisualBlock[]) {
