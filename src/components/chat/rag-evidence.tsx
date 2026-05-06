@@ -315,7 +315,7 @@ export function RagEvidencePanel({
           </Badge>
         )}
 
-        {hasWarnings && (
+        {isDebugMode && hasWarnings && (
           <Badge
             variant="outline"
             className="rounded-lg border-sky-300 bg-sky-50 px-2.5 py-1 text-sky-800 dark:border-sky-700/70 dark:bg-sky-950/30 dark:text-sky-200"
