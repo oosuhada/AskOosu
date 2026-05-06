@@ -27,6 +27,7 @@ export function OosuAvatar({
   variant = 'static',
 }: OosuAvatarProps) {
   const [frame, setFrame] = useState(0);
+  const [imageFailed, setImageFailed] = useState(false);
   const currentFrame = useMemo(
     () => (variant === 'hover' ? frames[frame] : '/oosuhada.png'),
     [frame, variant]
@@ -45,24 +46,39 @@ export function OosuAvatar({
     return () => window.clearInterval(timer);
   }, [animate, interval, variant]);
 
+  useEffect(() => {
+    setImageFailed(false);
+  }, [currentFrame]);
+
   return (
     <div
       className={cn(
         'relative isolate flex items-end justify-center overflow-hidden',
         className
       )}
+      aria-label="Oosu Jang avatar"
     >
-      <Image
-        src={currentFrame}
-        alt="Oosu Jang avatar"
-        width={1080}
-        height={1433}
-        priority={priority}
-        className={cn(
-          'h-full w-full object-contain object-bottom',
-          imageClassName
-        )}
-      />
+      {imageFailed ? (
+        <div
+          aria-hidden="true"
+          className="bg-muted text-muted-foreground flex h-full w-full items-center justify-center rounded-full border text-sm font-semibold"
+        >
+          OJ
+        </div>
+      ) : (
+        <Image
+          src={currentFrame}
+          alt=""
+          width={1080}
+          height={1433}
+          priority={priority}
+          onError={() => setImageFailed(true)}
+          className={cn(
+            'h-full w-full object-contain object-bottom',
+            imageClassName
+          )}
+        />
+      )}
     </div>
   );
 }

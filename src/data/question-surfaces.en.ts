@@ -18,8 +18,9 @@ export const questionSurfacesEn = [
     faqId: 'faq.projects.top3.summary',
     surface: 'home',
     priority: 2,
-    quickLabel: 'Top projects',
-    displayQuestion: 'Could you introduce your top 3 projects at a glance?',
+    quickLabel: 'Projects',
+    displayQuestion:
+      'Could you show your representative projects and how they connect to your growth?',
     answerVariant: 'default',
     renderSpec: 'project_showcase_carousel',
     visibleByDefault: true,

@@ -28,7 +28,7 @@ const questionSurfaces: Record<DisplayLanguage, QuestionTrigger[]> = {
 
 const faqIntentIds: Record<string, string> = {
   'faq.profile.intro.default': 'profile.intro',
-  'faq.projects.top3.summary': 'project.top_three',
+  'faq.projects.top3.summary': 'project.representative',
   'faq.tech_stack.level.default': 'skills.tech_stack',
   'faq.ai_usage.default': 'ai_usage.workflow',
   'faq.contact.default': 'contact.collaboration',

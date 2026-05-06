@@ -13,7 +13,8 @@ export const renderSpecsEn = [
     component: 'ProjectShowcaseCarousel',
     priority: 'A',
     title: 'Project showcase',
-    description: 'Shows the top three projects as strong cards.',
+    description:
+      'Shows featured representative projects and an expandable more-projects rail.',
   },
   {
     key: 'skills_cloud_card',

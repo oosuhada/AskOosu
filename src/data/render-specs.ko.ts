@@ -14,7 +14,8 @@ export const renderSpecsKo = [
     component: 'ProjectShowcaseCarousel',
     priority: 'A',
     title: 'Project showcase',
-    description: '대표 프로젝트 3개를 카드형 그리드/캐러셀로 보여줍니다.',
+    description:
+      '대표 프로젝트와 확장 프로젝트 레일을 함께 보여 성장 흐름을 설명합니다.',
   },
   {
     key: 'skills_cloud_card',

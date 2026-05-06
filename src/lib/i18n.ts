@@ -27,7 +27,7 @@ export const uiText = {
     moreQuestions: '질문 더보기',
     chatLoading: '채팅을 불러오는 중...',
     aiResponseUnavailable:
-      '지금은 AI 응답 설정이 연결되지 않았어요. API 연결을 확인하고 다시 시도해주세요.',
+      '응답 연결 상태를 확인하고 있어요. 잠시 뒤 다시 시도해 주세요.',
     close: '닫기',
     startChatting: '대화 시작하기',
     feedback: '좋게 보셨다면 공유해 주세요. 피드백도 언제든 환영합니다.',
@@ -105,7 +105,7 @@ export const uiText = {
     moreQuestions: 'More questions',
     chatLoading: 'Loading chat...',
     aiResponseUnavailable:
-      'The AI response connection is unavailable right now. Please check the API connection and try again.',
+      'The response connection is being checked. Please retry shortly.',
     close: 'Close',
     startChatting: 'Start chatting',
     feedback: 'If this was useful, sharing and feedback are always welcome.',

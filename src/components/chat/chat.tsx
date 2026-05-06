@@ -42,7 +42,7 @@ import {
 } from '@/components/ui/chat/chat-bubble';
 import { Button } from '@/components/ui/button';
 import WelcomeModal from '@/components/welcome-modal';
-import { ArrowDown, Info } from 'lucide-react';
+import { ArrowDown, Info, MailWarning, RefreshCcw } from 'lucide-react';
 import HelperBoost from './HelperBoost';
 
 const MOTION_CONFIG = {
@@ -55,11 +55,22 @@ const MOTION_CONFIG = {
   },
 };
 
+const ERROR_REPORT_EMAIL = 'gabrieldiseoul@gmail.com';
+
+type ChatErrorNotice = {
+  title: string;
+  message: string;
+  retryLabel: string;
+  reportLabel: string;
+  reportHref: string;
+};
+
 const Chat = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialQuery = searchParams.get('query');
   const initialConversationId = searchParams.get('conversationId');
+  const isDebugMode = searchParams.get('debug') === 'true';
   const [autoSubmitted, setAutoSubmitted] = useState(false);
   const [loadingSubmit, setLoadingSubmit] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<
@@ -68,7 +79,8 @@ const Chat = () => {
   const [lastSubmittedQuery, setLastSubmittedQuery] = useState<string | null>(
     null
   );
-  const [chatErrorMessage, setChatErrorMessage] = useState<string | null>(null);
+  const [chatErrorNotice, setChatErrorNotice] =
+    useState<ChatErrorNotice | null>(null);
   const [conversations, setConversations] = useState<StoredChatConversation[]>(
     []
   );
@@ -104,7 +116,7 @@ const Chat = () => {
     },
     onError: (error) => {
       setLoadingSubmit(false);
-      setChatErrorMessage(text.aiResponseUnavailable);
+      setChatErrorNotice(buildChatErrorNotice(error, language));
       console.warn('Chat request failed:', error.message, error.cause);
     },
   });
@@ -151,8 +163,9 @@ const Chat = () => {
 
   const replaceChatUrl = useCallback(() => {
     const params = new URLSearchParams({ lang: language, theme });
+    if (isDebugMode) params.set('debug', 'true');
     router.replace(`/chat?${params.toString()}`, { scroll: false });
-  }, [language, router, theme]);
+  }, [isDebugMode, language, router, theme]);
 
   useEffect(() => {
     setConversations(readStoredConversations());
@@ -252,7 +265,7 @@ const Chat = () => {
       if (!activeConversationId) setActiveConversationId(conversationId);
 
       setLastSubmittedQuery(trimmedQuery);
-      setChatErrorMessage(null);
+      setChatErrorNotice(null);
       clearError();
       if (!suggestedQuestion) {
         markQueryAsked(trimmedQuery);
@@ -339,7 +352,7 @@ const Chat = () => {
     setActiveConversationId(null);
     setActiveSurface('home');
     setLastSubmittedQuery(null);
-    setChatErrorMessage(null);
+    setChatErrorNotice(null);
     setLoadingSubmit(false);
     setAutoSubmitted(false);
     autoSubmittedQueryRef.current = null;
@@ -352,7 +365,7 @@ const Chat = () => {
       setInput('');
       setActiveConversationId(conversation.id);
       setLastSubmittedQuery(null);
-      setChatErrorMessage(null);
+      setChatErrorNotice(null);
       setLoadingSubmit(false);
       replaceChatUrl();
     },
@@ -362,6 +375,16 @@ const Chat = () => {
   const latestUserText =
     (latestUserMessage ? getMessageText(latestUserMessage) : '') ||
     lastSubmittedQuery;
+
+  const handleRetryChatError = useCallback(() => {
+    setChatErrorNotice(null);
+    clearError();
+    setLoadingSubmit(true);
+    void regenerate().catch((error) => {
+      setLoadingSubmit(false);
+      setChatErrorNotice(buildChatErrorNotice(error, language));
+    });
+  }, [clearError, language, regenerate]);
 
   const hasConversationContent =
     loadingSubmit ||
@@ -482,8 +505,11 @@ const Chat = () => {
                   </div>
                 ) : null}
 
-                {chatErrorMessage && (
-                  <AssistantNoticeBubble content={chatErrorMessage} />
+                {chatErrorNotice && (
+                  <AssistantNoticeBubble
+                    notice={chatErrorNotice}
+                    onRetry={handleRetryChatError}
+                  />
                 )}
                 <div ref={conversationEndRef} className="h-1" />
               </motion.div>
@@ -577,12 +603,47 @@ function ConversationAvatarHeader({ compact }: { compact: boolean }) {
   );
 }
 
-function AssistantNoticeBubble({ content }: { content: string }) {
+function AssistantNoticeBubble({
+  notice,
+  onRetry,
+}: {
+  notice: ChatErrorNotice;
+  onRetry: () => void;
+}) {
   return (
     <div className="mx-auto flex w-full max-w-3xl justify-start px-4 pt-2">
       <ChatBubble variant="received" className="max-w-[min(90%,42rem)]">
         <ChatBubbleMessage className="text-muted-foreground rounded-lg border px-4 py-3 text-sm">
-          {content}
+          <div className="space-y-3">
+            <div>
+              <p className="text-foreground font-medium">{notice.title}</p>
+              <p className="mt-1 leading-relaxed">{notice.message}</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="secondary"
+                className="h-8 rounded-lg"
+                onClick={onRetry}
+              >
+                <RefreshCcw className="h-4 w-4" />
+                {notice.retryLabel}
+              </Button>
+              <Button
+                asChild
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-8 rounded-lg"
+              >
+                <a href={notice.reportHref}>
+                  <MailWarning className="h-4 w-4" />
+                  {notice.reportLabel}
+                </a>
+              </Button>
+            </div>
+          </div>
         </ChatBubbleMessage>
       </ChatBubble>
     </div>
@@ -655,4 +716,124 @@ function buildInitialSuggestedQuestion(
 function toAnswerVariant(value: string | null): AnswerVariant {
   if (value === 'short' || value === 'detailed') return value;
   return 'default';
+}
+
+function buildChatErrorNotice(
+  error: unknown,
+  language: 'ko' | 'en'
+): ChatErrorNotice {
+  const message = getErrorMessage(error);
+  const normalizedMessage = message.toLowerCase();
+  const isOffline =
+    typeof navigator !== 'undefined' && navigator.onLine === false;
+  const kind = isOffline
+    ? 'network'
+    : normalizedMessage.includes('429') ||
+        normalizedMessage.includes('too many') ||
+        normalizedMessage.includes('rate limit') ||
+        normalizedMessage.includes('quota') ||
+        normalizedMessage.includes('insufficient_quota')
+      ? 'limit'
+      : normalizedMessage.includes('fetch failed') ||
+          normalizedMessage.includes('failed to fetch') ||
+          normalizedMessage.includes('network') ||
+          normalizedMessage.includes('timeout')
+        ? 'network'
+        : 'api';
+
+  const copy = getChatErrorCopy(kind, language);
+
+  return {
+    ...copy,
+    retryLabel: language === 'ko' ? '다시 시도' : 'Retry',
+    reportLabel: language === 'ko' ? '오류 리포트 보내기' : 'Report this issue',
+    reportHref: buildErrorReportHref({
+      kind,
+      message,
+      language,
+    }),
+  };
+}
+
+function getChatErrorCopy(
+  kind: 'network' | 'limit' | 'api',
+  language: 'ko' | 'en'
+) {
+  if (language === 'ko') {
+    if (kind === 'network') {
+      return {
+        title: '인터넷 연결을 확인해 주세요.',
+        message:
+          '브라우저가 AskOosu API에 닿지 못했어요. 네트워크가 돌아오면 다시 시도할 수 있습니다.',
+      };
+    }
+
+    if (kind === 'limit') {
+      return {
+        title: 'API 사용량 한도에 가까워졌어요.',
+        message:
+          '일시적인 rate limit 또는 provider quota 문제로 보입니다. 캐시된 포트폴리오 답변은 우선 표시되도록 처리되어 있고, 잠시 뒤 다시 시도할 수 있습니다.',
+      };
+    }
+
+    return {
+      title: 'AI API 연결이 불안정해요.',
+      message:
+        'Groq 또는 fallback provider 연결에서 문제가 생겼습니다. 직접 FAQ 답변은 API 없이 표시되며, 생성형 답변만 영향을 받을 수 있습니다.',
+    };
+  }
+
+  if (kind === 'network') {
+    return {
+      title: 'Please check your internet connection.',
+      message:
+        'The browser could not reach the AskOosu API. Once the network is back, you can retry.',
+    };
+  }
+
+  if (kind === 'limit') {
+    return {
+      title: 'The API usage limit may have been reached.',
+      message:
+        'This looks like a temporary rate limit or provider quota issue. Cached portfolio answers are still designed to return first, and you can retry shortly.',
+    };
+  }
+
+  return {
+    title: 'The AI API connection is unstable.',
+    message:
+      'The Groq or fallback provider connection had a problem. Direct FAQ answers can still return without model generation.',
+  };
+}
+
+function buildErrorReportHref({
+  kind,
+  message,
+  language,
+}: {
+  kind: string;
+  message: string;
+  language: 'ko' | 'en';
+}) {
+  const subject = `[AskOosu] Chat error report: ${kind}`;
+  const currentUrl =
+    typeof window === 'undefined' ? 'unknown' : window.location.href;
+  const body = [
+    'AskOosu chat error report',
+    '',
+    `Kind: ${kind}`,
+    `Language: ${language}`,
+    `URL: ${currentUrl}`,
+    `Message: ${message}`,
+  ].join('\n');
+
+  return `mailto:${ERROR_REPORT_EMAIL}?subject=${encodeURIComponent(
+    subject
+  )}&body=${encodeURIComponent(body)}`;
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  return 'Unknown chat error';
 }

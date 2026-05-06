@@ -18,8 +18,9 @@ export const questionSurfacesKo = [
     faqId: 'faq.projects.top3.summary',
     surface: 'home',
     priority: 2,
-    quickLabel: 'Top projects',
-    displayQuestion: '대표 프로젝트 3개를 한눈에 볼 수 있게 소개해 주세요.',
+    quickLabel: 'Projects',
+    displayQuestion:
+      '우수님의 대표 프로젝트와 성장 흐름이 어떻게 연결되는지 보여주세요.',
     answerVariant: 'default',
     renderSpec: 'project_showcase_carousel',
     visibleByDefault: true,
