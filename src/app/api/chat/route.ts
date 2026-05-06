@@ -34,9 +34,15 @@ export const maxDuration = 30;
 
 type ChatRequestBody = {
   messages?: UIMessage[];
+  message?: string;
   locale?: unknown;
   language?: unknown;
   starterQuestionId?: string | null;
+  faqId?: string | null;
+  intentId?: string | null;
+  displayQuestion?: string | null;
+  originalQuickLabel?: string | null;
+  source?: string | null;
   conversationId?: string | null;
 };
 
@@ -94,6 +100,11 @@ export async function POST(req: Request) {
         parsePreferredLanguage(body.language) ??
         parsePreferredLanguage(body.locale),
       starterQuestionId: body.starterQuestionId,
+      faqId: body.faqId,
+      intentId: body.intentId,
+      displayQuestion: body.displayQuestion,
+      originalQuickLabel: body.originalQuickLabel,
+      source: body.source,
     });
 
     if (orchestration.mode === 'direct') {
@@ -102,6 +113,7 @@ export async function POST(req: Request) {
         model: orchestration.directAnswer.metadata.answerSource,
         route: 'api/chat',
         answerSource: orchestration.directAnswer.metadata.answerSource,
+        metadata: toUsageMetadata(orchestration.directAnswer.metadata),
         latencyMs: 0,
         success: true,
       }).catch((error) => {
@@ -210,6 +222,34 @@ export async function POST(req: Request) {
       },
     });
   }
+}
+
+function toUsageMetadata(metadata: unknown): Record<string, unknown> {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    return {};
+  }
+
+  const record = metadata as Record<string, unknown>;
+  const allowedKeys = [
+    'faqId',
+    'matchedFaqId',
+    'intentId',
+    'quickLabel',
+    'originalQuickLabel',
+    'displayQuestion',
+    'language',
+    'answerSource',
+    'skippedGroq',
+    'usedVisualBlocks',
+    'mediaReadyCount',
+    'mediaTodoCount',
+  ];
+
+  return Object.fromEntries(
+    allowedKeys
+      .map((key) => [key, record[key]] as const)
+      .filter(([, value]) => value !== undefined)
+  );
 }
 
 const RAG_CHAT_SYSTEM_PROMPT = `

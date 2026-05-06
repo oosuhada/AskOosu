@@ -11,6 +11,10 @@ import {
 import { ChevronDown, ChevronUp } from 'lucide-react';
 import { useState } from 'react';
 import { RagEvidencePanel } from './rag-evidence';
+import {
+  hasRichAnswerPayload,
+  RichAnswerRenderer,
+} from './rich-answer-renderer';
 
 export type ChatMessageContentProps = {
   message: UIMessage;
@@ -79,8 +83,21 @@ export default function ChatMessageContent({
   message,
   feedbackContext,
 }: ChatMessageContentProps) {
+  const messageText = getMessageText(message);
+  const hasRichAnswer =
+    message.role === 'assistant' && hasRichAnswerPayload(message.metadata);
+
   // Only handle text parts
   const renderContent = () => {
+    if (hasRichAnswer) {
+      return (
+        <RichAnswerRenderer
+          metadata={message.metadata}
+          markdownContent={messageText}
+        />
+      );
+    }
+
     return message.parts?.map((part, partIndex) => {
       if (part.type !== 'text' || !part.text) return null;
 
@@ -143,7 +160,7 @@ export default function ChatMessageContent({
             sessionId: feedbackContext?.sessionId,
             messageId: message.id,
             question: feedbackContext?.question,
-            answer: getMessageText(message),
+            answer: messageText,
           }}
         />
       )}

@@ -1,5 +1,6 @@
 import {
   findSuggestedQuestionId,
+  getSuggestedQuestionMeta,
   type SuggestedQuestionId,
 } from '@/lib/suggested-questions';
 import type { ChatLanguage } from '@/lib/i18n/detect-language';
@@ -61,13 +62,20 @@ export function matchFaqAnswer({
   return bestMatch;
 }
 
-function findByIntentId(intentId: SuggestedQuestionId, language: ChatLanguage) {
+function findByIntentId(
+  intentId: SuggestedQuestionId | string,
+  language: ChatLanguage
+) {
+  const faqIntentId = getSuggestedQuestionMeta(intentId)?.intentId ?? intentId;
+
   return (
     FAQ_ANSWERS.find(
-      (answer) => answer.intentId === intentId && answer.language === language
+      (answer) =>
+        answer.intentId === faqIntentId && answer.language === language
     ) ??
     FAQ_ANSWERS.find(
-      (answer) => answer.intentId === intentId && answer.language !== language
+      (answer) =>
+        answer.intentId === faqIntentId && answer.language !== language
     )
   );
 }

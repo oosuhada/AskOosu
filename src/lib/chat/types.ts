@@ -3,8 +3,10 @@ import type { RagChatMetadata } from '@/lib/rag/chat-context';
 
 export type ChatAnswerSource =
   | 'faq_cache'
+  | 'faq_rewrite'
   | 'answer_cache'
   | 'deterministic_rule'
+  | 'rag_generation'
   | 'rag_groq'
   | 'rag_google'
   | 'rag_openai'
@@ -14,6 +16,21 @@ export type ChatAnswerSource =
 export type ChatAnswerMetadata = RagChatMetadata & {
   language: ChatLanguage;
   answerSource: ChatAnswerSource;
+  faqId?: string;
+  intentId?: string;
+  quickLabel?: string;
+  originalQuickLabel?: string;
+  displayQuestion?: string;
+  badge?: string;
+  todoBadge?: string;
+  cacheMode?: string;
+  renderSpec?: unknown;
+  visualBlocks?: unknown[];
+  mediaRefs?: unknown[];
+  answerParts?: unknown[];
+  usedVisualBlocks?: string[];
+  mediaReadyCount?: number;
+  mediaTodoCount?: number;
   matchedFaqId?: string;
   normalizedQuestion: string;
   skippedGroq: boolean;
