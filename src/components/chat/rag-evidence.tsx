@@ -899,22 +899,6 @@ function formatEntityLabel(entityId: string, language: 'ko' | 'en') {
   return labels[entityId]?.[language] ?? entityId;
 }
 
-function formatSourceBadgeTitle(source: RagSource, language: 'ko' | 'en') {
-  const titleMap: Record<string, Record<'ko' | 'en', string>> = {
-    'FAQ answer bank': { ko: 'FAQ 답변 뱅크', en: 'FAQ answer bank' },
-    'Answer cache': { ko: '답변 캐시', en: 'Answer cache' },
-    'Public policy rule': { ko: '공개 정책 규칙', en: 'Public policy rule' },
-    'Oosu Wiki': { ko: 'Oosu Wiki', en: 'Oosu Wiki' },
-    'Portfolio data': { ko: '포트폴리오 데이터', en: 'Portfolio data' },
-    'Portfolio answer cache': {
-      ko: '포트폴리오 답변 캐시',
-      en: 'Portfolio answer cache',
-    },
-  };
-
-  return titleMap[source.title]?.[language] ?? source.title;
-}
-
 function formatVisitorSourceTitle(source: RagSource, language: 'ko' | 'en') {
   const entityLabel = source.entity_id
     ? formatEntityLabel(source.entity_id, language)
