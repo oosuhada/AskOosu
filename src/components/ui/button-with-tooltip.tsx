@@ -1,37 +1,34 @@
-import React, { forwardRef } from "react";
-import { Button } from "./button";
+import type { ReactElement } from 'react';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "@/components/ui/tooltip";
+} from '@/components/ui/tooltip';
 
 interface ButtonWithTooltipProps {
-  children: React.ReactElement;
-  side: "top" | "bottom" | "left" | "right";
+  children: ReactElement;
+  side: 'top' | 'bottom' | 'left' | 'right';
   toolTipText: string;
 }
 
-const ButtonWithTooltip = forwardRef<HTMLButtonElement, ButtonWithTooltipProps>(
-  ({ children, side, toolTipText }, ref) => {
-    return (
-      <TooltipProvider>
-        <Tooltip delayDuration={0}>
-          <TooltipTrigger asChild>
-            {React.isValidElement(children) &&
-            // @ts-ignore 
-              React.cloneElement(children, { ref: ref as React.Ref<HTMLElement> })}
-          </TooltipTrigger>
-          <TooltipContent side={side}>
-            <div>{toolTipText}</div>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    );
-  }
-);
+const ButtonWithTooltip = ({
+  children,
+  side,
+  toolTipText,
+}: ButtonWithTooltipProps) => {
+  return (
+    <TooltipProvider>
+      <Tooltip delayDuration={0}>
+        <TooltipTrigger asChild>{children}</TooltipTrigger>
+        <TooltipContent side={side}>
+          <div>{toolTipText}</div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
 
-ButtonWithTooltip.displayName = "ButtonWithTooltip";
+ButtonWithTooltip.displayName = 'ButtonWithTooltip';
 
 export default ButtonWithTooltip;

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment, @typescript-eslint/no-unused-expressions, @typescript-eslint/no-unused-vars, prefer-const */
 // @ts-nocheck
 const useFluidCursor = () => {
   const canvas = document.getElementById('fluid');

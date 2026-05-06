@@ -46,6 +46,7 @@ export type FaqMediaRef = {
   assetKey: string;
   kind: 'profile' | 'project' | 'screenshot' | 'diagram' | 'gallery';
   src: string;
+  mobileSrc?: string;
   alt: string;
   caption?: string;
   status: 'ready' | 'todo' | 'optional';
@@ -111,37 +112,58 @@ const mediaRefs: FaqMediaRef[] = [
   {
     assetKey: 'profile.oosu.portrait',
     kind: 'profile',
-    src: 'TODO_ASSET',
+    src: '/images/profile/oosu-profile-desktop.webp',
+    mobileSrc: '/images/profile/oosu-profile-mobile.webp',
     alt: 'Oosu profile portrait',
-    status: 'todo',
+    status: 'ready',
   },
   {
     assetKey: 'project.askoosu.cover',
     kind: 'project',
-    src: 'TODO_ASSET',
+    src: '/images/projects/askoosu-cover-desktop.webp',
+    mobileSrc: '/images/projects/askoosu-cover-mobile.webp',
     alt: 'AskOosu project cover',
-    status: 'todo',
+    status: 'ready',
   },
   {
-    assetKey: 'project.instagram.cover',
+    assetKey: 'project.aigram.cover',
     kind: 'project',
-    src: 'TODO_ASSET',
-    alt: 'Instagram Clone project cover',
-    status: 'todo',
+    src: '/images/projects/aigram-cover-desktop.webp',
+    mobileSrc: '/images/projects/aigram-cover-mobile.webp',
+    alt: 'Aigram project cover',
+    status: 'ready',
   },
   {
     assetKey: 'project.sticks.cover',
     kind: 'project',
-    src: 'TODO_ASSET',
+    src: '/images/projects/sticks-stones-cover-desktop.webp',
+    mobileSrc: '/images/projects/sticks-stones-cover-mobile.webp',
     alt: 'Sticks and Stones project cover',
-    status: 'todo',
+    status: 'ready',
   },
   {
     assetKey: 'project.portfoliooh.cover',
     kind: 'project',
-    src: 'TODO_ASSET',
+    src: '/images/projects/portfolio-oh-cover-desktop.webp',
+    mobileSrc: '/images/projects/portfolio-oh-cover-mobile.webp',
     alt: 'Portfoli-Oh 2025 portfolio preview',
-    status: 'todo',
+    status: 'ready',
+  },
+  {
+    assetKey: 'life.oosu_salon.cover',
+    kind: 'gallery',
+    src: '/images/life/oosu-salon-desktop.webp',
+    mobileSrc: '/images/life/oosu-salon-mobile.webp',
+    alt: 'Oosu Salon visual memory',
+    status: 'ready',
+  },
+  {
+    assetKey: 'life.sensory_interests.cover',
+    kind: 'gallery',
+    src: '/images/life/sensory-interests-desktop.webp',
+    mobileSrc: '/images/life/sensory-interests-mobile.webp',
+    alt: 'Sensory interests visual reference',
+    status: 'ready',
   },
 ];
 
@@ -158,11 +180,11 @@ const representativeProjectsKo = [
   },
   {
     id: 'instagram_clone',
-    title: 'Instagram Clone',
-    subtitle: '1인 풀스택 SNS 프로젝트',
+    title: 'Aigram',
+    subtitle: 'Instagram Clone 기반 1인 풀스택 SNS 프로젝트',
     description:
       'Spring Boot, PostgreSQL, React/Next.js, 검색과 AI 기능까지 연결하며 SNS 데이터 흐름을 익힌 프로젝트입니다.',
-    image: 'project.instagram.cover',
+    image: 'project.aigram.cover',
     tags: ['Spring Boot', 'PostgreSQL', 'React', 'Search', 'AI'],
     href: 'https://aigram.oosu.dev',
   },
@@ -191,11 +213,11 @@ const representativeProjectsEn = [
   },
   {
     id: 'instagram_clone',
-    title: 'Instagram Clone',
-    subtitle: 'Solo fullstack SNS project',
+    title: 'Aigram',
+    subtitle: 'Solo fullstack SNS project inspired by Instagram Clone',
     description:
       'A project for learning SNS data flow across Spring Boot, PostgreSQL, React/Next.js, search, and AI features.',
-    image: 'project.instagram.cover',
+    image: 'project.aigram.cover',
     tags: ['Spring Boot', 'PostgreSQL', 'React', 'Search', 'AI'],
     href: 'https://aigram.oosu.dev',
   },
@@ -1167,7 +1189,7 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
     intentId: 'project.instagram.learned',
     entityId: 'instagram_clone',
     language: 'ko',
-    quickLabel: 'Instagram Clone',
+    quickLabel: 'Aigram',
     displayQuestion:
       'Instagram Clone을 혼자 만들면서 풀스택 개발에 대해 무엇을 배웠나요?',
     patterns: [
@@ -1195,7 +1217,7 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
     visualBlocks: [
       {
         type: 'projectCards',
-        title: 'Instagram Clone',
+        title: 'Aigram',
         dataKey: 'project.instagram_clone',
         items: [representativeProjectsKo[1]],
       },
@@ -1224,7 +1246,7 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
     intentId: 'project.instagram.learned',
     entityId: 'instagram_clone',
     language: 'en',
-    quickLabel: 'Instagram Clone',
+    quickLabel: 'Aigram',
     displayQuestion:
       'What did building Instagram Clone teach Oosu about fullstack development?',
     patterns: [
@@ -1251,7 +1273,7 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
     visualBlocks: [
       {
         type: 'projectCards',
-        title: 'Instagram Clone',
+        title: 'Aigram',
         dataKey: 'project.instagram_clone',
         items: [representativeProjectsEn[1]],
       },
