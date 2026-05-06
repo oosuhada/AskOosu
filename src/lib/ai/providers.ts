@@ -63,6 +63,8 @@ export function getChatModel(): ChatModelSelection {
 }
 
 export function getFallbackChatModel() {
+  if (process.env.GOOGLE_AI_ENABLED === 'false') return null;
+
   if (hasGoogleVertexCredentials()) {
     return getGoogleVertexChatModel();
   }

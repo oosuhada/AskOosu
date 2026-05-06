@@ -98,7 +98,7 @@ export async function prepareChatOrchestration({
     };
   }
 
-  const ragContext = await buildRagChatContext(question);
+  const ragContext = await buildRagChatContext(question, language);
   const metadata: ChatAnswerMetadata = {
     ...ragContext.metadata,
     language,

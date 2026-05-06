@@ -29,9 +29,16 @@ export function checkRateLimit(
   req: Request,
   config: RateLimitConfig
 ): RateLimitResult {
+  return checkRateLimitForKey(getClientIp(req), config);
+}
+
+export function checkRateLimitForKey(
+  rawKey: string,
+  config: RateLimitConfig
+): RateLimitResult {
   const now = Date.now();
   const buckets = getBuckets();
-  const key = `${config.scope}:${getClientIp(req)}`;
+  const key = `${config.scope}:${normalizeRateLimitKey(rawKey)}`;
   const current = buckets.get(key);
 
   cleanupExpiredBuckets(buckets, now);
@@ -64,6 +71,10 @@ export function checkRateLimit(
     resetAt: current.resetAt,
     retryAfter,
   };
+}
+
+function normalizeRateLimitKey(value: string) {
+  return value.trim().replace(/\s+/g, '_').slice(0, 160) || 'unknown';
 }
 
 export function rateLimitHeaders(result: RateLimitResult) {

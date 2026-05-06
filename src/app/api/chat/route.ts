@@ -1,12 +1,9 @@
-import { convertToModelMessages, streamText, stepCountIs } from 'ai';
+import { convertToModelMessages, stepCountIs } from 'ai';
 import type { UIMessage } from 'ai';
 import {
   getChatModel,
-  getChatProviderErrorCode,
   getFallbackChatModel,
   isChatModelRateLimitError,
-  recordChatModelFailure,
-  recordChatModelSuccess,
 } from './model-provider';
 import { SYSTEM_PROMPT_TEXT } from './prompt';
 import { createStaticFallbackResponse } from './static-fallback';
@@ -23,14 +20,14 @@ import {
   prepareChatOrchestration,
   getLatestUserText,
 } from '@/lib/chat/orchestrator';
-import {
-  recordAiProviderStatus,
-  recordAiProviderUsage,
-  upsertCachedAnswer,
-} from '@/lib/chat/database';
-import type { ChatAnswerSource } from '@/lib/chat/types';
+import { recordAiProviderUsage, upsertCachedAnswer } from '@/lib/chat/database';
+import { generateAnswerWithFallback } from '@/lib/ai/fallback';
 import { parsePreferredLanguage } from '@/lib/i18n/detect-language';
-import { checkRateLimit, rateLimitHeaders } from '@/lib/rate-limit';
+import {
+  checkRateLimit,
+  checkRateLimitForKey,
+  rateLimitHeaders,
+} from '@/lib/rate-limit';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -43,18 +40,7 @@ type ChatRequestBody = {
   conversationId?: string | null;
 };
 
-function errorHandler(error: unknown) {
-  if (error == null) {
-    return 'Unknown error';
-  }
-  if (typeof error === 'string') {
-    return error;
-  }
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return JSON.stringify(error);
-}
+const DEFAULT_MAX_CHAT_REQUEST_BYTES = 32 * 1024;
 
 export async function POST(req: Request) {
   let messages: UIMessage[] = [];
@@ -77,8 +63,31 @@ export async function POST(req: Request) {
       );
     }
 
-    const body = (await req.json()) as ChatRequestBody;
+    const body = await readChatRequestBody(req);
     messages = Array.isArray(body.messages) ? body.messages : [];
+    const sessionRateLimit = body.conversationId
+      ? checkRateLimitForKey(body.conversationId, {
+          scope: 'api:chat:session',
+          windowMs: 60 * 1000,
+          max: 10,
+        })
+      : null;
+
+    if (sessionRateLimit && !sessionRateLimit.allowed) {
+      return Response.json(
+        {
+          ok: false,
+          error:
+            'Too many chat requests in this session. Please wait and try again.',
+          retryAfter: sessionRateLimit.retryAfter,
+        },
+        {
+          status: 429,
+          headers: rateLimitHeaders(sessionRateLimit),
+        }
+      );
+    }
+
     const orchestration = await prepareChatOrchestration({
       messages,
       preferredLanguage:
@@ -121,20 +130,8 @@ export async function POST(req: Request) {
       tools,
       ignoreIncompleteToolCalls: true,
     });
-    const chatModel = selectChatModelWithFallback();
-    const answerSource = getGeneratedAnswerSource(chatModel.provider);
-    const responseMetadata = {
-      ...orchestration.metadata,
-      answerSource,
-      provider: chatModel.provider,
-      model: chatModel.modelName,
-      skippedGroq: chatModel.provider !== 'groq',
-    };
-    const startedAt = Date.now();
-    let generatedAnswer = '';
-
-    const result = streamText({
-      model: chatModel.model,
+    const generation = await generateAnswerWithFallback({
+      primaryModel: getPrimaryChatModelWithSelectionFallback(),
       system: [
         SYSTEM_PROMPT_TEXT,
         RAG_CHAT_SYSTEM_PROMPT,
@@ -145,80 +142,46 @@ export async function POST(req: Request) {
       messages: promptMessages,
       tools,
       stopWhen: stepCountIs(2),
-      maxRetries: chatModel.provider === 'groq' ? 0 : undefined,
-      onError: ({ error }) => {
-        recordChatModelFailure(chatModel, error);
-        void recordAiProviderUsage({
-          provider: chatModel.provider,
-          model: chatModel.modelName,
-          route: 'api/chat',
-          answerSource,
-          latencyMs: Date.now() - startedAt,
-          success: false,
-          errorCode: getChatProviderErrorCode(error),
-        }).catch((usageError) => {
-          console.warn('Unable to record provider failure:', usageError);
-        });
-        void recordAiProviderStatus({
-          provider: chatModel.provider,
-          status: isChatModelRateLimitError(error) ? 'cooldown' : 'error',
-          errorCode: getChatProviderErrorCode(error),
-        }).catch((statusError) => {
-          console.warn('Unable to record provider status:', statusError);
-        });
-      },
-      onFinish: ({ text, usage }) => {
-        generatedAnswer = text;
-        recordChatModelSuccess(chatModel);
-        const usageValues = normalizeUsage(usage);
-        void recordAiProviderUsage({
-          provider: chatModel.provider,
-          model: chatModel.modelName,
-          route: 'api/chat',
-          answerSource,
-          inputTokens: usageValues.inputTokens,
-          outputTokens: usageValues.outputTokens,
-          totalTokens: usageValues.totalTokens,
-          latencyMs: Date.now() - startedAt,
-          success: true,
-        }).catch((error) => {
-          console.warn('Unable to record provider usage:', error);
-        });
-        void recordAiProviderStatus({
-          provider: chatModel.provider,
-          status: 'ok',
-        }).catch((error) => {
-          console.warn('Unable to record provider status:', error);
-        });
-        void upsertCachedAnswer({
-          normalizedQuestion: orchestration.normalizedQuestion,
-          language: orchestration.language,
-          answer: text,
-          answerSource,
-          matchedEntityIds: responseMetadata.matchedEntityIds,
-          sourceChunkIds: responseMetadata.sourceChunkIds,
-          confidence: responseMetadata.confidence,
-          provider: chatModel.provider,
-          model: chatModel.modelName,
-        }).catch((error) => {
-          console.warn('Unable to write answer cache:', error);
-        });
-      },
+    });
+    const responseMetadata = {
+      ...orchestration.metadata,
+      answerSource: generation.answerSource,
+      provider: generation.provider,
+      model: generation.model,
+      skippedGroq: generation.provider !== 'groq',
+      answer: generation.answer,
+    };
+
+    void upsertCachedAnswer({
+      normalizedQuestion: orchestration.normalizedQuestion,
+      language: orchestration.language,
+      answer: generation.answer,
+      answerSource: generation.answerSource,
+      matchedEntityIds: responseMetadata.matchedEntityIds,
+      sourceChunkIds: responseMetadata.sourceChunkIds,
+      confidence: responseMetadata.confidence,
+      provider: generation.provider,
+      model: generation.model,
+    }).catch((error) => {
+      console.warn('Unable to write answer cache:', error);
     });
 
-    return result.toUIMessageStreamResponse({
-      onError: (error) =>
-        getSafeChatErrorMessage(error, orchestration.question),
-      messageMetadata: ({ part }) => {
-        if (part.type === 'finish') {
-          return {
-            ...responseMetadata,
-            answer: generatedAnswer,
-          };
-        }
-      },
+    return createDirectAnswerResponse({
+      messages,
+      answer: generation.answer,
+      metadata: responseMetadata,
     });
   } catch (err) {
+    if (err instanceof ChatRequestError) {
+      return Response.json(
+        {
+          ok: false,
+          error: err.message,
+        },
+        { status: err.status }
+      );
+    }
+
     console.error('Global error:', err);
     const latestUserText = getLatestUserText(messages);
     const orchestration = await prepareChatOrchestration({
@@ -259,56 +222,49 @@ const RAG_CHAT_SYSTEM_PROMPT = `
 - Do not output raw JSON metadata. Metadata is attached by the API separately.
 `;
 
-function getSafeChatErrorMessage(error: unknown, query: string) {
-  if (isChatModelRateLimitError(error)) {
-    return [
-      'Groq 무료 API 사용량 또는 속도 제한에 걸려 지금은 실시간 답변을 완료하지 못했어요.',
-      '잠시 후 다시 시도하거나, GitHub/LinkedIn/이메일 링크로 우수에게 직접 문의해 주세요.',
-      query ? `질문: ${query}` : '',
-    ]
-      .filter(Boolean)
-      .join('\n');
+async function readChatRequestBody(req: Request): Promise<ChatRequestBody> {
+  const rawBody = await req.text();
+  const maxBytes = getMaxChatRequestBytes();
+  const byteLength = new TextEncoder().encode(rawBody).length;
+
+  if (byteLength > maxBytes) {
+    throw new ChatRequestError(
+      `Chat request is too large. Maximum size is ${maxBytes} bytes.`,
+      413
+    );
   }
 
-  return errorHandler(error);
+  try {
+    return JSON.parse(rawBody || '{}') as ChatRequestBody;
+  } catch {
+    throw new ChatRequestError('Invalid JSON body.', 400);
+  }
 }
 
-function selectChatModelWithFallback() {
+class ChatRequestError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'ChatRequestError';
+    this.status = status;
+  }
+}
+
+function getMaxChatRequestBytes() {
+  const rawValue = process.env.ASKOOSU_CHAT_MAX_REQUEST_BYTES;
+  const parsedValue = rawValue ? Number.parseInt(rawValue, 10) : Number.NaN;
+  return Number.isFinite(parsedValue) && parsedValue > 0
+    ? parsedValue
+    : DEFAULT_MAX_CHAT_REQUEST_BYTES;
+}
+
+function getPrimaryChatModelWithSelectionFallback() {
   try {
     return getChatModel();
   } catch (error) {
     const fallbackModel = getFallbackChatModel();
-    if (fallbackModel) return fallbackModel;
-    throw error;
+    if (!fallbackModel) throw error;
+    return fallbackModel;
   }
-}
-
-function getGeneratedAnswerSource(provider: string): ChatAnswerSource {
-  if (provider === 'groq') return 'rag_groq';
-  if (provider === 'google_vertex') return 'rag_google';
-  if (provider === 'xai') return 'rag_xai';
-  if (provider === 'openai') return 'rag_openai';
-  return 'fallback';
-}
-
-function normalizeUsage(usage: unknown) {
-  if (!usage || typeof usage !== 'object') {
-    return {};
-  }
-
-  const usageRecord = usage as Record<string, unknown>;
-  return {
-    inputTokens: parseUsageNumber(
-      usageRecord.inputTokens ?? usageRecord.promptTokens
-    ),
-    outputTokens: parseUsageNumber(
-      usageRecord.outputTokens ?? usageRecord.completionTokens
-    ),
-    totalTokens: parseUsageNumber(usageRecord.totalTokens),
-  };
-}
-
-function parseUsageNumber(value: unknown) {
-  const parsedValue = typeof value === 'number' ? value : Number(value);
-  return Number.isFinite(parsedValue) ? parsedValue : null;
 }

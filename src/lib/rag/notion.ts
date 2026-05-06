@@ -22,6 +22,7 @@ export type NotionRagSyncResult = {
   pageId: string;
   pageUrl?: string;
   pageTitle: string;
+  language?: 'ko' | 'en' | null;
   blockCount: number;
   textLength: number;
   sections: NotionRagSection[];
@@ -184,11 +185,37 @@ export async function fetchNotionRagPage({
     pageId,
     pageUrl: page.url,
     pageTitle,
+    language: detectNotionPageLanguage({ pageId, pageTitle }),
     blockCount: blocks.length,
     textLength: fullText.length,
     sections,
     warnings,
   };
+}
+
+function detectNotionPageLanguage({
+  pageId,
+  pageTitle,
+}: {
+  pageId: string;
+  pageTitle: string;
+}): 'ko' | 'en' | null {
+  const normalizedPageId = pageId.replace(/-/g, '').toLowerCase();
+  const configuredKoPageIds = getListEnv('ASKOOSU_NOTION_KO_PAGE_IDS').map(
+    (value) => parseNotionId(value)
+  );
+  const configuredEnPageIds = getListEnv('ASKOOSU_NOTION_EN_PAGE_IDS').map(
+    (value) => parseNotionId(value)
+  );
+
+  if (configuredKoPageIds.includes(normalizedPageId)) return 'ko';
+  if (configuredEnPageIds.includes(normalizedPageId)) return 'en';
+
+  const normalizedTitle = pageTitle.toLowerCase();
+  if (/\bko\b|korean|한국|한글|국문/.test(normalizedTitle)) return 'ko';
+  if (/\ben\b|english|영문|영어/.test(normalizedTitle)) return 'en';
+
+  return null;
 }
 
 class NotionApiClient {

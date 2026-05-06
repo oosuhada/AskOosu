@@ -39,14 +39,19 @@ NEXT_PUBLIC_APP_URL=https://oosu.dev
 NOTION_API_KEY=
 NOTION_PAGE_ID=355a342869018181b578d73a791356af
 ASKOOSU_NOTION_PAGE_IDS=
+ASKOOSU_NOTION_KO_PAGE_IDS=
+ASKOOSU_NOTION_EN_PAGE_IDS=
 
 ASKOOSU_AI_PROVIDER=groq
 GROQ_API_KEY=
 GROQ_API_KEYS=
+GOOGLE_AI_ENABLED=false
+GOOGLE_AI_MAX_CALLS_PER_DAY=100
 GOOGLE_VERTEX_API_KEY=
 GOOGLE_VERTEX_PROJECT=
 GOOGLE_VERTEX_LOCATION=us-central1
 GOOGLE_VERTEX_MODEL=gemini-2.5-flash
+GOOGLE_APPLICATION_CREDENTIALS=
 
 RAG_SYNC_SECRET=
 ASKOOSU_RAG_ADMIN_TOKEN=
@@ -54,6 +59,8 @@ ASKOOSU_RAG_STORE=postgres
 ASKOOSU_RAG_AUTO_SYNC=false
 ASKOOSU_WIKI_VERSION=v10
 ASKOOSU_ANSWER_CACHE_TTL_HOURS=24
+ASKOOSU_RAG_SYNC_LOCK_TTL_SECONDS=300
+ASKOOSU_CHAT_MAX_REQUEST_BYTES=32768
 ```
 
 Use real values only in `.env.production` or the shell environment. Do not commit secrets.
@@ -63,6 +70,8 @@ Use the parent `AskOosu Wiki` page in `NOTION_PAGE_ID` first. If `/api/rag/sync`
 ```env
 NOTION_PAGE_ID=
 ASKOOSU_NOTION_PAGE_IDS=356a34286901807aa0c1f993a495c59d,356a34286901801583aff1822dac7f28
+ASKOOSU_NOTION_KO_PAGE_IDS=356a34286901807aa0c1f993a495c59d
+ASKOOSU_NOTION_EN_PAGE_IDS=356a34286901801583aff1822dac7f28
 ```
 
 ## Deploy With Compose
@@ -97,8 +106,38 @@ This applies:
 - `db/migrations/001_create_rag_database_schema.sql`
 - `db/migrations/002_create_answer_feedback.sql`
 - `db/migrations/003_create_chat_cache_and_provider_usage.sql`
+- `db/migrations/004_add_rag_language_and_sync_lock.sql`
 
 The script runs `psql` inside the `postgres` Compose service and reads `POSTGRES_USER` and `POSTGRES_DB` from `.env.production`.
+
+Migration `003` is required for `answer_cache`, `ai_provider_usage`, and `ai_provider_status`. Migration `004` is required for language-specific RAG search and sync locking. If production was already deployed before these migrations existed, run `scripts/prod-migrate.sh` again after pulling the latest code.
+
+## Google Vertex Fallback
+
+Groq remains the primary provider. Google Vertex is a fallback only when credentials and env are configured.
+
+For local development outside Docker:
+
+```bash
+gcloud auth application-default login
+```
+
+For this Mac mini Docker Compose deployment, a local ADC login on the host is not enough by itself. Use one of these secure options:
+
+- Set `GOOGLE_VERTEX_API_KEY` only if API-key auth is intentionally enabled for the project.
+- Mount an ADC or service-account credentials file into the app container and set `GOOGLE_APPLICATION_CREDENTIALS` to the container path.
+
+Keep `GOOGLE_AI_ENABLED=false` until credentials are available. Then set:
+
+```env
+GOOGLE_AI_ENABLED=true
+GOOGLE_AI_MAX_CALLS_PER_DAY=100
+GOOGLE_VERTEX_PROJECT=<google-cloud-project-id>
+GOOGLE_VERTEX_LOCATION=us-central1
+GOOGLE_VERTEX_MODEL=gemini-2.5-flash
+```
+
+`GOOGLE_AI_MAX_CALLS_PER_DAY` is enforced from `ai_provider_usage` so fallback usage does not silently run without a daily call cap.
 
 ## Nginx
 
