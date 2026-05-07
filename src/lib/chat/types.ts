@@ -1,5 +1,7 @@
 import type { ChatLanguage } from '@/lib/i18n/detect-language';
-import type { RagChatMetadata } from '@/lib/rag/chat-context';
+import type { AnswerConfidence, RagChatMetadata } from '@/lib/rag/chat-context';
+
+export type { AnswerConfidence };
 
 export type ChatAnswerSource =
   | 'faq_cache'

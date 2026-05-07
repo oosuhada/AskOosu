@@ -1,6 +1,7 @@
 import type { UIMessage } from 'ai';
 import { detectLanguage, type ChatLanguage } from '@/lib/i18n/detect-language';
 import {
+  buildAnswerConfidenceSignals,
   buildRagChatContext,
   type RagChatContext,
 } from '@/lib/rag/chat-context';
@@ -190,8 +191,17 @@ export async function prepareChatOrchestration({
     };
   }
 
+  const confidenceSignals = buildAnswerConfidenceSignals({
+    sources: ragContext.metadata.sources,
+    warnings: ragContext.metadata.warnings,
+    intent: getIntentConfidenceSignal(faqRoute),
+    usesGroundedSources: true,
+  });
+
   const metadata: ChatAnswerMetadata = {
     ...ragContext.metadata,
+    confidence: confidenceSignals.final,
+    confidenceSignals,
     language,
     normalizedQuestion,
     answerSource: 'fallback',
@@ -213,6 +223,7 @@ export async function prepareChatOrchestration({
       question,
       faqRoute,
       ragContext,
+      confidence: confidenceSignals.final,
     }),
   };
 
@@ -266,10 +277,12 @@ function buildRagGenerateRouteDecision({
   question,
   faqRoute,
   ragContext,
+  confidence,
 }: {
   question: string;
   faqRoute: FaqIntentRouteResult;
   ragContext: RagChatContext;
+  confidence: number;
 }): AnswerRouteDecision {
   const isMediumIntentMatch = faqRoute.routeDecision.mode === 'rewrite';
   const expectedEntityIds =
@@ -281,7 +294,7 @@ function buildRagGenerateRouteDecision({
     mode: 'rag_generate',
     query: question,
     expectedEntityIds,
-    confidence: ragContext.metadata.confidence,
+    confidence,
     reason: isMediumIntentMatch
       ? 'medium_intent_match'
       : faqRoute.matchedFaqId
@@ -331,21 +344,32 @@ function buildDirectMetadata({
   const mediaCounts = countMediaRefs(faqAnswer?.mediaRefs);
   const usedVisualBlocks = faqAnswer?.visualBlocks?.map((block) => block.type);
   const resolvedMatchedFaqId = matchedFaqId ?? faqRoute?.matchedFaqId;
+  const sources = sourceChunkIds.map((chunkId) => ({
+    chunk_id: chunkId,
+    entity_id: matchedEntityIds[0] ?? null,
+    title: toSourceTitle(answerSource),
+    section_path: [toSourceTitle(answerSource)],
+    score: confidence * 100,
+    visibility: 'public',
+    freshness: 'current',
+    has_todo: faqAnswer?.hasTodo ?? false,
+  }));
+  const warnings = faqAnswer?.hasTodo ? [getTodoWarning(language)] : [];
+  const confidenceSignals = buildAnswerConfidenceSignals({
+    sources,
+    warnings,
+    intent: getIntentConfidenceSignal(faqRoute, confidence),
+    usesGroundedSources:
+      answerSource !== 'insufficient_evidence' && sourceChunkIds.length > 0,
+  });
 
   return {
-    sources: sourceChunkIds.map((chunkId) => ({
-      chunk_id: chunkId,
-      entity_id: matchedEntityIds[0] ?? null,
-      title: toSourceTitle(answerSource),
-      section_path: [toSourceTitle(answerSource)],
-      score: confidence * 100,
-      visibility: 'public',
-      has_todo: faqAnswer?.hasTodo ?? false,
-    })),
-    confidence,
+    sources,
+    confidence: confidenceSignals.final,
+    confidenceSignals,
     matchedEntityIds,
     hasTodoEvidence: faqAnswer?.hasTodo ?? false,
-    warnings: faqAnswer?.hasTodo ? [getTodoWarning(language)] : [],
+    warnings,
     language,
     answerSource,
     matchedFaqId: resolvedMatchedFaqId,
@@ -396,6 +420,18 @@ function buildDirectMetadata({
     model,
     sourceChunkIds,
   };
+}
+
+function getIntentConfidenceSignal(
+  faqRoute: FaqIntentRouteResult | undefined,
+  fallback = 0.5
+) {
+  const intentScore = faqRoute?.intentScore;
+  return typeof intentScore === 'number' &&
+    Number.isFinite(intentScore) &&
+    intentScore > 0
+    ? intentScore
+    : fallback;
 }
 
 function toSourceTitle(answerSource: ChatAnswerMetadata['answerSource']) {
