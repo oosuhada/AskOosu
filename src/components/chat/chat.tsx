@@ -615,6 +615,7 @@ const Chat = () => {
               submitQuery={submitQuery}
               setInput={setInput}
               activeSurface={activeSurface}
+              hasReachedLimit={isToolInProgress}
             />
             <ChatBottombar
               input={input}
