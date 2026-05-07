@@ -943,26 +943,122 @@ function getIntentBoost(
   query: string,
   weights: RagHybridWeights
 ) {
+  const sourceAwareBoost = Math.max(
+    getVisionaryIntentBoost(row, query, weights),
+    getSecondBrainIntentBoost(row, query, weights)
+  );
   const normalizedQuery = normalizeAliasText(query);
   const searchableText = normalizeAliasText(
     [row.title, ...(row.section_path ?? [])].join(' ')
   );
-  if (!normalizedQuery || !searchableText) return 0;
-  if (searchableText.includes(normalizedQuery)) return weights.intent;
+  if (!normalizedQuery || !searchableText) return sourceAwareBoost;
+  if (searchableText.includes(normalizedQuery)) {
+    return Math.max(weights.intent, sourceAwareBoost);
+  }
 
   const tokens = normalizedQuery
     .split(' ')
     .map((token) => token.trim())
     .filter((token) => token.length >= 2);
-  if (tokens.length === 0) return 0;
+  if (tokens.length === 0) return sourceAwareBoost;
 
   const overlapCount = tokens.filter((token) =>
     searchableText.includes(token)
   ).length;
 
-  return Math.min(
+  const lexicalBoost = Math.min(
     weights.intent,
     (overlapCount / tokens.length) * weights.intent
+  );
+
+  return Math.max(lexicalBoost, sourceAwareBoost);
+}
+
+function getVisionaryIntentBoost(
+  row: RagChunkSearchRow,
+  query: string,
+  weights: RagHybridWeights
+) {
+  const metadata = row.metadata ?? {};
+  const surface = typeof metadata.surface === 'string' ? metadata.surface : '';
+  const intentGroup =
+    typeof metadata.intentGroup === 'string' ? metadata.intentGroup : '';
+  const sourceLabel =
+    typeof metadata.sourceLabel === 'string' ? metadata.sourceLabel : '';
+
+  if (
+    surface !== 'oosu_philosophy' &&
+    intentGroup !== 'vision' &&
+    !/Visionary Builder Docs/i.test(sourceLabel)
+  ) {
+    return 0;
+  }
+
+  if (!isVisionarySearchQuery(query)) return 0;
+  return weights.intent * 1.75;
+}
+
+function isVisionarySearchQuery(query: string) {
+  return /(AI 시대|미래|팀 프로젝트|팀의 미래|협업 방식|AI 활용|AI 에이전트|철학|관점|생각|오케스트레이터|Product Owner|PM|AI era|future of teams|AI agents|philosophy|perspective|orchestrator|what do you think|five years)/i.test(
+    query
+  );
+}
+
+function getSecondBrainIntentBoost(
+  row: RagChunkSearchRow,
+  query: string,
+  weights: RagHybridWeights
+) {
+  const metadata = row.metadata ?? {};
+  const sourceType =
+    typeof metadata.sourceType === 'string' ? metadata.sourceType : '';
+  const intentGroup =
+    typeof metadata.intentGroup === 'string' ? metadata.intentGroup : '';
+  const sourceCategory =
+    typeof metadata.sourceCategory === 'string' ? metadata.sourceCategory : '';
+
+  if (
+    sourceCategory !== 'second_brain' &&
+    sourceType !== 'operating_system_doc' &&
+    sourceType !== 'decision_log' &&
+    sourceType !== 'postmortem_doc'
+  ) {
+    return 0;
+  }
+
+  if (sourceType === 'postmortem_doc' || intentGroup === 'project_postmortem') {
+    return isPostmortemSearchQuery(query) ? weights.intent * 2 : 0;
+  }
+
+  if (sourceType === 'decision_log' || intentGroup === 'decision_log') {
+    return isDecisionLogSearchQuery(query) ? weights.intent * 1.8 : 0;
+  }
+
+  if (
+    sourceType === 'operating_system_doc' ||
+    intentGroup === 'operating_system'
+  ) {
+    return isOperatingSystemSearchQuery(query) ? weights.intent * 1.7 : 0;
+  }
+
+  return 0;
+}
+
+function isOperatingSystemSearchQuery(query: string) {
+  return /(어떻게\s*(활용|일|검토|리뷰|완성|나눠|운영)|AI\s*(활용|에이전트|워크플로)|Codex|Claude|definition\s+of\s+done|done|workflow|code\s+review|agent\s+workflow|how\s+does\s+Oosu\s+(use|work)|when\s+does\s+Oosu\s+consider)/i.test(
+    query
+  );
+}
+
+function isDecisionLogSearchQuery(query: string) {
+  return /(왜|이유|선택|결정|판단|tradeoff|RAG|cache\s*first|FAQ\s*cache|source\s*badge|confidence\s*badge|Notion|recruiter\s*risk|overclaim|why\s+did|why\s+cache|why\s+rag|decision)/i.test(
+    query
+  );
+}
+
+function isPostmortemSearchQuery(query: string) {
+  return /(배웠|회고|한계|아쉬|다시\s*만든다면|교훈|lessons?|postmortem|limitation|what\s+did\s+Oosu\s+learn|would\s+rebuild|Portfoli-Oh|AskOosu|Flai|EZ\s*Air|Instagram|Sticks)/i.test(
+    query
   );
 }
 

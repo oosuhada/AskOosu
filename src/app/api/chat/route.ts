@@ -519,6 +519,8 @@ const RAG_CHAT_SYSTEM_PROMPT = `
 - When a requested factual portfolio detail is not available in retrieved evidence or stable profile facts, say that the Wiki evidence is not enough and offer a nearby supported topic or contact path. Do not invent links, numbers, private details, or credentials.
 - Treat TODO, needs_review, private, or uncertain chunks as unconfirmed. Mention uncertainty instead of stating them as final.
 - For recruiter or comparison questions, use careful wording such as "portfolio evidence suggests" instead of unsupported superiority or seniority claims.
+- When retrieved evidence is from Visionary Builder Docs or the oosu_philosophy surface, answer as a grounded working thesis: observation first, then Oosu's bet or interpretation. Do not frame the thesis as "teams disappear," "people are replaced," or "solo is always better." Keep human judgment, collaboration, and verification central, and cite concrete AskOosu or project evidence when present.
+- When retrieved evidence is from operating_system_doc, decision_log, or postmortem_doc sources, use it to answer how Oosu works, why a product/architecture choice was made, or what Oosu learned. Keep public answers concise; do not expose raw doc IDs, manifest paths, or internal metadata.
 - When "you" appears in a developer/profile question, treat it as Oosu by default. Only answer as the assistant when the user clearly asks about AskOosu's implementation or behavior.
 - Follow requested language or format when reasonable, but never let formatting override the grounding and safety rules.
 - Be natural, warm, and helpful for a portfolio visitor.
@@ -700,12 +702,7 @@ function resolveRequestRouting({
 function optionalSafeIdentifierSchema(maxLength = MAX_SAFE_ID_LENGTH) {
   return z.preprocess(
     normalizeOptionalInputString,
-    z
-      .string()
-      .trim()
-      .max(maxLength)
-      .regex(SAFE_IDENTIFIER_PATTERN)
-      .nullable()
+    z.string().trim().max(maxLength).regex(SAFE_IDENTIFIER_PATTERN).nullable()
   );
 }
 

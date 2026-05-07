@@ -9,6 +9,10 @@ import {
   embedTexts,
   hasEmbeddingCredentials,
 } from '@/lib/rag/embeddings';
+import {
+  PHILOSOPHY_ANSWERS,
+  findPhilosophyAnswerById,
+} from '@/lib/philosophy/answers';
 import { FAQ_ANSWERS, findFaqAnswerById, type FaqAnswer } from './answers';
 import { scorePatternMatch } from './match';
 
@@ -16,6 +20,7 @@ export type FaqIntentRouteMode = 'direct' | 'rewrite' | 'rag_required';
 
 export type FaqIntentRouterKind =
   | 'quick_question'
+  | 'philosophy'
   | 'semantic'
   | 'token_fallback';
 
@@ -136,6 +141,15 @@ export async function routeFaqIntent({
     };
   }
 
+  const philosophyMatch = getPhilosophyIntentMatch({
+    question: normalizedQuestion,
+    language,
+  });
+
+  if (philosophyMatch) {
+    return philosophyMatch;
+  }
+
   if (isAmbiguousShortQuestion(normalizedQuestion)) {
     return emptyRouteResult('ambiguous_short_input', 'semantic');
   }
@@ -251,6 +265,14 @@ function getHiddenRecruiterRiskMatch({
     /(비전공|전환형|개발\s*깊이|깊이가\s*부족|cs\s*fundamental|non[-\s]?cs|career\s+changer\s+depth)/i.test(
       question
     );
+  const hasCollaborationConcern =
+    /(협업\s*(싫|회피|못|약|부족|괜찮)|팀\s*(경험|워크|협업|에서도\s*괜찮|못\s*하|안\s*맞)|혼자\s*(일|만)|solo\s*(builder|only)|work\s+(well\s+)?in\s+a\s+team|team\s*(fit|work|experience)|dislike\s+collaboration|avoid\s+collaboration|collaboration\s+(risk|concern|weak))/i.test(
+      question
+    );
+  const hasRoleConcern =
+    /(포지션\s*(애매|모호|불명확)|역할\s*(애매|모호)|pm\s*인지|개발자\s*인지|product\s*owner|role\s*(ambiguity|unclear)|pm\s+or\s+developer)/i.test(
+      question
+    );
 
   if (
     (hasRetentionConcern && (hasStartupConcern || hasLearnOnlyConcern)) ||
@@ -278,7 +300,189 @@ function getHiddenRecruiterRiskMatch({
     return findFaqAnswerById('faq.recruiter.depth_concern.default', language);
   }
 
+  if (hasCollaborationConcern) {
+    return findFaqAnswerById(
+      'faq.recruiter.collaboration_experience.default',
+      language
+    );
+  }
+
+  if (
+    hasRoleConcern &&
+    /채용|면접|리크루터|recruit|hire|hiring|risk|concern|리스크|우려/i.test(
+      question
+    )
+  ) {
+    return findFaqAnswerById('faq.recruiter.role_ambiguity.default', language);
+  }
+
   return null;
+}
+
+function getPhilosophyIntentMatch({
+  question,
+  language,
+}: {
+  question: string;
+  language: ChatLanguage;
+}): FaqIntentRouteResult | null {
+  const answers = PHILOSOPHY_ANSWERS.filter(
+    (answer) => answer.language === language
+  );
+  if (answers.length === 0) return null;
+
+  const rankedCandidates = answers
+    .map((answer) => ({
+      answer,
+      score: getPhilosophyPatternScore(question, answer),
+    }))
+    .sort((left, right) => right.score - left.score);
+  const [topCandidate, secondCandidate] = rankedCandidates;
+  if (!topCandidate) return null;
+
+  const topScore = roundScore(topCandidate.score);
+  const secondScore = roundScore(secondCandidate?.score ?? 0);
+  const margin = roundScore(topScore - secondScore);
+  const isTriggered = isPhilosophyTriggeredQuestion(question);
+  const hasConfidentMatch =
+    topScore >= 0.88 && (margin >= 0.08 || topScore >= 0.96);
+  const hasGoodTriggeredMatch =
+    isTriggered && topScore >= 0.72 && margin >= 0.08;
+
+  if (hasConfidentMatch || hasGoodTriggeredMatch) {
+    return {
+      answer: topCandidate.answer,
+      matchedFaqId: topCandidate.answer.id,
+      intentScore: topScore,
+      intentSecondScore: secondScore,
+      intentMargin: margin,
+      routeDecision: {
+        mode: 'direct',
+        reason: 'philosophy_pattern_match',
+        router: 'philosophy',
+      },
+    };
+  }
+
+  const fallbackAnswer = getFallbackPhilosophyAnswer({
+    question,
+    language,
+    isTriggered,
+  });
+  if (!fallbackAnswer) return null;
+
+  return {
+    answer: fallbackAnswer,
+    matchedFaqId: fallbackAnswer.id,
+    intentScore: 0.82,
+    intentSecondScore: secondScore,
+    intentMargin: 0.18,
+    routeDecision: {
+      mode: 'direct',
+      reason: 'philosophy_keyword_fallback',
+      router: 'philosophy',
+    },
+  };
+}
+
+function getPhilosophyPatternScore(question: string, answer: FaqAnswer) {
+  const candidatePatterns = [
+    answer.id,
+    ...(answer.legacyIds ?? []),
+    answer.intentId,
+    answer.entityId,
+    answer.displayQuestion,
+    ...(answer.alternativeDisplayQuestions ?? []),
+    ...answer.patterns,
+    answer.quickLabel,
+  ];
+
+  return Math.max(
+    ...candidatePatterns.map((pattern) =>
+      scorePatternMatch(question, normalizeQuestionForMatch(pattern))
+    )
+  );
+}
+
+function getFallbackPhilosophyAnswer({
+  question,
+  language,
+  isTriggered,
+}: {
+  question: string;
+  language: ChatLanguage;
+  isTriggered: boolean;
+}) {
+  if (!isTriggered) return null;
+
+  if (
+    /(팀|협업|team|teams|collaboration|solo|혼자|1인|one\s+person|small(er)?\s+team)/i.test(
+      question
+    )
+  ) {
+    return (
+      findPhilosophyAnswerById(
+        'faq.ai_thesis.future_of_teams.default',
+        language
+      ) ?? findPhilosophyAnswerById('faq.vision.team_future.default', language)
+    );
+  }
+
+  if (
+    /(pm|po|product\s*owner|개발자|developer|role|포지션|역할)/i.test(question)
+  ) {
+    return (
+      findPhilosophyAnswerById(
+        'faq.ai_thesis.pm_or_developer.default',
+        language
+      ) ??
+      findPhilosophyAnswerById('faq.vision.pm_or_developer.default', language)
+    );
+  }
+
+  if (/(에이전트|agent|workflow|워크플로|how.*ai|ai.*work)/i.test(question)) {
+    return (
+      findPhilosophyAnswerById(
+        'faq.ai_thesis.agent_workflow.default',
+        language
+      ) ??
+      findPhilosophyAnswerById(
+        'faq.vision.ai_workflow_origin.default',
+        language
+      )
+    );
+  }
+
+  if (
+    /(한\s*문장|요약|철학|관점|생각|point\s+of\s+view|perspective|philosophy|what\s+do\s+you\s+think)/i.test(
+      question
+    )
+  ) {
+    return (
+      findPhilosophyAnswerById(
+        'faq.ai_thesis.one_sentence.default',
+        language
+      ) ??
+      findPhilosophyAnswerById(
+        'faq.vision.ai_philosophy_summary.default',
+        language
+      )
+    );
+  }
+
+  return (
+    findPhilosophyAnswerById(
+      'faq.ai_thesis.competitive_edge.default',
+      language
+    ) ??
+    findPhilosophyAnswerById('faq.vision.ai_developer_future.default', language)
+  );
+}
+
+function isPhilosophyTriggeredQuestion(question: string) {
+  return /(ai\s*era|future|five\s*years?|philosophy|perspective|point\s+of\s+view|what\s+do\s+you\s+think|orchestrator|product\s*owner|\bpm\b\s+or\s+(a\s+)?developer|developer\s+or\s+\bpm\b|teams?.*(disappear|future)|solo\s*builder|ai[-\s]?native|ai[-\s]?connected|team\s+future|AI 시대|5년|철학|관점|생각|오케스트레이터|프로덕트\s*오너|팀의\s*미래|팀에서도|혼자\s*일|AI\s*에이전트|AI\s*연결|AI-connected|PM\s*(이야|인가|인지)?.*개발자|개발자.*PM|포지션.*(PM|PO|개발자|developer)|역할.*(PM|PO|개발자|developer))/i.test(
+    question
+  );
 }
 
 function decideRoute({

@@ -427,7 +427,11 @@ export function RagEvidencePanel({
         <Badge variant="outline" className="max-w-full rounded-lg px-2.5 py-1">
           <BookOpenCheck className="h-3.5 w-3.5" />
           <span className="min-w-0 truncate">
-            {getPublicSourceBadgeText(sourceCount, displayLanguage)}
+            {getPublicSourceBadgeText(
+              sourceCount,
+              displayLanguage,
+              ragMetadata.answerSource
+            )}
           </span>
         </Badge>
 
@@ -1114,6 +1118,10 @@ function getConfidenceTone(confidence: number, language: 'ko' | 'en') {
 function getAnswerSourceLabel(metadata: RagMetadata, language: 'ko' | 'en') {
   const labels: Record<string, Record<'ko' | 'en', string>> = {
     faq_cache: { ko: '포트폴리오 답변', en: 'Portfolio answer' },
+    philosophy_docs: {
+      ko: 'Visionary Builder Docs',
+      en: 'Visionary Builder Docs',
+    },
     faq_rewrite: {
       ko: '포트폴리오 답변',
       en: 'Portfolio answer',
@@ -1156,9 +1164,20 @@ function getAnswerSourceLabel(metadata: RagMetadata, language: 'ko' | 'en') {
   return labels[metadata.answerSource]?.[language] ?? metadata.answerSource;
 }
 
-function getPublicSourceBadgeText(count: number, language: 'ko' | 'en') {
+function getPublicSourceBadgeText(
+  count: number,
+  language: 'ko' | 'en',
+  answerSource?: string
+) {
   if (count === 0) {
     return language === 'ko' ? '근거 부족' : 'Limited evidence';
+  }
+
+  if (answerSource === 'philosophy_docs') {
+    if (language === 'ko') {
+      return `Visionary Builder Docs · ${count}개 출처`;
+    }
+    return `Visionary Builder Docs · ${count} source${count === 1 ? '' : 's'}`;
   }
 
   if (language === 'ko') return `Oosu Wiki 기반 · ${count}개 출처`;
