@@ -215,6 +215,17 @@ export async function searchRagChunks(
     return failedSearchPayload({ query, error, warnings });
   }
 
+  if (query.q) {
+    const sourceAwareRows = await searchWithSourceAwareRows(query).catch(
+      (error) => {
+        warnings.push('Source-aware RAG retrieval failed; used base ranking.');
+        console.warn('Source-aware RAG retrieval failed:', error);
+        return [] as RagChunkSearchRow[];
+      }
+    );
+    rows = dedupeRows([...rows, ...sourceAwareRows]);
+  }
+
   if (rows.length === 0) {
     warnings.push('No rag_chunks matched the search query.');
   }
@@ -455,6 +466,100 @@ async function searchWithIlikeFallback(query: RagChunkSearchQuery) {
       query.includePrivate,
       query.entityId ?? null,
       query.language ?? null,
+    ]
+  );
+
+  return result.rows.map((row) => ({
+    ...row,
+    ranking_search_mode: 'ilike' as const,
+  }));
+}
+
+async function searchWithSourceAwareRows(query: RagChunkSearchQuery) {
+  const filters = getSourceAwareFilters(query.q);
+  if (
+    filters.sourceTypes.length === 0 &&
+    filters.sourceCategories.length === 0 &&
+    filters.surfaces.length === 0
+  ) {
+    return [];
+  }
+
+  const pool = await getPostgresPool();
+  const likePatterns = toSourceAwareLikePatterns(query.q);
+  const result = await pool.query<RagChunkSearchRow>(
+    `
+      WITH ranked AS (
+        SELECT
+          c.chunk_id,
+          c.entity_id,
+          c.title,
+          c.section_path,
+          c.content,
+          c.metadata,
+          c.has_todo,
+          c.visibility,
+          c.freshness,
+          c.confidence,
+          0::double precision AS text_rank,
+          CASE WHEN c.title ILIKE ANY($1::text[]) THEN 14 ELSE 0 END::double precision AS title_score,
+          CASE WHEN array_to_string(c.section_path, ' ') ILIKE ANY($1::text[]) THEN 8 ELSE 0 END::double precision AS section_path_score,
+          CASE WHEN $4::text IS NOT NULL AND c.entity_id = $4 THEN 7 ELSE 0 END::double precision AS entity_score,
+          CASE WHEN c.content ILIKE ANY($1::text[]) THEN 4 ELSE 0 END::double precision AS content_score,
+          CASE WHEN c.visibility = 'public' THEN 1.5 ELSE 0 END::double precision AS visibility_score,
+          CASE WHEN c.has_todo THEN -2 ELSE 0 END::double precision AS todo_penalty,
+          c.updated_at
+        FROM rag_chunks c
+        WHERE
+          ($3::boolean OR c.visibility = 'public')
+          AND ($4::text IS NULL OR c.entity_id = $4)
+          AND ($5::text IS NULL OR c.language IS NULL OR c.language = $5)
+          AND (
+            c.metadata->>'sourceType' = ANY($6::text[])
+            OR c.metadata->>'sourceCategory' = ANY($7::text[])
+            OR c.metadata->>'surface' = ANY($8::text[])
+          )
+      )
+      SELECT
+        chunk_id,
+        entity_id,
+        title,
+        section_path,
+        content,
+        metadata,
+        has_todo,
+        visibility,
+        freshness,
+        confidence,
+        text_rank,
+        title_score,
+        section_path_score,
+        entity_score,
+        content_score,
+        visibility_score,
+        todo_penalty,
+        (
+          60
+          + title_score
+          + section_path_score
+          + entity_score
+          + content_score
+          + visibility_score
+          + todo_penalty
+        )::double precision AS score
+      FROM ranked
+      ORDER BY score DESC, updated_at DESC, title ASC
+      LIMIT $2
+    `,
+    [
+      likePatterns,
+      getExpandedLimit(query.limit),
+      query.includePrivate,
+      query.entityId ?? null,
+      query.language ?? null,
+      filters.sourceTypes,
+      filters.sourceCategories,
+      filters.surfaces,
     ]
   );
 
@@ -1074,7 +1179,7 @@ function getSecondBrainIntentBoost(
 }
 
 function isOperatingSystemSearchQuery(query: string) {
-  return /(어떻게\s*(활용|일|검토|리뷰|완성|나눠|운영)|AI\s*(활용|에이전트|워크플로)|Codex|Claude|definition\s+of\s+done|done|workflow|code\s+review|agent\s+workflow|how\s+does\s+Oosu\s+(use|work)|when\s+does\s+Oosu\s+consider)/i.test(
+  return /(어떻게\s*(활용|일|검토|리뷰|완성|나눠|운영)|코드.*(검토|리뷰)|리뷰.*코드|AI.*(코드|검토|리뷰)|AI\s*(활용|에이전트|워크플로)|Codex|Claude|definition\s+of\s+done|done|workflow|code\s+review|agent\s+workflow|how\s+does\s+Oosu\s+(use|work)|when\s+does\s+Oosu\s+consider)/i.test(
     query
   );
 }
@@ -1278,6 +1383,47 @@ function getSourceAwareSearchTerms(value: string) {
   }
 
   return terms;
+}
+
+function getSourceAwareFilters(value: string) {
+  const sourceTypes: string[] = [];
+  const sourceCategories: string[] = [];
+  const surfaces: string[] = [];
+
+  if (isVisionarySearchQuery(value)) {
+    sourceCategories.push('ai_working_thesis');
+    surfaces.push('oosu_philosophy');
+  }
+
+  if (isOperatingSystemSearchQuery(value)) {
+    sourceTypes.push('operating_system_doc');
+  }
+
+  if (isDecisionLogSearchQuery(value)) {
+    sourceTypes.push('decision_log');
+  }
+
+  if (isPostmortemSearchQuery(value)) {
+    sourceTypes.push('postmortem_doc');
+  }
+
+  return {
+    sourceTypes: uniqueSearchTerms(sourceTypes),
+    sourceCategories: uniqueSearchTerms(sourceCategories),
+    surfaces: uniqueSearchTerms(surfaces),
+  };
+}
+
+function toSourceAwareLikePatterns(value: string) {
+  const normalizedTokens = normalizeAliasText(value)
+    .split(' ')
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 2);
+
+  return uniqueSearchTerms([
+    ...normalizedTokens,
+    ...getSourceAwareSearchTerms(value),
+  ]).map(toLikePattern);
 }
 
 function uniqueSearchTerms(values: string[]) {
