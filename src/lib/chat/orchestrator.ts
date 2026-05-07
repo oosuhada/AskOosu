@@ -22,6 +22,7 @@ import type {
 
 export type ChatOrchestrationInput = {
   messages: UIMessage[];
+  requestId?: string | null;
   preferredLanguage?: ChatLanguage | null;
   starterQuestionId?: string | null;
   faqId?: string | null;
@@ -53,6 +54,7 @@ export type ChatOrchestration =
 
 export async function prepareChatOrchestration({
   messages,
+  requestId,
   preferredLanguage,
   starterQuestionId,
   faqId,
@@ -67,6 +69,7 @@ export async function prepareChatOrchestration({
   const normalizedQuestion = normalizeQuestion(question);
   const language = detectLanguage(question, preferredLanguage);
   const requestContext = {
+    requestId: normalizeOptionalString(requestId),
     triggerId: normalizeOptionalString(starterQuestionId),
     faqId: normalizeOptionalString(faqId),
     intentId: normalizeOptionalString(intentId),
@@ -145,6 +148,7 @@ export async function prepareChatOrchestration({
         confidence: cachedAnswer.confidence,
         reason: 'fresh_cache_hit',
       },
+      requestContext,
       faqRoute,
     });
 
@@ -209,6 +213,7 @@ export async function prepareChatOrchestration({
     sourceChunkIds: ragContext.metadata.sources.map(
       (source) => source.chunk_id
     ),
+    requestId: requestContext.requestId ?? undefined,
     faqId: requestContext.faqId ?? undefined,
     intentId: requestContext.intentId ?? undefined,
     originalQuickLabel: requestContext.originalQuickLabel ?? undefined,
@@ -331,6 +336,7 @@ function buildDirectMetadata({
   faqAnswer?: FaqAnswer;
   faqRoute?: FaqIntentRouteResult;
   requestContext?: {
+    requestId: string | null;
     faqId: string | null;
     triggerId: string | null;
     intentId: string | null;
@@ -370,6 +376,7 @@ function buildDirectMetadata({
     matchedEntityIds,
     hasTodoEvidence: faqAnswer?.hasTodo ?? false,
     warnings,
+    requestId: requestContext?.requestId ?? undefined,
     language,
     answerSource,
     matchedFaqId: resolvedMatchedFaqId,

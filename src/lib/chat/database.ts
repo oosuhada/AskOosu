@@ -565,7 +565,7 @@ function getAnswerCacheTtlHours() {
     : DEFAULT_ANSWER_CACHE_TTL_HOURS;
 }
 
-function shouldCacheAnswer(input: AnswerCacheInput) {
+export function shouldCacheAnswer(input: AnswerCacheInput) {
   if (normalizeConfidence(input.confidence) < MIN_CACHEABLE_CONFIDENCE) {
     return false;
   }
