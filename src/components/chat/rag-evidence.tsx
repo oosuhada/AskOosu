@@ -890,6 +890,10 @@ function getAnswerSourceLabel(metadata: RagMetadata, language: 'ko' | 'en') {
     rag_openai: { ko: '포트폴리오 데이터 기반', en: 'Based on portfolio data' },
     rag_xai: { ko: '포트폴리오 데이터 기반', en: 'Based on portfolio data' },
     fallback: { ko: '기본 포트폴리오 답변', en: 'Basic portfolio answer' },
+    insufficient_evidence: {
+      ko: '근거 부족',
+      en: 'Insufficient evidence',
+    },
   };
 
   if (!metadata.answerSource) return null;

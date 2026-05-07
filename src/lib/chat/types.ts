@@ -11,6 +11,7 @@ export type ChatAnswerSource =
   | 'rag_google'
   | 'rag_openai'
   | 'rag_xai'
+  | 'insufficient_evidence'
   | 'fallback';
 
 export type AnswerRouteDecision =
