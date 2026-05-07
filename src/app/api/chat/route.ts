@@ -63,7 +63,7 @@ export async function POST(req: Request) {
   let body: ChatRequestBody = {};
 
   try {
-    const rateLimit = checkRateLimit(req, {
+    const rateLimit = await checkRateLimit(req, {
       scope: 'api:chat',
       windowMs: 60 * 1000,
       max: getPositiveIntegerEnv('ASKOOSU_CHAT_RATE_LIMIT_PER_MINUTE', 60),
@@ -83,7 +83,7 @@ export async function POST(req: Request) {
     body = await readChatRequestBody(req);
     messages = Array.isArray(body.messages) ? body.messages : [];
     const sessionRateLimit = body.conversationId
-      ? checkRateLimitForKey(body.conversationId, {
+      ? await checkRateLimitForKey(body.conversationId, {
           scope: 'api:chat:session',
           windowMs: 60 * 1000,
           max: getPositiveIntegerEnv(
