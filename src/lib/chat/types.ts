@@ -21,6 +21,7 @@ export type ChatAnswerSource =
   | 'rag_groq'
   | 'rag_google'
   | 'rag_openai'
+  | 'rag_openrouter'
   | 'rag_xai'
   | 'insufficient_evidence'
   | 'fallback';

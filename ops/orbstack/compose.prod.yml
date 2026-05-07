@@ -17,6 +17,8 @@ services:
       NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://oosu.dev}
     ports:
       - '127.0.0.1:3010:3000'
+    volumes:
+      - /Users/gabrieljang/Secrets/askoosu/google-vertex-service-account.json:/run/secrets/google-vertex-service-account.json:ro
     depends_on:
       postgres:
         condition: service_healthy
