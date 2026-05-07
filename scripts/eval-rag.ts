@@ -9,6 +9,14 @@ type EvalQuestion = {
   expectedEvidence: string;
 };
 
+type FaqIntentEvalCase = {
+  id: string;
+  question: string;
+  expectedMode: 'direct' | 'rewrite' | 'rag_required';
+  expectedFaqId?: string;
+  expectedReason: string;
+};
+
 type SearchResult = {
   chunk_id: string;
   entity_id: string | null;
@@ -34,6 +42,8 @@ type EvalArgs = {
   chat: boolean;
   json: boolean;
   strict: boolean;
+  faq: boolean;
+  faqOnly: boolean;
   help: boolean;
 };
 
@@ -57,6 +67,21 @@ type EvalResult = {
     visibility: string;
   }>;
   chatAnswerPreview?: string;
+  error?: string;
+};
+
+type FaqIntentEvalResult = {
+  id: string;
+  question: string;
+  ok: boolean;
+  expectedMode: string;
+  actualMode: string | null;
+  expectedFaqId?: string;
+  matchedFaqId: string | null;
+  intentScore: number | null;
+  intentSecondScore: number | null;
+  intentMargin: number | null;
+  reason: string | null;
   error?: string;
 };
 
@@ -142,6 +167,48 @@ const EVAL_QUESTIONS: EvalQuestion[] = [
   },
 ];
 
+const FAQ_INTENT_EVAL_CASES: FaqIntentEvalCase[] = [
+  {
+    id: 'particle-ko',
+    question: '우수님은 어떤 개발자인가요?',
+    expectedMode: 'direct',
+    expectedFaqId: 'faq.profile.intro.default',
+    expectedReason:
+      'Korean honorific/particle variation should map to the profile FAQ.',
+  },
+  {
+    id: 'typo-ko',
+    question: '포트폴리오오 만든 사람 누구야?',
+    expectedMode: 'direct',
+    expectedFaqId: 'faq.portfolio.creator.default',
+    expectedReason:
+      'The repeated final syllable typo should still map to the creator FAQ.',
+  },
+  {
+    id: 'short-ambiguous-ko',
+    question: '우수',
+    expectedMode: 'rag_required',
+    expectedReason:
+      'A short entity-only input is ambiguous and should not direct-answer.',
+  },
+  {
+    id: 'mixed-entity-ko',
+    question: 'Portfoli-Oh랑 AskOosu는 뭐가 달라?',
+    expectedMode: 'direct',
+    expectedFaqId: 'faq.project.portfoliooh_vs_askoosu.default',
+    expectedReason:
+      'A mixed entity comparison should map to the comparison FAQ.',
+  },
+  {
+    id: 'paraphrase-en',
+    question:
+      "Which portfolio projects best show Oosu's growth as a developer?",
+    expectedMode: 'direct',
+    expectedFaqId: 'faq.project.top_three.default',
+    expectedReason: 'English paraphrase should map to representative projects.',
+  },
+];
+
 void main().catch((error) => {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;
@@ -161,6 +228,7 @@ async function main() {
   const adminToken = getRagAdminToken();
   const canRunChat = args.chat && hasGroqCredentials();
   const results: EvalResult[] = [];
+  const faqIntentResults: FaqIntentEvalResult[] = [];
 
   if (args.chat && !canRunChat) {
     console.log(
@@ -168,32 +236,58 @@ async function main() {
     );
   }
 
-  console.log(`AskOosu RAG eval: ${EVAL_QUESTIONS.length} questions`);
+  console.log(
+    `AskOosu RAG eval: ${args.faqOnly ? 0 : EVAL_QUESTIONS.length} RAG questions, ${args.faq ? FAQ_INTENT_EVAL_CASES.length : 0} FAQ intent cases`
+  );
   console.log(`Base URL: ${args.baseUrl}`);
   console.log(`Mode: ${canRunChat ? 'search + chat' : 'search-only'}`);
   console.log(`Limit: ${args.limit}`);
   console.log('');
 
-  for (const item of EVAL_QUESTIONS) {
-    const result = await evaluateQuestion({
-      item,
-      baseUrl: args.baseUrl,
-      limit: args.limit,
-      adminToken,
-      includeChat: canRunChat,
-    });
+  if (!args.faqOnly) {
+    for (const item of EVAL_QUESTIONS) {
+      const result = await evaluateQuestion({
+        item,
+        baseUrl: args.baseUrl,
+        limit: args.limit,
+        adminToken,
+        includeChat: canRunChat,
+      });
 
-    results.push(result);
+      results.push(result);
 
-    if (!args.json) {
-      printHumanResult(result);
+      if (!args.json) {
+        printHumanResult(result);
+      }
+    }
+  }
+
+  if (args.faq) {
+    for (const item of FAQ_INTENT_EVAL_CASES) {
+      const result = await evaluateFaqIntentCase({
+        item,
+        baseUrl: args.baseUrl,
+      });
+
+      faqIntentResults.push(result);
+
+      if (!args.json) {
+        printHumanFaqIntentResult(result);
+      }
     }
   }
 
   const summary = summarizeResults(results);
+  const faqSummary = summarizeFaqIntentResults(faqIntentResults);
 
   if (args.json) {
-    console.log(JSON.stringify({ summary, results }, null, 2));
+    console.log(
+      JSON.stringify(
+        { summary, faqSummary, results, faqIntentResults },
+        null,
+        2
+      )
+    );
   } else {
     console.log('Summary');
     console.log(
@@ -203,13 +297,17 @@ async function main() {
       `- questions with TODO evidence: ${summary.todoCount}, visibility warnings: ${summary.visibilityWarningCount}`
     );
     console.log(`- search warnings: ${summary.searchWarningCount}`);
+    console.log(
+      `- FAQ intent routes ok: ${faqSummary.okCount}/${faqSummary.total}`
+    );
   }
 
   if (
     args.strict &&
     (summary.okCount !== summary.total ||
       summary.expectedMatchedCount !== summary.total ||
-      summary.visibilityWarningCount > 0)
+      summary.visibilityWarningCount > 0 ||
+      faqSummary.okCount !== faqSummary.total)
   ) {
     process.exitCode = 1;
   }
@@ -328,6 +426,77 @@ async function requestChatAnswerPreview({
   baseUrl: string;
   question: string;
 }) {
+  try {
+    const result = await requestChatAnswer({ baseUrl, question });
+    return result.answerPreview;
+  } catch (error) {
+    return `chat ${error instanceof Error ? error.message : String(error)}`;
+  }
+}
+
+async function evaluateFaqIntentCase({
+  item,
+  baseUrl,
+}: {
+  item: FaqIntentEvalCase;
+  baseUrl: string;
+}): Promise<FaqIntentEvalResult> {
+  try {
+    const result = await requestChatAnswer({
+      baseUrl,
+      question: item.question,
+    });
+    const metadata = isRecord(result.metadata) ? result.metadata : {};
+    const routeDecision = isRecord(metadata.routeDecision)
+      ? metadata.routeDecision
+      : {};
+    const actualMode =
+      typeof routeDecision.mode === 'string' ? routeDecision.mode : null;
+    const matchedFaqId =
+      typeof metadata.matchedFaqId === 'string' ? metadata.matchedFaqId : null;
+    const ok =
+      actualMode === item.expectedMode &&
+      (!item.expectedFaqId || matchedFaqId === item.expectedFaqId);
+
+    return {
+      id: item.id,
+      question: item.question,
+      ok,
+      expectedMode: item.expectedMode,
+      actualMode,
+      expectedFaqId: item.expectedFaqId,
+      matchedFaqId,
+      intentScore: parseNullableNumber(metadata.intentScore),
+      intentSecondScore: parseNullableNumber(metadata.intentSecondScore),
+      intentMargin: parseNullableNumber(metadata.intentMargin),
+      reason:
+        typeof routeDecision.reason === 'string' ? routeDecision.reason : null,
+    };
+  } catch (error) {
+    return {
+      id: item.id,
+      question: item.question,
+      ok: false,
+      expectedMode: item.expectedMode,
+      actualMode: null,
+      expectedFaqId: item.expectedFaqId,
+      matchedFaqId: null,
+      intentScore: null,
+      intentSecondScore: null,
+      intentMargin: null,
+      reason: null,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+async function requestChatAnswer({
+  baseUrl,
+  question,
+}: {
+  baseUrl: string;
+  question: string;
+}) {
   const response = await fetch(new URL('/api/chat', baseUrl), {
     method: 'POST',
     headers: {
@@ -346,14 +515,20 @@ async function requestChatAnswerPreview({
   const rawStream = await response.text();
 
   if (!response.ok) {
-    return `chat HTTP ${response.status}: ${rawStream.slice(0, 240)}`;
+    throw new Error(`chat HTTP ${response.status}: ${rawStream.slice(0, 240)}`);
   }
 
-  return extractTextFromUiMessageStream(rawStream).slice(0, 500);
+  const parsedStream = parseUiMessageStream(rawStream);
+
+  return {
+    answerPreview: parsedStream.text.slice(0, 500),
+    metadata: parsedStream.metadata,
+  };
 }
 
-function extractTextFromUiMessageStream(rawStream: string) {
+function parseUiMessageStream(rawStream: string) {
   let text = '';
+  let metadata: unknown = null;
 
   for (const line of rawStream.split(/\r?\n/)) {
     const trimmedLine = line.trim();
@@ -363,16 +538,26 @@ function extractTextFromUiMessageStream(rawStream: string) {
     if (!rawData || rawData === '[DONE]') continue;
 
     try {
-      const chunk = JSON.parse(rawData) as { type?: string; delta?: string };
+      const chunk = JSON.parse(rawData) as {
+        type?: string;
+        delta?: string;
+        messageMetadata?: unknown;
+      };
       if (chunk.type === 'text-delta' && typeof chunk.delta === 'string') {
         text += chunk.delta;
+      }
+      if (chunk.messageMetadata) {
+        metadata = chunk.messageMetadata;
       }
     } catch {
       // Ignore non-JSON stream control frames.
     }
   }
 
-  return text.trim() || rawStream.slice(0, 500);
+  return {
+    text: text.trim() || rawStream.slice(0, 500),
+    metadata,
+  };
 }
 
 function printHumanResult(result: EvalResult) {
@@ -416,6 +601,24 @@ function printHumanResult(result: EvalResult) {
   console.log('');
 }
 
+function printHumanFaqIntentResult(result: FaqIntentEvalResult) {
+  console.log(`[faq:${result.id}] ${result.question}`);
+  console.log(`  ok: ${result.ok}`);
+  console.log(`  expected route: ${result.expectedMode}`);
+  console.log(`  actual route: ${result.actualMode ?? 'none'}`);
+  console.log(`  matched FAQ: ${result.matchedFaqId ?? 'none'}`);
+  console.log(
+    `  score: ${formatNullableScore(result.intentScore)}, second: ${formatNullableScore(result.intentSecondScore)}, margin: ${formatNullableScore(result.intentMargin)}`
+  );
+  console.log(`  reason: ${result.reason ?? 'none'}`);
+
+  if (result.error) {
+    console.log(`  error: ${result.error}`);
+  }
+
+  console.log('');
+}
+
 function summarizeResults(results: EvalResult[]) {
   return {
     total: results.length,
@@ -433,6 +636,13 @@ function summarizeResults(results: EvalResult[]) {
   };
 }
 
+function summarizeFaqIntentResults(results: FaqIntentEvalResult[]) {
+  return {
+    total: results.length,
+    okCount: results.filter((result) => result.ok).length,
+  };
+}
+
 function getMatchedEntityIds(results: SearchResult[]) {
   return Array.from(
     new Set(
@@ -441,6 +651,19 @@ function getMatchedEntityIds(results: SearchResult[]) {
         .filter((entityId): entityId is string => Boolean(entityId))
     )
   );
+}
+
+function parseNullableNumber(value: unknown) {
+  const parsedValue = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(parsedValue) ? parsedValue : null;
+}
+
+function formatNullableScore(value: number | null) {
+  return value === null ? 'none' : value.toFixed(4);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
 }
 
 function buildAdminHeaders(adminToken: string | null) {
@@ -462,6 +685,8 @@ function parseArgs(argv: string[]): EvalArgs {
     chat: false,
     json: false,
     strict: false,
+    faq: true,
+    faqOnly: false,
     help: false,
   };
 
@@ -472,6 +697,11 @@ function parseArgs(argv: string[]): EvalArgs {
     if (arg === '--chat') result.chat = true;
     if (arg === '--json') result.json = true;
     if (arg === '--strict') result.strict = true;
+    if (arg === '--no-faq') result.faq = false;
+    if (arg === '--faq-only') {
+      result.faq = true;
+      result.faqOnly = true;
+    }
     if (arg === '--base-url') {
       result.baseUrl = normalizeBaseUrl(argv[index + 1] ?? result.baseUrl);
       index += 1;
@@ -494,11 +724,14 @@ Usage:
   pnpm rag:eval -- --chat
   pnpm rag:eval -- --json
   pnpm rag:eval -- --strict
+  pnpm rag:eval -- --faq-only
 
 Options:
   --base-url <url>  App URL to call. Defaults to ASKOOSU_EVAL_BASE_URL or http://localhost:3000.
   --limit <n>       Number of chunks to retrieve per question. Defaults to 5.
   --chat            Also call /api/chat when Groq credentials are configured.
+  --no-faq          Skip FAQ semantic intent route checks.
+  --faq-only        Only run FAQ semantic intent route checks.
   --json            Print machine-readable JSON.
   --strict          Exit non-zero when a question fails, expected entities are missing, or visibility warnings appear.
 `);

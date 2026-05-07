@@ -36,6 +36,14 @@ export type ChatAnswerMetadata = RagChatMetadata & {
   mediaReadyCount?: number;
   mediaTodoCount?: number;
   matchedFaqId?: string;
+  intentScore?: number;
+  intentSecondScore?: number;
+  intentMargin?: number;
+  routeDecision?: {
+    mode: 'direct' | 'rewrite' | 'rag_required';
+    reason: string;
+    router: 'quick_question' | 'semantic' | 'token_fallback';
+  };
   normalizedQuestion: string;
   skippedGroq: boolean;
   provider?: string;

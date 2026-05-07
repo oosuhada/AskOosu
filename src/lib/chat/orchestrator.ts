@@ -4,13 +4,12 @@ import {
   buildRagChatContext,
   type RagChatContext,
 } from '@/lib/rag/chat-context';
-import {
-  buildAnswerParts,
-  findFaqAnswerById,
-  type FaqAnswer,
-} from '@/lib/faq/answers';
+import { buildAnswerParts, type FaqAnswer } from '@/lib/faq/answers';
 import type { AnswerVariant } from '@/data/question-surfaces.shared';
-import { matchFaqAnswer } from '@/lib/faq/match';
+import {
+  routeFaqIntent,
+  type FaqIntentRouteResult,
+} from '@/lib/faq/semantic-router';
 import { getCachedAnswer } from './database';
 import { normalizeQuestion } from './text';
 import type { ChatAnswerMetadata, DirectChatAnswer } from './types';
@@ -70,55 +69,29 @@ export async function prepareChatOrchestration({
     source: normalizeOptionalString(source),
   };
 
-  if (requestContext.faqId) {
-    const faqAnswer = findFaqAnswerById(requestContext.faqId, language);
+  const faqRoute = await routeFaqIntent({
+    question,
+    language,
+    starterQuestionId: requestContext.triggerId,
+    source: requestContext.source,
+  });
 
-    if (faqAnswer?.cacheMode === 'direct_cache') {
-      const metadata = buildDirectMetadata({
-        language,
-        normalizedQuestion,
-        answerSource: 'faq_cache',
-        matchedFaqId: faqAnswer.id,
-        matchedEntityIds: faqAnswer.matchedEntityIds,
-        sourceChunkIds: faqAnswer.sourceChunkIds,
-        confidence: faqAnswer.confidence,
-        faqAnswer,
-        requestContext,
-      });
-
-      return {
-        mode: 'direct',
-        question,
-        language,
-        directAnswer: {
-          answer: getFaqAnswerText(faqAnswer, requestContext.answerVariant),
-          metadata,
-        },
-      };
-    }
-  }
-
-  const shouldSkipFuzzyFaqMatch =
-    requestContext.source === 'quick_question' && Boolean(requestContext.faqId);
-  const faqMatch = shouldSkipFuzzyFaqMatch
-    ? null
-    : matchFaqAnswer({
-        question,
-        language,
-        starterQuestionId,
-      });
-
-  if (faqMatch?.answer.cacheMode === 'direct_cache') {
+  if (
+    faqRoute.routeDecision.mode === 'direct' &&
+    faqRoute.answer?.cacheMode === 'direct_cache'
+  ) {
+    const faqAnswer = faqRoute.answer;
     const metadata = buildDirectMetadata({
       language,
       normalizedQuestion,
-      answerSource: faqMatch.answer.answerSource,
-      matchedFaqId: faqMatch.answer.id,
-      matchedEntityIds: faqMatch.answer.matchedEntityIds,
-      sourceChunkIds: faqMatch.answer.sourceChunkIds,
-      confidence: Math.min(faqMatch.answer.confidence, faqMatch.score),
-      faqAnswer: faqMatch.answer,
+      answerSource: 'faq_cache',
+      matchedFaqId: faqAnswer.id,
+      matchedEntityIds: faqAnswer.matchedEntityIds,
+      sourceChunkIds: faqAnswer.sourceChunkIds,
+      confidence: Math.min(faqAnswer.confidence, faqRoute.intentScore || 1),
+      faqAnswer,
       requestContext,
+      faqRoute,
     });
 
     return {
@@ -126,7 +99,7 @@ export async function prepareChatOrchestration({
       question,
       language,
       directAnswer: {
-        answer: getFaqAnswerText(faqMatch.answer, requestContext.answerVariant),
+        answer: getFaqAnswerText(faqAnswer, requestContext.answerVariant),
         metadata,
       },
     };
@@ -149,6 +122,7 @@ export async function prepareChatOrchestration({
       confidence: cachedAnswer.confidence,
       provider: cachedAnswer.provider ?? undefined,
       model: cachedAnswer.model ?? undefined,
+      faqRoute,
     });
 
     return {
@@ -184,6 +158,7 @@ export async function prepareChatOrchestration({
           ],
           confidence: 0.6,
           requestContext,
+          faqRoute,
         }),
       },
     };
@@ -204,6 +179,11 @@ export async function prepareChatOrchestration({
     displayQuestion: requestContext.displayQuestion ?? undefined,
     answerVariant: requestContext.answerVariant ?? undefined,
     renderSpecKey: requestContext.renderSpec ?? undefined,
+    matchedFaqId: faqRoute.matchedFaqId,
+    intentScore: faqRoute.intentScore,
+    intentSecondScore: faqRoute.intentSecondScore,
+    intentMargin: faqRoute.intentMargin,
+    routeDecision: faqRoute.routeDecision,
   };
 
   return {
@@ -248,6 +228,7 @@ function buildDirectMetadata({
   model,
   faqAnswer,
   requestContext,
+  faqRoute,
 }: {
   language: ChatLanguage;
   normalizedQuestion: string;
@@ -259,6 +240,7 @@ function buildDirectMetadata({
   provider?: string;
   model?: string;
   faqAnswer?: FaqAnswer;
+  faqRoute?: FaqIntentRouteResult;
   requestContext?: {
     faqId: string | null;
     triggerId: string | null;
@@ -272,6 +254,7 @@ function buildDirectMetadata({
 }): ChatAnswerMetadata {
   const mediaCounts = countMediaRefs(faqAnswer?.mediaRefs);
   const usedVisualBlocks = faqAnswer?.visualBlocks?.map((block) => block.type);
+  const resolvedMatchedFaqId = matchedFaqId ?? faqRoute?.matchedFaqId;
 
   return {
     sources: sourceChunkIds.map((chunkId) => ({
@@ -289,14 +272,14 @@ function buildDirectMetadata({
     warnings: faqAnswer?.hasTodo ? [getTodoWarning(language)] : [],
     language,
     answerSource,
-    matchedFaqId,
-    faqId: faqAnswer?.id ?? requestContext?.faqId ?? matchedFaqId,
+    matchedFaqId: resolvedMatchedFaqId,
+    faqId: faqAnswer?.id ?? resolvedMatchedFaqId,
     triggerId: requestContext?.triggerId ?? undefined,
     intentId: getResolvedIntentId({
       requestIntentId: requestContext?.intentId,
-      requestFaqId: requestContext?.faqId,
+      requestFaqId: faqAnswer?.id ?? resolvedMatchedFaqId,
       faqAnswer,
-      matchedFaqId,
+      matchedFaqId: resolvedMatchedFaqId,
     }),
     quickLabel: faqAnswer?.quickLabel,
     originalQuickLabel:
@@ -327,6 +310,10 @@ function buildDirectMetadata({
     usedVisualBlocks,
     mediaReadyCount: mediaCounts.ready,
     mediaTodoCount: mediaCounts.todo,
+    intentScore: faqRoute?.intentScore,
+    intentSecondScore: faqRoute?.intentSecondScore,
+    intentMargin: faqRoute?.intentMargin,
+    routeDecision: faqRoute?.routeDecision,
     normalizedQuestion,
     skippedGroq: true,
     provider,
