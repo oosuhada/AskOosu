@@ -1,8 +1,19 @@
 # AskOosu
 
-AskOosu is Oosu Jang's 2026 AI-connected portfolio.
+AskOosu is Oosu Jang's 2026 AI-connected portfolio, deployed at [oosu.dev](https://oosu.dev).
 
-Instead of a static portfolio, this project uses a chat-first interface: visitors can ask natural language questions and receive guided answers about Oosu, projects, skills, contact links, resume placeholders, and the planned Notion wiki.
+Instead of asking visitors to scroll through a static profile, AskOosu lets them ask natural language questions and receive grounded answers about Oosu's projects, skills, working style, contact links, and portfolio evidence.
+
+![AskOosu desktop preview](public/images/projects/askoosu-cover-desktop.webp)
+
+## Live Portfolio Links
+
+- Current portfolio: [https://oosu.dev](https://oosu.dev)
+- GitHub profile: [https://github.com/oosuhada](https://github.com/oosuhada)
+- LinkedIn: [https://www.linkedin.com/in/oosuhada/](https://www.linkedin.com/in/oosuhada/)
+- 2025 portfolio archive: [https://portfoli-oh.oosu.dev](https://portfoli-oh.oosu.dev)
+- Legacy portfolio repository: [https://github.com/oosuhada/portfoli-oh](https://github.com/oosuhada/portfoli-oh)
+- AskOosu wiki source: [Notion source page](https://www.notion.so/355a342869018181b578d73a791356af)
 
 ## Core Direction
 
@@ -18,16 +29,76 @@ Instead of a static portfolio, this project uses a chat-first interface: visitor
 - Optional Groq provider mode with multiple API keys, lazy cooldown, and automatic reactivation after failures or quota/rate-limit errors
 - Cache-first chat orchestration with FAQ/deterministic answers, answer cache, RAG context, and optional Google Vertex fallback
 
-## Links
+## Representative Projects
 
-- GitHub: https://github.com/oosuhada
-- LinkedIn: https://www.linkedin.com/in/oosuhada/
-- Instagram: https://www.instagram.com/oosu.hada
-- AskOosu: https://oosu.dev
-- AskOosu Wiki: https://www.notion.so/355a342869018181b578d73a791356af
-- Source Notion page: https://www.notion.so/355a342869018181b578d73a791356af
-- 2025 portfolio: https://portfoli-oh.oosu.dev
-- 2025 portfolio repository: https://github.com/oosuhada/portfoli-oh
+AskOosu treats project information as retrievable portfolio evidence. The public portfolio currently highlights a small set of representative projects instead of presenting every learning repository as equal weight.
+
+| Project | Role in Portfolio | Live / Source |
+| --- | --- | --- |
+| AskOosu 2026 | Current AI/RAG portfolio and answer-quality system | [Live](https://oosu.dev) / [GitHub](https://github.com/oosuhada/AskOosu) |
+| Aigram | Fullstack SNS practice with React, Spring Boot, PostgreSQL, search, auth, and media flows | [Live](https://aigram.oosu.dev) |
+| Sticks & Stones Homepage | Real-client website renewal and frontend migration case | [Live](https://stks.oosu.dev) |
+| Portfoli-Oh! 2025 | Vanilla HTML/CSS/JavaScript interaction archive and previous portfolio | [Live](https://portfoli-oh.oosu.dev) / [GitHub](https://github.com/oosuhada/portfoli-oh) |
+| Pylingo / Javalingo | Smaller learning-app references for education UX and study flow | [Pylingo](https://oosuhada.github.io/pylingo/) / [Javalingo](https://oosuhada.github.io/javalingo/) |
+
+![Aigram desktop preview](public/images/projects/aigram-cover-desktop.webp)
+
+![Sticks and Stones desktop preview](public/images/projects/sticks-stones-cover-desktop.webp)
+
+![Portfoli-Oh desktop preview](public/images/projects/portfolio-oh-cover-desktop.webp)
+
+## Architecture
+
+```text
+Visitor
+  |
+  v
+Next.js App Router UI
+  |-- suggested questions
+  |-- local chat history
+  |-- rich answer cards
+  |-- public source summaries
+  |
+  v
+/api/chat SSE endpoint
+  |-- deterministic portfolio policies
+  |-- FAQ cache and semantic routing
+  |-- answer cache
+  |-- optional model rewrite/generation
+  |
+  v
+Portfolio knowledge layer
+  |-- Notion API sync
+  |-- local markdown second-brain docs
+  |-- PostgreSQL RAG chunks
+  |-- hybrid lexical/vector/entity scoring
+  |
+  v
+Home-server deployment
+  |-- Mac mini
+  |-- Docker Compose
+  |-- PostgreSQL
+  |-- Nginx / Cloudflare front door
+```
+
+## GitHub Portfolio Curation
+
+The GitHub profile is intentionally curated around public evidence:
+
+- Public repositories should be readable without private credentials, raw secrets, local database dumps, or client-private assets.
+- Representative projects should include a clear README, a live URL when available, screenshots, architecture notes, and honest scope boundaries.
+- Private repositories can still appear in AskOosu as portfolio context when the public claim is backed by screenshots, case-study notes, or sanitized summaries.
+- Duplicate or early learning repositories should not be over-positioned as production-ready work.
+
+## Runtime Stack
+
+- Framework: Next.js App Router, React, TypeScript
+- Styling: Tailwind CSS
+- Chat/runtime: Vercel AI SDK 6, SSE streaming, FAQ cache, deterministic routing
+- Model providers: xAI/Grok, Groq, optional Google Vertex fallback
+- Knowledge sources: Notion API, local markdown docs, Postgres-backed RAG chunks
+- Data layer: raw SQL with `pg`, optional pgvector search
+- Deployment: Mac mini home server, Docker Compose, PostgreSQL, Nginx/Cloudflare
 
 ## Run Locally
 
