@@ -43,6 +43,10 @@ type RagMetadata = {
   provider?: string;
   model?: string;
   errorCode?: string;
+  routeDecision?: {
+    mode?: string;
+    reason?: string;
+  };
 };
 
 type ProjectCardInfo = {
@@ -388,6 +392,12 @@ export function RagEvidencePanel({
               : null,
             ragMetadata.renderSpecKey
               ? `renderSpec: ${ragMetadata.renderSpecKey}`
+              : null,
+            ragMetadata.routeDecision?.mode
+              ? `route: ${ragMetadata.routeDecision.mode}`
+              : null,
+            ragMetadata.routeDecision?.reason
+              ? `reason: ${ragMetadata.routeDecision.reason}`
               : null,
             `skippedGroq: ${ragMetadata.skippedGroq === true}`,
             ragMetadata.provider ? `provider: ${ragMetadata.provider}` : null,
@@ -775,7 +785,18 @@ function parseRagMetadata(value: unknown): RagMetadata | null {
     provider: parseString(value.provider) ?? undefined,
     model: parseString(value.model) ?? undefined,
     errorCode: parseString(value.errorCode) ?? undefined,
+    routeDecision: parseRouteDecision(value.routeDecision),
   };
+}
+
+function parseRouteDecision(value: unknown) {
+  if (!isRecord(value)) return undefined;
+
+  const mode = parseString(value.mode) ?? undefined;
+  const reason = parseString(value.reason) ?? undefined;
+  if (!mode && !reason) return undefined;
+
+  return { mode, reason };
 }
 
 function parseSource(value: unknown): RagSource | null {

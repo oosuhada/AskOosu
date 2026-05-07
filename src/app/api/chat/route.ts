@@ -21,6 +21,7 @@ import {
   prepareChatOrchestration,
   getLatestUserText,
 } from '@/lib/chat/orchestrator';
+import type { AnswerRouteDecision } from '@/lib/chat/types';
 import { recordAiProviderUsage, upsertCachedAnswer } from '@/lib/chat/database';
 import { generateAnswerWithFallback } from '@/lib/ai/fallback';
 import { parsePreferredLanguage } from '@/lib/i18n/detect-language';
@@ -125,6 +126,7 @@ export async function POST(req: Request) {
         skippedGroq: true,
         renderSpec:
           body.renderSpec ?? orchestration.directAnswer.metadata.renderSpecKey,
+        routeDecision: orchestration.routeDecision,
       });
 
       void recordAiProviderUsage({
@@ -153,6 +155,7 @@ export async function POST(req: Request) {
       cacheHit: false,
       skippedGroq: false,
       renderSpec: body.renderSpec ?? orchestration.metadata.renderSpecKey,
+      routeDecision: orchestration.routeDecision,
     });
 
     const tools = {
@@ -229,6 +232,10 @@ export async function POST(req: Request) {
       cacheHit: false,
       skippedGroq: true,
       renderSpec: body.renderSpec,
+      routeDecision: buildSafeFallbackRouteDecision({
+        error: err,
+        confidence: 0.3,
+      }),
       errorCode,
     });
     console.error('Global error:', err);
@@ -267,6 +274,10 @@ export async function POST(req: Request) {
       orchestration.mode === 'generate'
         ? orchestration.metadata
         : orchestration.directAnswer.metadata;
+    const routeDecision = buildSafeFallbackRouteDecision({
+      error: err,
+      confidence: metadata.confidence,
+    });
 
     return createStaticFallbackResponse({
       messages,
@@ -279,6 +290,7 @@ export async function POST(req: Request) {
         ...metadata,
         answerSource: 'fallback',
         skippedGroq: true,
+        routeDecision,
         errorCode,
       },
     });
@@ -321,6 +333,7 @@ async function createCachedFaqRecoveryResponse({
     skippedGroq: true,
     renderSpec:
       body.renderSpec ?? orchestration.directAnswer.metadata.renderSpecKey,
+    routeDecision: orchestration.routeDecision,
     errorCode,
   });
 
@@ -438,6 +451,22 @@ function getPositiveIntegerEnv(name: string, fallback: number) {
     : fallback;
 }
 
+function buildSafeFallbackRouteDecision({
+  error,
+  confidence,
+}: {
+  error: unknown;
+  confidence: number;
+}): AnswerRouteDecision {
+  return {
+    mode: 'safe_fallback',
+    reason: isChatModelRateLimitError(error)
+      ? 'rate_limited'
+      : 'provider_unavailable',
+    confidence,
+  };
+}
+
 function logChatRouteEvent({
   triggerId,
   faqId,
@@ -445,6 +474,7 @@ function logChatRouteEvent({
   cacheHit,
   skippedGroq,
   renderSpec,
+  routeDecision,
   errorCode,
 }: {
   triggerId?: string | null;
@@ -453,6 +483,7 @@ function logChatRouteEvent({
   cacheHit: boolean;
   skippedGroq: boolean;
   renderSpec?: string | null;
+  routeDecision?: AnswerRouteDecision | null;
   errorCode?: string | null;
 }) {
   console.info('[api/chat]', {
@@ -462,6 +493,8 @@ function logChatRouteEvent({
     cacheHit,
     skippedGroq,
     renderSpec: renderSpec ?? null,
+    routeMode: routeDecision?.mode ?? null,
+    routeReason: routeDecision?.reason ?? null,
     errorCode: errorCode ?? null,
   });
 }

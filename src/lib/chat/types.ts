@@ -13,6 +13,45 @@ export type ChatAnswerSource =
   | 'rag_xai'
   | 'fallback';
 
+export type AnswerRouteDecision =
+  | {
+      mode: 'faq_direct';
+      faqId: string;
+      confidence: number;
+      reason:
+        | 'verified_quick_question'
+        | 'high_semantic_match'
+        | 'legacy_exact_match';
+    }
+  | {
+      mode: 'faq_rewrite';
+      faqId: string;
+      confidence: number;
+      reason: 'semantic_match_needs_adaptation' | 'legacy_medium_match';
+    }
+  | {
+      mode: 'answer_cache';
+      confidence: number;
+      reason: 'fresh_cache_hit';
+    }
+  | {
+      mode: 'rag_generate';
+      query: string;
+      expectedEntityIds: string[];
+      confidence: number;
+      reason: 'no_direct_faq' | 'medium_intent_match' | 'custom_question';
+    }
+  | {
+      mode: 'safe_fallback';
+      reason:
+        | 'no_public_evidence'
+        | 'provider_unavailable'
+        | 'prompt_leak_detected'
+        | 'private_or_todo_only'
+        | 'rate_limited';
+      confidence: number;
+    };
+
 export type ChatAnswerMetadata = RagChatMetadata & {
   language: ChatLanguage;
   answerSource: ChatAnswerSource;
@@ -39,11 +78,7 @@ export type ChatAnswerMetadata = RagChatMetadata & {
   intentScore?: number;
   intentSecondScore?: number;
   intentMargin?: number;
-  routeDecision?: {
-    mode: 'direct' | 'rewrite' | 'rag_required';
-    reason: string;
-    router: 'quick_question' | 'semantic' | 'token_fallback';
-  };
+  routeDecision: AnswerRouteDecision;
   normalizedQuestion: string;
   skippedGroq: boolean;
   provider?: string;
