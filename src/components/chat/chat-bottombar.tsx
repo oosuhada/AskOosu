@@ -3,8 +3,8 @@
 
 import type { ChatRequestOptions } from 'ai';
 import { motion } from 'framer-motion';
-import { ArrowUp, Square } from 'lucide-react';
 import React, { useEffect } from 'react';
+import { TealCyanLottieButtonIcon } from './teal-cyan-lottie-button-icon';
 
 interface ChatBottombarProps {
   handleInputChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
@@ -95,7 +95,7 @@ export default function ChatBottombar({
               !isLoading && (!input.trim() || isToolInProgress || disabled)
             }
             aria-label={isLoading ? 'Stop response' : 'Send message'}
-            className="focus-visible:ring-ring/50 mb-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#0171E3] text-white outline-none focus-visible:ring-[3px] disabled:opacity-50 md:h-9 md:w-9"
+            className="focus-visible:ring-ring/50 mb-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full outline-none transition-transform hover:scale-[1.03] focus-visible:ring-[3px] disabled:opacity-50 md:h-9 md:w-9"
             onClick={(e) => {
               if (isLoading) {
                 e.preventDefault();
@@ -103,11 +103,7 @@ export default function ChatBottombar({
               }
             }}
           >
-            {isLoading ? (
-              <Square className="h-5 w-5 fill-current" />
-            ) : (
-              <ArrowUp className="h-5 w-5" />
-            )}
+            <TealCyanLottieButtonIcon isLoading={isLoading} />
           </button>
         </div>
       </form>

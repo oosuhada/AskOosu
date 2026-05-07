@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useMemo, useState } from 'react';
+import { normalizeMarkdownSpacing } from '@/lib/chat/markdown-spacing';
 import { oosuProfile } from '@/lib/oosu-profile';
 import { cn } from '@/lib/utils';
 import { isAskOosuDebugUiEnabled } from '@/lib/debug-ui';
@@ -55,7 +56,9 @@ type MediaRef = {
   assetKey: string;
   kind: string;
   src: string;
+  darkSrc?: string;
   mobileSrc?: string;
+  mobileDarkSrc?: string;
   alt: string;
   caption?: string;
   status: 'ready' | 'todo' | 'optional';
@@ -188,7 +191,9 @@ function renderPart({
   markdownContent: string;
 }) {
   if (part.type === 'markdown') {
-    const content = sanitizeRichMarkdownContent(part.content ?? markdownContent);
+    const content = sanitizeRichMarkdownContent(
+      part.content ?? markdownContent
+    );
     if (!content.trim()) return null;
 
     return <MarkdownBlock key={`markdown-${index}`} content={content} />;
@@ -294,20 +299,18 @@ function renderPart({
 
 function MarkdownBlock({ content }: { content: string }) {
   return (
-    <div className="prose dark:prose-invert w-full max-w-none">
+    <div className="prose dark:prose-invert w-full max-w-none whitespace-normal">
       <Markdown
         remarkPlugins={[remarkGfm]}
         components={{
-          p: ({ children }) => (
-            <p className="break-words whitespace-pre-wrap">{children}</p>
-          ),
+          p: ({ children }) => <p className="my-0 break-words">{children}</p>,
           ul: ({ children }) => (
-            <ul className="my-4 list-disc pl-6">{children}</ul>
+            <ul className="my-2 list-disc space-y-2 pl-5">{children}</ul>
           ),
           ol: ({ children }) => (
-            <ol className="my-4 list-decimal pl-6">{children}</ol>
+            <ol className="my-2 list-decimal space-y-2 pl-5">{children}</ol>
           ),
-          li: ({ children }) => <li className="my-1">{children}</li>,
+          li: ({ children }) => <li className="my-0 pl-0">{children}</li>,
           a: ({ href, children }) => (
             <a
               href={href}
@@ -320,7 +323,7 @@ function MarkdownBlock({ content }: { content: string }) {
           ),
         }}
       >
-        {content}
+        {normalizeMarkdownSpacing(content)}
       </Markdown>
     </div>
   );
@@ -341,20 +344,22 @@ function sanitizeRichMarkdownContent(content: string) {
     ),
   ];
 
-  return content
-    .split('\n')
-    .filter((line) => {
-      const trimmedLine = line.trim();
-      return (
-        !hiddenPublicPolicyLines.some((hiddenLine) =>
-          trimmedLine.includes(hiddenLine)
-        ) &&
-        !hiddenPublicPolicyPatterns.some((pattern) => pattern.test(trimmedLine))
-      );
-    })
-    .join('\n')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+  return normalizeMarkdownSpacing(
+    content
+      .split('\n')
+      .filter((line) => {
+        const trimmedLine = line.trim();
+        return (
+          !hiddenPublicPolicyLines.some((hiddenLine) =>
+            trimmedLine.includes(hiddenLine)
+          ) &&
+          !hiddenPublicPolicyPatterns.some((pattern) =>
+            pattern.test(trimmedLine)
+          )
+        );
+      })
+      .join('\n')
+  );
 }
 
 function ProjectShowcaseCards({
@@ -397,22 +402,20 @@ function ProjectShowcaseCards({
           <article
             key={project.id}
             className={cn(
-              'group overflow-hidden rounded-lg border bg-slate-950 text-white shadow-sm dark:border-white/10 dark:bg-slate-950',
+              'bg-muted/60 text-foreground group overflow-hidden rounded-lg border shadow-sm dark:bg-slate-900/70',
               isMoreProjectsRail && 'w-[18rem] shrink-0 snap-start'
             )}
           >
             <MediaPreview
               assetKey={project.image}
               mediaRefs={mediaRefs}
-              className={
-                isMoreProjectsRail ? 'aspect-[4/3]' : 'aspect-[16/10]'
-              }
+              className={isMoreProjectsRail ? 'aspect-[4/3]' : 'aspect-[16/10]'}
               language={language}
             />
             <div className="space-y-3 p-3">
               <div className="space-y-1">
                 <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-                  <span className="inline-flex max-w-full min-w-0 rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-white/75">
+                  <span className="bg-background/80 text-muted-foreground inline-flex max-w-full min-w-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold">
                     <span className="min-w-0 truncate">
                       {project.label ?? project.subtitle ?? project.id}
                     </span>
@@ -422,13 +425,13 @@ function ProjectShowcaseCards({
                   {project.title}
                 </h4>
                 {project.subtitle && (
-                  <p className="text-xs leading-relaxed text-white/65">
+                  <p className="text-muted-foreground text-xs leading-relaxed">
                     {project.subtitle}
                   </p>
                 )}
               </div>
               {project.description && (
-                <p className="line-clamp-3 text-xs leading-relaxed text-white/72">
+                <p className="text-muted-foreground line-clamp-3 text-xs leading-relaxed">
                   {project.description}
                 </p>
               )}
@@ -436,7 +439,7 @@ function ProjectShowcaseCards({
                 {project.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="inline-flex max-w-full min-w-0 rounded-md border border-white/10 bg-white/[0.07] px-2 py-0.5 text-[11px] text-white/78"
+                    className="bg-background/70 text-muted-foreground inline-flex max-w-full min-w-0 rounded-md border px-2 py-0.5 text-[11px]"
                   >
                     <span className="min-w-0 truncate">{tag}</span>
                   </span>
@@ -447,7 +450,7 @@ function ProjectShowcaseCards({
                   <button
                     type="button"
                     onClick={() => switchQuestionSurface(project.id)}
-                    className="inline-flex h-8 max-w-full min-w-0 items-center gap-1.5 rounded-lg border border-white/15 bg-white/10 px-2.5 text-xs font-medium text-white/85 transition hover:bg-white/15 hover:text-white"
+                    className="bg-background/70 hover:bg-accent hover:text-accent-foreground inline-flex h-8 max-w-full min-w-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition"
                   >
                     <MessageSquareText className="h-3.5 w-3.5" />
                     <span className="min-w-0 truncate">
@@ -460,7 +463,7 @@ function ProjectShowcaseCards({
                     href={project.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex h-8 max-w-full min-w-0 items-center gap-1.5 rounded-lg border border-white/15 bg-white/10 px-2.5 text-xs font-medium text-white/85 transition hover:bg-white/15 hover:text-white"
+                    className="bg-background/70 hover:bg-accent hover:text-accent-foreground inline-flex h-8 max-w-full min-w-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition"
                   >
                     <span className="min-w-0 truncate">
                       {language === 'ko' ? '열기' : 'Open'}
@@ -768,10 +771,10 @@ function WorkflowSteps({ block }: { block: VisualBlock }) {
         {steps.map((step, index) => (
           <div
             key={`${step.title}-${index}`}
-            className="rounded-lg border bg-indigo-50/70 p-3 dark:bg-indigo-950/20"
+            className="rounded-lg border border-[#0D9487]/20 bg-[#0D9487]/10 p-3 dark:border-[#0D9487]/35 dark:bg-[#0D9487]/15"
           >
             <div className="mb-2 flex items-center gap-2">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-indigo-600 text-xs font-semibold text-white dark:bg-indigo-500">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[#0D9487] text-xs font-semibold text-white shadow-sm">
                 {index + 1}
               </span>
               <h4 className="min-w-0 text-sm font-semibold break-words">
@@ -954,9 +957,15 @@ function MediaPreview({
     media?.status === 'ready' && media.src && media.src !== 'TODO_ASSET';
 
   if (canRenderImage) {
+    const darkSrc =
+      media.darkSrc && media.darkSrc !== 'TODO_ASSET' ? media.darkSrc : null;
     const mobileSrc =
       media.mobileSrc && media.mobileSrc !== 'TODO_ASSET'
         ? media.mobileSrc
+        : null;
+    const mobileDarkSrc =
+      media.mobileDarkSrc && media.mobileDarkSrc !== 'TODO_ASSET'
+        ? media.mobileDarkSrc
         : null;
 
     return (
@@ -967,7 +976,24 @@ function MediaPreview({
           className
         )}
       >
-        {preferMobile && mobileSrc ? (
+        {darkSrc ? (
+          <>
+            <Image
+              src={mobileSrc ?? media.src}
+              alt={media.alt}
+              fill
+              sizes="(max-width: 640px) 100vw, 50vw"
+              className="object-cover dark:hidden"
+            />
+            <Image
+              src={mobileDarkSrc ?? darkSrc}
+              alt={media.alt}
+              fill
+              sizes="(max-width: 640px) 100vw, 50vw"
+              className="hidden object-cover dark:block"
+            />
+          </>
+        ) : preferMobile && mobileSrc ? (
           <Image
             src={mobileSrc}
             alt={media.alt}
@@ -1119,8 +1145,7 @@ function buildFallbackParts(payload: RichPayload): RichAnswerPart[] {
 
 function normalizeAnswerPartsForDisplay(parts: RichAnswerPart[]) {
   const hasProfileHeroCard = parts.some(
-    (part) =>
-      part.type === 'component' && part.component === 'ProfileHeroCard'
+    (part) => part.type === 'component' && part.component === 'ProfileHeroCard'
   );
 
   if (!hasProfileHeroCard) return parts;
@@ -1266,7 +1291,9 @@ function parseMediaRef(value: unknown): MediaRef | null {
     assetKey,
     kind,
     src,
+    darkSrc: parseString(value.darkSrc) ?? undefined,
     mobileSrc: parseString(value.mobileSrc) ?? undefined,
+    mobileDarkSrc: parseString(value.mobileDarkSrc) ?? undefined,
     alt,
     caption: parseString(value.caption) ?? undefined,
     status,

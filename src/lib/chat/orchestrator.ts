@@ -105,9 +105,27 @@ export async function prepareChatOrchestration({
     question,
     messages,
   });
+  if (
+    !requestContext.answerVariant &&
+    shouldUseDetailedVariantForFollowUp(question, conversationIntent)
+  ) {
+    requestContext.answerVariant = 'detailed';
+  }
   const shouldBypassIntentDirectAnswer =
     requestContext.source === 'quick_question' &&
     Boolean(requestContext.triggerId);
+  const collaborationFollowUpClarifier = buildCollaborationFollowUpClarifier({
+    question,
+    messages,
+    language,
+    normalizedQuestion,
+    conversationIntent,
+    requestContext,
+  });
+
+  if (collaborationFollowUpClarifier) {
+    return collaborationFollowUpClarifier;
+  }
 
   if (
     !shouldBypassIntentDirectAnswer &&
@@ -123,8 +141,10 @@ export async function prepareChatOrchestration({
     });
   }
 
-  const intentStarterQuestionId =
-    getStarterQuestionIdForConversationIntent(conversationIntent);
+  const intentStarterQuestionId = getStarterQuestionIdForConversationIntent(
+    conversationIntent,
+    messages
+  );
   const faqRoute = await routeFaqIntent({
     question,
     language,
@@ -358,17 +378,136 @@ function buildConversationDirectOrchestration({
   };
 }
 
-function getStarterQuestionIdForConversationIntent({
-  intent,
-  reason,
-}: ConversationIntentResult) {
+function getStarterQuestionIdForConversationIntent(
+  { intent, reason }: ConversationIntentResult,
+  messages: UIMessage[]
+) {
   if (reason === 'broad_project_request') return 'home.projects.top3';
   if (reason === 'broad_skill_request') return 'home.skills.level';
+  if (reason === 'ai_usage_request') return 'home.ai.workflow';
+  if (reason === 'collaboration_request') return 'home.contact';
+  if (reason === 'follow_up_with_conversation_context') {
+    return getStarterQuestionIdFromRecentConversation(messages);
+  }
   if (reason === 'public_life_notes_request') return 'fun.public_notes';
   if (reason === 'profile_intro_request') return 'home.profile.intro';
   if (intent === 'contact_or_link_request') return 'home.contact';
 
   return null;
+}
+
+function buildCollaborationFollowUpClarifier({
+  question,
+  messages,
+  language,
+  normalizedQuestion,
+  conversationIntent,
+  requestContext,
+}: {
+  question: string;
+  messages: UIMessage[];
+  language: ChatLanguage;
+  normalizedQuestion: string;
+  conversationIntent: ConversationIntentResult;
+  requestContext: RequestContext;
+}): Extract<ChatOrchestration, { mode: 'direct' }> | null {
+  if (
+    !isShortCollaborationQuestion(question) ||
+    !hasRecentCollaborationBrief(messages)
+  ) {
+    return null;
+  }
+
+  const routeDecision: AnswerRouteDecision = {
+    mode: 'portfolio_clarify',
+    reason: 'short_or_ambiguous_portfolio_input',
+    confidence: 0.55,
+  };
+  const metadata = buildDirectMetadata({
+    language,
+    normalizedQuestion,
+    answerSource: 'clarify',
+    matchedEntityIds: ['contact', 'collaboration'],
+    sourceChunkIds: [],
+    confidence: routeDecision.confidence,
+    routeDecision,
+    conversationIntent,
+    showEvidence: false,
+    requestContext,
+  });
+
+  return {
+    mode: 'direct',
+    question,
+    language,
+    routeDecision,
+    directAnswer: {
+      answer: getCollaborationFollowUpClarifier(language),
+      metadata,
+    },
+  };
+}
+
+function shouldUseDetailedVariantForFollowUp(
+  question: string,
+  { reason }: ConversationIntentResult
+) {
+  return (
+    reason === 'follow_up_with_conversation_context' &&
+    /(더\s*(자세히|상세히|설명|알려)|자세히|more detail|tell me more|details?)/i.test(
+      question
+    )
+  );
+}
+
+function getStarterQuestionIdFromRecentConversation(messages: UIMessage[]) {
+  const recentText = messages.slice(-6, -1).map(getMessageText).join('\n');
+
+  if (
+    /(AI\s*활용|AI-assisted Development Workflow|Claude Code|Gemini CLI|Codex|AI workflow|AI 도구|AI를.*개발)/i.test(
+      recentText
+    )
+  ) {
+    return 'home.ai.workflow';
+  }
+
+  if (
+    /(대표 프로젝트|Featured Projects|AskOosu 2026|Aigram|Sticks)/i.test(
+      recentText
+    )
+  ) {
+    return 'home.projects.top3';
+  }
+
+  if (/(기술 스택|Tech stack|Skills|숙련도)/i.test(recentText)) {
+    return 'home.skills.level';
+  }
+
+  if (/(연락|Contact Oosu|Email|GitHub|LinkedIn|협업)/i.test(recentText)) {
+    return 'home.contact';
+  }
+
+  return null;
+}
+
+function isShortCollaborationQuestion(question: string) {
+  return /^(협업|팀워크|collaboration|teamwork)$/i.test(
+    normalizeQuestion(question)
+  );
+}
+
+function hasRecentCollaborationBrief(messages: UIMessage[]) {
+  const recentText = messages.slice(-8, -1).map(getMessageText).join('\n');
+
+  return /(협업\s*브리프|연락\/협업|우수님에게\s*어떻게\s*연락|어떤\s*협업을\s*열어두고|Contact Oosu|Email|GitHub|LinkedIn|AI\s*웹\s*제품|RAG\/검색\s*UX|풀스택\s*프로토타입|collaboration brief|open to collaboration)/i.test(
+    recentText
+  );
+}
+
+function getCollaborationFollowUpClarifier(language: ChatLanguage) {
+  return language === 'ko'
+    ? '위 협업 브리프만으로 원하는 정보가 부족했을 수 있어요. 협업 방식, 팀 적응, 역할 범위, 연락/제안 방식 중 어떤 쪽이 더 궁금한지 조금만 더 좁혀주시면 그 기준으로 이어서 설명할게요.'
+    : 'The collaboration brief above may not have covered the part you wanted. Tell me whether you mean working style, team fit, role scope, or how to reach out, and I’ll continue from that angle.';
 }
 
 function buildFaqDirectRouteDecision({
@@ -778,6 +917,14 @@ function getFaqAnswerText(faqAnswer: FaqAnswer, variant: AnswerVariant | null) {
   }
 
   return faqAnswer.defaultAnswer;
+}
+
+function getMessageText(message: UIMessage) {
+  return message.parts
+    .filter((part) => part.type === 'text')
+    .map((part) => part.text)
+    .join('\n')
+    .trim();
 }
 
 export function getLatestUserText(messages: UIMessage[]) {
