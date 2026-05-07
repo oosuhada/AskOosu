@@ -152,6 +152,8 @@ function createRagSearchCacheKey(query: RagChunkSearchQuery) {
     JSON.stringify({
       q: query.q,
       limit: query.limit,
+      retrievalMode: query.retrievalMode,
+      hybridWeights: query.hybridWeights,
       entityId: query.entityId ?? null,
       language: query.language ?? null,
       includePrivate: query.includePrivate,

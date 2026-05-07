@@ -60,8 +60,8 @@ Current behavior:
 1. If `NOTION_API_KEY` is absent, AskOosu falls back to static profile/project chunks.
 2. If `NOTION_API_KEY` is present, it reads `ASKOOSU_NOTION_PAGE_IDS`, `ASKOOSU_NOTION_DATABASE_IDS`, and `ASKOOSU_NOTION_DATA_SOURCE_IDS`.
 3. If page ids are not configured, it attempts the current source page from `oosuProfile.notionSourceUrl`.
-4. Retrieval defaults to lexical ranking for speed and no extra cost.
-5. `ASKOOSU_RAG_RETRIEVAL=embedding` or `hybrid` enables OpenAI embedding ranking with `text-embedding-3-small`, falling back to lexical ranking if embeddings fail.
+4. Retrieval defaults to hybrid ranking. `src/lib/rag/search.ts` runs lexical FTS/ILIKE search, optional pgvector embedding search, entity-alias boost, and weighted reciprocal rank fusion. If `OPENAI_API_KEY` or stored vectors are unavailable, vector retrieval is skipped with a warning and lexical/entity ranking still works.
+5. `ASKOOSU_RAG_RETRIEVAL=lexical`, `embedding`, or `hybrid` controls the retrieval mode. Hybrid weights default to lexical `0.35`, vector `0.35`, entity `0.15`, intent `0.10`, and freshness `0.05`.
 6. `ASKOOSU_RAG_STORE=memory` keeps chunks in the running Node process. `ASKOOSU_RAG_STORE=postgres` stores chunks and vectors in Postgres using pgvector.
 7. `/api/rag/sync` recursively fetches the configured Notion wiki page or direct KO/EN child page ids, returns aggregate sync stats with per-source details, and persists chunks into `rag_sources`, `rag_chunks`, and `rag_sync_runs` when `DATABASE_URL` is configured. `/api/rag/search` exposes an admin-protected search/debug API.
 8. `/api/feedback` stores answer-level up/down feedback in `answer_feedback` with truncated question/answer text, matched entity ids, source chunk ids, confidence, and an optional visitor note. Feedback write failures are isolated from chat streaming so the core chat UX remains usable.
@@ -123,7 +123,12 @@ ASKOOSU_NOTION_DATABASE_IDS=
 ASKOOSU_NOTION_DATA_SOURCE_IDS=
 ASKOOSU_RAG_STORE=memory
 ASKOOSU_RAG_AUTO_SYNC=true
-ASKOOSU_RAG_RETRIEVAL=lexical
+ASKOOSU_RAG_RETRIEVAL=hybrid
+ASKOOSU_RAG_HYBRID_LEXICAL_WEIGHT=0.35
+ASKOOSU_RAG_HYBRID_VECTOR_WEIGHT=0.35
+ASKOOSU_RAG_HYBRID_ENTITY_WEIGHT=0.15
+ASKOOSU_RAG_HYBRID_INTENT_WEIGHT=0.10
+ASKOOSU_RAG_HYBRID_FRESHNESS_WEIGHT=0.05
 ASKOOSU_RAG_TOP_K=5
 ASKOOSU_RAG_SEARCH_CACHE_TTL_MS=300000
 ASKOOSU_RAG_ADMIN_TOKEN=local_or_server_secret

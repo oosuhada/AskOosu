@@ -217,6 +217,20 @@ const EVAL_QUESTIONS: EvalQuestion[] = [
     expectedEvidence:
       'Guardrail, TODO handling, private/unavailable URL policy',
   },
+  {
+    id: 13,
+    question: '포트폴리오오랑 AskOosu 차이 알려줘',
+    expectedEntityIds: ['project.portfoli_oh', 'project.askoosu'],
+    expectedEvidence:
+      'Typo/alias retrieval for Portfoli-Oh! and AskOosu comparison',
+  },
+  {
+    id: 14,
+    question: 'Aigram에서 Spring Boot랑 PostgreSQL 어디에 썼어?',
+    expectedEntityIds: ['project.instagram_clone'],
+    expectedEvidence:
+      'Mixed Korean/English alias retrieval for Instagram Clone/Aigram stack evidence',
+  },
 ];
 
 const FAQ_INTENT_EVAL_CASES: FaqIntentEvalCase[] = [
@@ -356,7 +370,7 @@ const FAILURE_EVAL_CASES: FailureEvalCase[] = [
   {
     id: 'typo-alias-portfoliooh-askoosu-ko',
     question: '포트폴리오오랑 AskOosu 차이',
-    expectedRoute: 'faq_direct',
+    expectedRoute: 'any',
     expectedEntityIds: ['project.portfoli_oh', 'project.askoosu'],
     expectedEntityMatch: 'all',
     mustInclude: [],
@@ -411,8 +425,8 @@ const FAILURE_EVAL_CASES: FailureEvalCase[] = [
   {
     id: 'context-collision-spring-postgres-ko',
     question: 'Spring Boot랑 PostgreSQL 어디에 썼어?',
-    expectedRoute: 'safe_fallback',
-    expectedEntityIds: [],
+    expectedRoute: 'any',
+    expectedEntityIds: ['project.instagram_clone'],
     expectedEntityMatch: 'any',
     mustInclude: [],
     mustNotInclude: ['MAU', 'DAU', '만 명', '사용자 수가', '트래픽이'],

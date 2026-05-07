@@ -1,9 +1,27 @@
-import { getRagTopK, getPositiveIntEnv } from './config';
+import {
+  getRagHybridWeights,
+  getRagRetrievalMode,
+  getRagTopK,
+  getPositiveIntEnv,
+} from './config';
+import {
+  getRagDatabaseStatus,
+  searchStoredRagChunkRowsByEmbedding,
+  type StoredRagChunkEmbeddingSearchRow,
+} from './database';
+import { embedRagQuery, hasEmbeddingCredentials } from './embeddings';
+import { NOTION_ENTITY_ALIAS_MAP } from './notion-chunks';
 import { getCachedRagSearch, upsertCachedRagSearch } from './search-cache';
 import { getPostgresPool, hasPostgresDatabaseUrl } from '@/lib/db/postgres';
-import type { RagChunkMetadata } from './types';
+import type {
+  RagChunkMetadata,
+  RagHybridWeights,
+  RagRetrievalMode,
+} from './types';
 
 const DEFAULT_PREVIEW_LENGTH = 320;
+const DEFAULT_RRF_K = 60;
+const DEFAULT_LOW_SCORE_WARNING_THRESHOLD = 1;
 
 export type RagChunkSearchInput = {
   q?: string;
@@ -23,10 +41,17 @@ export type RagChunkSearchQuery = {
   includePrivate: boolean;
   includeContent: boolean;
   debug: boolean;
+  retrievalMode: RagRetrievalMode;
+  hybridWeights: RagHybridWeights;
 };
 
 export type RagChunkRankingDetail = {
-  searchMode: 'postgres_fts' | 'ilike' | 'entity_filter';
+  searchMode:
+    | 'postgres_fts'
+    | 'ilike'
+    | 'entity_filter'
+    | 'embedding'
+    | 'hybrid';
   textRank: number;
   titleScore: number;
   sectionPathScore: number;
@@ -34,6 +59,15 @@ export type RagChunkRankingDetail = {
   contentScore: number;
   visibilityScore: number;
   todoPenalty: number;
+  embeddingScore?: number;
+  lexicalRank?: number;
+  vectorRank?: number;
+  entityRank?: number;
+  rrfScore?: number;
+  finalScore?: number;
+  entityBoost?: number;
+  intentBoost?: number;
+  freshnessBoost?: number;
 };
 
 export type RagChunkSearchResult = {
@@ -76,6 +110,32 @@ type RagChunkSearchRow = {
   content_score: number | string;
   visibility_score: number | string;
   todo_penalty: number | string;
+  freshness?: string | null;
+  confidence?: number | string | null;
+  updated_at?: Date | string | null;
+  embedding_score?: number | string | null;
+  lexical_rank?: number | string | null;
+  vector_rank?: number | string | null;
+  entity_rank?: number | string | null;
+  rrf_score?: number | string | null;
+  final_score?: number | string | null;
+  entity_boost?: number | string | null;
+  intent_boost?: number | string | null;
+  freshness_boost?: number | string | null;
+  ranking_search_mode?:
+    | 'postgres_fts'
+    | 'ilike'
+    | 'entity_filter'
+    | 'embedding'
+    | 'hybrid';
+};
+
+type SearchListName = 'lexical' | 'vector' | 'entity';
+
+type WeightedResultList<T extends { chunk_id: string }> = {
+  name: SearchListName;
+  weight: number;
+  results: T[];
 };
 
 export async function searchRagChunks(
@@ -104,7 +164,6 @@ export async function searchRagChunks(
     };
   }
 
-  const searchMode = query.q ? 'postgres_fts' : 'entity_filter';
   const cachedSearch = await getCachedRagSearch(query).catch((error) => {
     warnings.push('RAG search cache read failed; used live DB search.');
     console.warn('Unable to read RAG search cache:', error);
@@ -119,49 +178,56 @@ export async function searchRagChunks(
   }
 
   let rows: RagChunkSearchRow[] = [];
-  let resolvedSearchMode: RagChunkRankingDetail['searchMode'] = searchMode;
+  let resolvedSearchMode: RagChunkRankingDetail['searchMode'] = query.q
+    ? query.retrievalMode === 'embedding'
+      ? 'embedding'
+      : query.retrievalMode === 'hybrid'
+        ? 'hybrid'
+        : 'postgres_fts'
+    : 'entity_filter';
 
   try {
-    rows = query.q
-      ? await searchWithPostgresFullText(query)
-      : await searchWithEntityFilter(query);
-  } catch (error) {
     if (!query.q) {
-      return failedSearchPayload({ query, error, warnings });
-    }
+      rows = await searchWithEntityFilter(query);
+    } else if (query.retrievalMode === 'embedding') {
+      rows = await searchWithEmbedding(query, warnings);
 
-    warnings.push(
-      'PostgreSQL full-text search failed; used ILIKE fallback ranking.'
-    );
-
-    try {
-      rows = await searchWithIlikeFallback(query);
-      resolvedSearchMode = 'ilike';
-    } catch (fallbackError) {
-      return failedSearchPayload({
-        query,
-        error: fallbackError,
-        warnings,
-      });
+      if (rows.length === 0) {
+        warnings.push(
+          'Embedding retrieval returned no results; used lexical fallback ranking.'
+        );
+        rows = await searchLexically(query, warnings);
+        resolvedSearchMode = getLexicalSearchMode(rows);
+      }
+    } else if (query.retrievalMode === 'hybrid') {
+      rows = await searchWithHybridRetrieval(query, warnings);
+    } else {
+      rows = await searchLexically(query, warnings);
+      resolvedSearchMode = getLexicalSearchMode(rows);
     }
+  } catch (error) {
+    return failedSearchPayload({ query, error, warnings });
   }
 
   if (rows.length === 0) {
     warnings.push('No rag_chunks matched the search query.');
   }
 
+  const results = rows.map((row) =>
+    rowToSearchResult({
+      row,
+      q: query.q,
+      includeContent: query.includeContent,
+      debug: query.debug,
+      searchMode: resolvedSearchMode,
+    })
+  );
+  warnings.push(...getAnswerabilityWarnings(results));
+
   const payload = {
     ok: true,
     query,
-    results: rows.map((row) =>
-      rowToSearchResult({
-        row,
-        q: query.q,
-        includeContent: query.includeContent,
-        debug: query.debug,
-        searchMode: resolvedSearchMode,
-      })
-    ),
+    results,
     warnings,
     searchMode: resolvedSearchMode,
   };
@@ -197,7 +263,27 @@ function normalizeSearchInput(input: RagChunkSearchInput): RagChunkSearchQuery {
     includePrivate: input.includePrivate ?? false,
     includeContent: input.includeContent ?? false,
     debug: input.debug ?? false,
+    retrievalMode: getRagRetrievalMode(),
+    hybridWeights: getRagHybridWeights(),
   };
+}
+
+async function searchLexically(query: RagChunkSearchQuery, warnings: string[]) {
+  try {
+    return await searchWithPostgresFullText(query);
+  } catch (error) {
+    warnings.push(
+      'PostgreSQL full-text search failed; used ILIKE fallback ranking.'
+    );
+    console.warn('PostgreSQL full-text RAG search failed:', error);
+    return searchWithIlikeFallback(query);
+  }
+}
+
+function getLexicalSearchMode(rows: RagChunkSearchRow[]) {
+  return rows.some((row) => row.ranking_search_mode === 'ilike')
+    ? 'ilike'
+    : 'postgres_fts';
 }
 
 async function searchWithPostgresFullText(query: RagChunkSearchQuery) {
@@ -215,14 +301,16 @@ async function searchWithPostgresFullText(query: RagChunkSearchQuery) {
           c.metadata,
           c.has_todo,
           c.visibility,
+          c.freshness,
+          c.confidence,
           ts_rank_cd(
             to_tsvector('simple', coalesce(c.title, '') || ' ' || array_to_string(c.section_path, ' ') || ' ' || c.content),
             websearch_to_tsquery('simple', $1)
           )::double precision AS text_rank,
-          CASE WHEN c.title ILIKE $2 ESCAPE '\\' THEN 8 ELSE 0 END::double precision AS title_score,
-          CASE WHEN array_to_string(c.section_path, ' ') ILIKE $2 ESCAPE '\\' THEN 5 ELSE 0 END::double precision AS section_path_score,
-          CASE WHEN $5::text IS NOT NULL AND c.entity_id = $5 THEN 7 ELSE 0 END::double precision AS entity_score,
-          CASE WHEN c.content ILIKE $2 ESCAPE '\\' THEN 2 ELSE 0 END::double precision AS content_score,
+          CASE WHEN c.title ILIKE $1 ESCAPE '\\' THEN 8 ELSE 0 END::double precision AS title_score,
+          CASE WHEN array_to_string(c.section_path, ' ') ILIKE $1 ESCAPE '\\' THEN 5 ELSE 0 END::double precision AS section_path_score,
+          CASE WHEN $4::text IS NOT NULL AND c.entity_id = $4 THEN 7 ELSE 0 END::double precision AS entity_score,
+          CASE WHEN c.content ILIKE $1 ESCAPE '\\' THEN 2 ELSE 0 END::double precision AS content_score,
           CASE WHEN c.visibility = 'public' THEN 1.5 ELSE 0 END::double precision AS visibility_score,
           CASE WHEN c.has_todo THEN -2 ELSE 0 END::double precision AS todo_penalty,
           c.updated_at
@@ -248,6 +336,8 @@ async function searchWithPostgresFullText(query: RagChunkSearchQuery) {
         metadata,
         has_todo,
         visibility,
+        freshness,
+        confidence,
         text_rank,
         title_score,
         section_path_score,
@@ -278,7 +368,10 @@ async function searchWithPostgresFullText(query: RagChunkSearchQuery) {
     ]
   );
 
-  return result.rows;
+  return result.rows.map((row) => ({
+    ...row,
+    ranking_search_mode: 'postgres_fts' as const,
+  }));
 }
 
 async function searchWithIlikeFallback(query: RagChunkSearchQuery) {
@@ -296,23 +389,25 @@ async function searchWithIlikeFallback(query: RagChunkSearchQuery) {
           c.metadata,
           c.has_todo,
           c.visibility,
+          c.freshness,
+          c.confidence,
           0::double precision AS text_rank,
-          CASE WHEN c.title ILIKE $2 ESCAPE '\\' THEN 8 ELSE 0 END::double precision AS title_score,
-          CASE WHEN array_to_string(c.section_path, ' ') ILIKE $2 ESCAPE '\\' THEN 5 ELSE 0 END::double precision AS section_path_score,
-          CASE WHEN $5::text IS NOT NULL AND c.entity_id = $5 THEN 7 ELSE 0 END::double precision AS entity_score,
-          CASE WHEN c.content ILIKE $2 ESCAPE '\\' THEN 2 ELSE 0 END::double precision AS content_score,
+          CASE WHEN c.title ILIKE $1 ESCAPE '\\' THEN 8 ELSE 0 END::double precision AS title_score,
+          CASE WHEN array_to_string(c.section_path, ' ') ILIKE $1 ESCAPE '\\' THEN 5 ELSE 0 END::double precision AS section_path_score,
+          CASE WHEN $4::text IS NOT NULL AND c.entity_id = $4 THEN 7 ELSE 0 END::double precision AS entity_score,
+          CASE WHEN c.content ILIKE $1 ESCAPE '\\' THEN 2 ELSE 0 END::double precision AS content_score,
           CASE WHEN c.visibility = 'public' THEN 1.5 ELSE 0 END::double precision AS visibility_score,
           CASE WHEN c.has_todo THEN -2 ELSE 0 END::double precision AS todo_penalty,
           c.updated_at
         FROM rag_chunks c
         WHERE
-          ($4::boolean OR c.visibility = 'public')
-          AND ($5::text IS NULL OR c.entity_id = $5)
-          AND ($6::text IS NULL OR c.language IS NULL OR c.language = $6)
+          ($3::boolean OR c.visibility = 'public')
+          AND ($4::text IS NULL OR c.entity_id = $4)
+          AND ($5::text IS NULL OR c.language IS NULL OR c.language = $5)
           AND (
-            c.title ILIKE $2 ESCAPE '\\'
-            OR array_to_string(c.section_path, ' ') ILIKE $2 ESCAPE '\\'
-            OR c.content ILIKE $2 ESCAPE '\\'
+            c.title ILIKE $1 ESCAPE '\\'
+            OR array_to_string(c.section_path, ' ') ILIKE $1 ESCAPE '\\'
+            OR c.content ILIKE $1 ESCAPE '\\'
           )
       )
       SELECT
@@ -324,6 +419,8 @@ async function searchWithIlikeFallback(query: RagChunkSearchQuery) {
         metadata,
         has_todo,
         visibility,
+        freshness,
+        confidence,
         text_rank,
         title_score,
         section_path_score,
@@ -341,10 +438,9 @@ async function searchWithIlikeFallback(query: RagChunkSearchQuery) {
         )::double precision AS score
       FROM ranked
       ORDER BY score DESC, updated_at DESC, title ASC
-      LIMIT $3
+      LIMIT $2
     `,
     [
-      query.q,
       likePattern,
       query.limit,
       query.includePrivate,
@@ -353,7 +449,10 @@ async function searchWithIlikeFallback(query: RagChunkSearchQuery) {
     ]
   );
 
-  return result.rows;
+  return result.rows.map((row) => ({
+    ...row,
+    ranking_search_mode: 'ilike' as const,
+  }));
 }
 
 async function searchWithEntityFilter(query: RagChunkSearchQuery) {
@@ -370,6 +469,8 @@ async function searchWithEntityFilter(query: RagChunkSearchQuery) {
           c.metadata,
           c.has_todo,
           c.visibility,
+          c.freshness,
+          c.confidence,
           0::double precision AS text_rank,
           0::double precision AS title_score,
           0::double precision AS section_path_score,
@@ -393,6 +494,8 @@ async function searchWithEntityFilter(query: RagChunkSearchQuery) {
         metadata,
         has_todo,
         visibility,
+        freshness,
+        confidence,
         text_rank,
         title_score,
         section_path_score,
@@ -412,7 +515,258 @@ async function searchWithEntityFilter(query: RagChunkSearchQuery) {
     [query.limit, query.includePrivate, query.entityId, query.language ?? null]
   );
 
-  return result.rows;
+  return result.rows.map((row) => ({
+    ...row,
+    ranking_search_mode: 'entity_filter' as const,
+  }));
+}
+
+async function searchWithEmbedding(
+  query: RagChunkSearchQuery,
+  warnings: string[]
+) {
+  if (!hasEmbeddingCredentials()) {
+    warnings.push(
+      'OpenAI embedding credentials are not configured; skipped vector search.'
+    );
+    return [];
+  }
+
+  const status = await getRagDatabaseStatus().catch((error) => {
+    warnings.push('RAG vector status check failed; skipped vector search.');
+    console.warn('Unable to read RAG vector status:', error);
+    return null;
+  });
+
+  if (status && status.embeddingCount === 0) {
+    warnings.push(
+      'No vector embeddings exist in rag_chunks; skipped vector search.'
+    );
+    return [];
+  }
+
+  try {
+    const embedding = await embedRagQuery(query.q);
+    const rows = await searchStoredRagChunkRowsByEmbedding({
+      embedding,
+      limit: getExpandedLimit(query.limit),
+      includePrivate: query.includePrivate,
+      entityId: query.entityId,
+      language: query.language,
+    });
+
+    if (rows.length === 0) {
+      warnings.push('Vector search returned no matching rag_chunks.');
+    }
+
+    return rows.map(embeddingRowToSearchRow);
+  } catch (error) {
+    warnings.push('Vector search unavailable; skipped embedding retrieval.');
+    console.warn('RAG vector search failed:', error);
+    return [];
+  }
+}
+
+async function searchWithHybridRetrieval(
+  query: RagChunkSearchQuery,
+  warnings: string[]
+) {
+  const detectedEntityIds = shouldSkipEntityBoost(query.q)
+    ? []
+    : detectMentionedEntityIds(query.q);
+  const [lexicalRows, vectorRows, entityRows] = await Promise.all([
+    searchLexically(
+      { ...query, limit: getExpandedLimit(query.limit) },
+      warnings
+    ),
+    searchWithEmbedding(query, warnings),
+    searchWithEntityBoost(query, detectedEntityIds, warnings),
+  ]);
+
+  return reciprocalRankFusion<RagChunkSearchRow>(
+    [
+      {
+        name: 'lexical',
+        weight: query.hybridWeights.lexical,
+        results: lexicalRows,
+      },
+      {
+        name: 'vector',
+        weight: query.hybridWeights.vector,
+        results: vectorRows,
+      },
+      {
+        name: 'entity',
+        weight: query.hybridWeights.entity,
+        results: entityRows,
+      },
+    ],
+    {
+      limit: query.limit,
+      rrfK: DEFAULT_RRF_K,
+      query: query.q,
+      entityIds: detectedEntityIds,
+      weights: query.hybridWeights,
+    }
+  );
+}
+
+async function searchWithEntityBoost(
+  query: RagChunkSearchQuery,
+  detectedEntityIds: string[],
+  warnings: string[]
+) {
+  const entityIds = Array.from(
+    new Set([query.entityId, ...detectedEntityIds].filter(Boolean))
+  ) as string[];
+  const rowGroups: RagChunkSearchRow[][] = [];
+
+  for (const entityId of entityIds) {
+    try {
+      const rows = [
+        ...(await searchWithEntityFilter({
+          ...query,
+          entityId,
+          limit: getExpandedLimit(query.limit),
+        })),
+        ...(await searchWithEntityAliasRows(query, entityId)),
+      ];
+      rowGroups.push(
+        dedupeRows(rows).sort((a, b) => toNumber(b.score) - toNumber(a.score))
+      );
+    } catch (error) {
+      warnings.push(`Entity boost search failed for ${entityId}.`);
+      console.warn(`RAG entity boost search failed for ${entityId}:`, error);
+    }
+  }
+
+  return interleaveRows(rowGroups, getExpandedLimit(query.limit));
+}
+
+async function searchWithEntityAliasRows(
+  query: RagChunkSearchQuery,
+  entityId: string
+) {
+  const aliases = Object.values(NOTION_ENTITY_ALIAS_MAP).find(
+    (entry) => entry.entityId === entityId
+  )?.aliases;
+
+  if (!aliases) return [];
+
+  const rows: RagChunkSearchRow[] = [];
+  const canonicalAliases = aliases
+    .filter((alias) => normalizeAliasText(alias).length >= 3)
+    .slice(0, 3);
+
+  for (const alias of canonicalAliases) {
+    rows.push(
+      ...(await searchWithIlikeFallback({
+        ...query,
+        q: alias,
+        entityId: undefined,
+        limit: getExpandedLimit(query.limit),
+      }))
+    );
+  }
+
+  return rows.map((row) => ({
+    ...row,
+    entity_id: entityId,
+    metadata: {
+      ...(row.metadata ?? {}),
+      boostedAliasEntityId: entityId,
+      originalEntityId: row.entity_id,
+    },
+    entity_score: Math.max(toNumber(row.entity_score), 7),
+    score: toNumber(row.score) + 7,
+  }));
+}
+
+export function reciprocalRankFusion<T extends RagChunkSearchRow>(
+  resultLists: WeightedResultList<T>[],
+  options: {
+    limit: number;
+    rrfK?: number;
+    query: string;
+    entityIds: string[];
+    weights: RagHybridWeights;
+  }
+): T[] {
+  const candidates = new Map<
+    string,
+    {
+      row: T;
+      rrfScore: number;
+      lexicalRank?: number;
+      vectorRank?: number;
+      entityRank?: number;
+    }
+  >();
+  const rrfK = options.rrfK ?? DEFAULT_RRF_K;
+
+  for (const list of resultLists) {
+    list.results.forEach((row, index) => {
+      const rank = index + 1;
+      const existing = candidates.get(row.chunk_id);
+      const candidate =
+        existing ??
+        ({
+          row,
+          rrfScore: 0,
+        } satisfies {
+          row: T;
+          rrfScore: number;
+          lexicalRank?: number;
+          vectorRank?: number;
+          entityRank?: number;
+        });
+
+      candidate.rrfScore += list.weight / (rrfK + rank);
+
+      if (list.name === 'lexical') candidate.lexicalRank ??= rank;
+      if (list.name === 'vector') candidate.vectorRank ??= rank;
+      if (list.name === 'entity') candidate.entityRank ??= rank;
+
+      if (toNumber(row.score) > toNumber(candidate.row.score)) {
+        candidate.row = { ...candidate.row, ...row };
+      }
+
+      candidates.set(row.chunk_id, candidate);
+    });
+  }
+
+  return Array.from(candidates.values())
+    .map((candidate) => {
+      const entityBoost = getEntityBoost(
+        candidate.row,
+        options.entityIds,
+        options.weights
+      );
+      const intentBoost = getIntentBoost(
+        candidate.row,
+        options.query,
+        options.weights
+      );
+      const freshnessBoost = getFreshnessBoost(candidate.row, options.weights);
+      const finalScore =
+        (candidate.rrfScore + entityBoost + intentBoost + freshnessBoost) * 100;
+
+      return {
+        ...candidate.row,
+        score: Number(finalScore.toFixed(4)),
+        ranking_search_mode: 'hybrid' as const,
+        lexical_rank: candidate.lexicalRank,
+        vector_rank: candidate.vectorRank,
+        entity_rank: candidate.entityRank,
+        rrf_score: Number(candidate.rrfScore.toFixed(6)),
+        final_score: Number(finalScore.toFixed(4)),
+        entity_boost: Number(entityBoost.toFixed(4)),
+        intent_boost: Number(intentBoost.toFixed(4)),
+        freshness_boost: Number(freshnessBoost.toFixed(4)),
+      };
+    })
+    .sort((a, b) => toNumber(b.score) - toNumber(a.score))
+    .slice(0, options.limit);
 }
 
 function rowToSearchResult({
@@ -429,7 +783,7 @@ function rowToSearchResult({
   searchMode: RagChunkRankingDetail['searchMode'];
 }): RagChunkSearchResult {
   const ranking: RagChunkRankingDetail = {
-    searchMode,
+    searchMode: row.ranking_search_mode ?? searchMode,
     textRank: toNumber(row.text_rank),
     titleScore: toNumber(row.title_score),
     sectionPathScore: toNumber(row.section_path_score),
@@ -437,6 +791,19 @@ function rowToSearchResult({
     contentScore: toNumber(row.content_score),
     visibilityScore: toNumber(row.visibility_score),
     todoPenalty: toNumber(row.todo_penalty),
+    ...(row.embedding_score !== undefined && row.embedding_score !== null
+      ? { embeddingScore: toNumber(row.embedding_score) }
+      : {}),
+    ...(row.lexical_rank ? { lexicalRank: toNumber(row.lexical_rank) } : {}),
+    ...(row.vector_rank ? { vectorRank: toNumber(row.vector_rank) } : {}),
+    ...(row.entity_rank ? { entityRank: toNumber(row.entity_rank) } : {}),
+    ...(row.rrf_score ? { rrfScore: toNumber(row.rrf_score) } : {}),
+    ...(row.final_score ? { finalScore: toNumber(row.final_score) } : {}),
+    ...(row.entity_boost ? { entityBoost: toNumber(row.entity_boost) } : {}),
+    ...(row.intent_boost ? { intentBoost: toNumber(row.intent_boost) } : {}),
+    ...(row.freshness_boost
+      ? { freshnessBoost: toNumber(row.freshness_boost) }
+      : {}),
   };
 
   return {
@@ -452,6 +819,195 @@ function rowToSearchResult({
     visibility: row.visibility,
     ...(debug ? { ranking } : {}),
   };
+}
+
+function embeddingRowToSearchRow(
+  row: StoredRagChunkEmbeddingSearchRow
+): RagChunkSearchRow {
+  return {
+    chunk_id: row.chunk_id,
+    entity_id: row.entity_id,
+    title: row.title,
+    section_path: row.section_path,
+    content: row.content,
+    metadata: row.metadata,
+    has_todo: row.has_todo,
+    visibility: row.visibility,
+    freshness: row.freshness,
+    confidence: row.confidence,
+    updated_at: row.updated_at,
+    score: row.score,
+    text_rank: 0,
+    title_score: 0,
+    section_path_score: 0,
+    entity_score: 0,
+    content_score: 0,
+    visibility_score: row.visibility === 'public' ? 1.5 : 0,
+    todo_penalty: row.has_todo ? -2 : 0,
+    embedding_score: row.embedding_score,
+    ranking_search_mode: 'embedding',
+  };
+}
+
+function getExpandedLimit(limit: number) {
+  return normalizeSearchLimit(Math.max(limit * 3, 12));
+}
+
+function dedupeRows(rows: RagChunkSearchRow[]) {
+  const seen = new Set<string>();
+  const deduped: RagChunkSearchRow[] = [];
+
+  for (const row of rows) {
+    if (seen.has(row.chunk_id)) continue;
+    seen.add(row.chunk_id);
+    deduped.push(row);
+  }
+
+  return deduped;
+}
+
+function interleaveRows(rowGroups: RagChunkSearchRow[][], limit: number) {
+  const rows: RagChunkSearchRow[] = [];
+  const seen = new Set<string>();
+  const maxLength = Math.max(0, ...rowGroups.map((group) => group.length));
+
+  for (let index = 0; index < maxLength; index += 1) {
+    for (const group of rowGroups) {
+      const row = group[index];
+      if (!row || seen.has(row.chunk_id)) continue;
+      seen.add(row.chunk_id);
+      rows.push(row);
+      if (rows.length >= limit) return rows;
+    }
+  }
+
+  return rows;
+}
+
+function detectMentionedEntityIds(query: string) {
+  const normalizedQuery = normalizeAliasText(query);
+  const entityMatches: Array<{ entityId: string; index: number }> = [];
+  const explicitEntityIds = query.matchAll(
+    /\b(?:person|project|career|profile|skill|knowledge|policy|contact|audience|question)\.[a-z0-9_.-]+\b/gi
+  );
+
+  for (const match of explicitEntityIds) {
+    entityMatches.push({
+      entityId: match[0].toLowerCase(),
+      index: match.index ?? 0,
+    });
+  }
+
+  for (const { entityId, aliases } of Object.values(NOTION_ENTITY_ALIAS_MAP)) {
+    const aliasIndexes = aliases
+      .map((alias) => normalizedQuery.indexOf(normalizeAliasText(alias)))
+      .filter((index) => index >= 0);
+
+    if (aliasIndexes.length > 0) {
+      entityMatches.push({
+        entityId,
+        index: Math.min(...aliasIndexes),
+      });
+    }
+  }
+
+  const seen = new Set<string>();
+  return entityMatches
+    .sort((a, b) => a.index - b.index)
+    .map((match) => match.entityId)
+    .filter((entityId) => {
+      if (seen.has(entityId)) return false;
+      seen.add(entityId);
+      return true;
+    });
+}
+
+function shouldSkipEntityBoost(query: string) {
+  return /raw prompt|system prompt|시스템 명령|주소|비공개|private|repo|레포|이력서\s*url|resume\s*url/i.test(
+    query
+  );
+}
+
+function getEntityBoost(
+  row: RagChunkSearchRow,
+  entityIds: string[],
+  weights: RagHybridWeights
+) {
+  if (row.entity_rank) return weights.entity;
+  if (row.entity_id && entityIds.includes(row.entity_id)) return weights.entity;
+  return 0;
+}
+
+function getIntentBoost(
+  row: RagChunkSearchRow,
+  query: string,
+  weights: RagHybridWeights
+) {
+  const normalizedQuery = normalizeAliasText(query);
+  const searchableText = normalizeAliasText(
+    [row.title, ...(row.section_path ?? [])].join(' ')
+  );
+  if (!normalizedQuery || !searchableText) return 0;
+  if (searchableText.includes(normalizedQuery)) return weights.intent;
+
+  const tokens = normalizedQuery
+    .split(' ')
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 2);
+  if (tokens.length === 0) return 0;
+
+  const overlapCount = tokens.filter((token) =>
+    searchableText.includes(token)
+  ).length;
+
+  return Math.min(
+    weights.intent,
+    (overlapCount / tokens.length) * weights.intent
+  );
+}
+
+function getFreshnessBoost(row: RagChunkSearchRow, weights: RagHybridWeights) {
+  if (
+    row.freshness === 'current' &&
+    row.visibility === 'public' &&
+    !row.has_todo
+  ) {
+    return weights.freshness;
+  }
+
+  if (row.has_todo || row.visibility === 'needs_review') {
+    return -weights.freshness;
+  }
+
+  return 0;
+}
+
+function getAnswerabilityWarnings(results: RagChunkSearchResult[]) {
+  const warnings: string[] = [];
+  const topResults = results.slice(0, Math.min(3, results.length));
+
+  if (topResults.length > 0 && topResults.every(isUncertainOrPrivateResult)) {
+    warnings.push(
+      'All top RAG chunks are TODO, needs_review, or non-public; answer with caution.'
+    );
+  }
+
+  if (
+    results.length > 0 &&
+    toNumber(results[0].score) < DEFAULT_LOW_SCORE_WARNING_THRESHOLD
+  ) {
+    warnings.push('Top RAG search score is below the answerability threshold.');
+  }
+
+  return warnings;
+}
+
+function isUncertainOrPrivateResult(result: RagChunkSearchResult) {
+  return (
+    result.has_todo ||
+    result.visibility === 'needs_review' ||
+    result.visibility !== 'public'
+  );
 }
 
 function failedSearchPayload({
@@ -498,6 +1054,15 @@ function trimPreview(value: string) {
 
 function toLikePattern(value: string) {
   return `%${value.replace(/[\\%_]/g, (match) => `\\${match}`)}%`;
+}
+
+function normalizeAliasText(value: string) {
+  return value
+    .toLowerCase()
+    .normalize('NFKC')
+    .replace(/[\s\-_:!.,/()[\]{}'"`]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function toNumber(value: number | string) {
