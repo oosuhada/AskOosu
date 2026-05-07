@@ -60,7 +60,25 @@ export type PersistedNotionRagSync = {
   chunkCount: number;
   inserted: number;
   updated: number;
+  deleted: number;
   skipped: number;
+  changedEntityIds: string[];
+  changedSourceChunkIds: string[];
+};
+
+type RagChunkMutationStats = {
+  inserted: number;
+  updated: number;
+  deleted: number;
+  skipped: number;
+  changedEntityIds: Set<string>;
+  changedSourceChunkIds: Set<string>;
+};
+
+type RagChunkMutationResult = {
+  status: 'inserted' | 'updated' | 'skipped';
+  entityIds: string[];
+  sourceChunkIds: string[];
 };
 
 export class RagSyncPersistenceError extends Error {
@@ -144,6 +162,7 @@ export async function ensureRagDatabaseSchema() {
       chunk_count integer NOT NULL DEFAULT 0 CHECK (chunk_count >= 0),
       inserted_count integer NOT NULL DEFAULT 0 CHECK (inserted_count >= 0),
       updated_count integer NOT NULL DEFAULT 0 CHECK (updated_count >= 0),
+      deleted_count integer NOT NULL DEFAULT 0 CHECK (deleted_count >= 0),
       skipped_count integer NOT NULL DEFAULT 0 CHECK (skipped_count >= 0),
       warnings jsonb NOT NULL DEFAULT '[]'::jsonb,
       error_message text,
@@ -169,6 +188,9 @@ export async function ensureRagDatabaseSchema() {
   );
   await pool.query(
     'ALTER TABLE rag_sync_runs ADD COLUMN IF NOT EXISTS updated_count integer NOT NULL DEFAULT 0 CHECK (updated_count >= 0)'
+  );
+  await pool.query(
+    'ALTER TABLE rag_sync_runs ADD COLUMN IF NOT EXISTS deleted_count integer NOT NULL DEFAULT 0 CHECK (deleted_count >= 0)'
   );
   await pool.query(
     'ALTER TABLE rag_sync_runs ADD COLUMN IF NOT EXISTS skipped_count integer NOT NULL DEFAULT 0 CHECK (skipped_count >= 0)'
@@ -299,6 +321,7 @@ export async function persistNotionRagSyncResult(
         chunkCount: chunks.length,
         inserted: upsertStats.inserted,
         updated: upsertStats.updated,
+        deleted: upsertStats.deleted,
         skipped: upsertStats.skipped,
         warnings: result.warnings,
       });
@@ -310,7 +333,12 @@ export async function persistNotionRagSyncResult(
       sourceId,
       syncRunId,
       chunkCount: chunks.length,
-      ...stats,
+      inserted: stats.inserted,
+      updated: stats.updated,
+      deleted: stats.deleted,
+      skipped: stats.skipped,
+      changedEntityIds: Array.from(stats.changedEntityIds),
+      changedSourceChunkIds: Array.from(stats.changedSourceChunkIds),
     };
   } catch (error) {
     await markNotionRagSyncFailed({
@@ -371,6 +399,7 @@ export async function recordFailedNotionRagSyncRun({
       chunkCount,
       inserted: 0,
       updated: 0,
+      deleted: 0,
       skipped: 0,
       warnings,
       errorMessage,
@@ -649,6 +678,7 @@ async function finishRagSyncRun(
     chunkCount: number;
     inserted: number;
     updated: number;
+    deleted: number;
     skipped: number;
     warnings?: string[];
     errorMessage?: string;
@@ -663,9 +693,10 @@ async function finishRagSyncRun(
         chunk_count = $4,
         inserted_count = $5,
         updated_count = $6,
-        skipped_count = $7,
-        warnings = $8::jsonb,
-        error_message = $9,
+        deleted_count = $7,
+        skipped_count = $8,
+        warnings = $9::jsonb,
+        error_message = $10,
         finished_at = now()
       WHERE id = $1
     `,
@@ -676,6 +707,7 @@ async function finishRagSyncRun(
       input.chunkCount,
       input.inserted,
       input.updated,
+      input.deleted,
       input.skipped,
       JSON.stringify(input.warnings ?? []),
       input.errorMessage ?? null,
@@ -704,6 +736,7 @@ async function markNotionRagSyncFailed({
       chunkCount,
       inserted: 0,
       updated: 0,
+      deleted: 0,
       skipped: 0,
       warnings,
       errorMessage,
@@ -721,8 +754,11 @@ async function upsertChunksForSource(
   const stats = {
     inserted: 0,
     updated: 0,
+    deleted: 0,
     skipped: 0,
-  };
+    changedEntityIds: new Set<string>(),
+    changedSourceChunkIds: new Set<string>(),
+  } satisfies RagChunkMutationStats;
   const currentChunkIds = new Set<string>();
   const matchedContentHashes = new Set<string>();
 
@@ -740,8 +776,15 @@ async function upsertChunksForSource(
 
     currentChunkIds.add(chunk.chunkId);
     matchedContentHashes.add(chunk.contentHash);
-    stats[result] += 1;
+    stats[result.status] += 1;
+    addChangedEntityIds(stats, result.entityIds);
+    addChangedSourceChunkIds(stats, result.sourceChunkIds);
   }
+
+  const staleChunks = await getStaleChunksForSource(client, {
+    sourceId: input.sourceId,
+    currentChunkIds: input.chunks.map((chunk) => chunk.chunkId),
+  });
 
   if (input.chunks.length > 0) {
     await client.query(
@@ -757,7 +800,72 @@ async function upsertChunksForSource(
     ]);
   }
 
+  stats.deleted += staleChunks.length;
+  addChangedEntityIds(
+    stats,
+    staleChunks.map((chunk) => chunk.entity_id)
+  );
+  addChangedSourceChunkIds(
+    stats,
+    staleChunks.map((chunk) => chunk.chunk_id)
+  );
+
   return stats;
+}
+
+async function getStaleChunksForSource(
+  client: PoolClient,
+  input: {
+    sourceId: string;
+    currentChunkIds: string[];
+  }
+) {
+  const hasCurrentChunks = input.currentChunkIds.length > 0;
+  const result = await client.query<{
+    chunk_id: string;
+    entity_id: string | null;
+  }>(
+    hasCurrentChunks
+      ? `
+        SELECT chunk_id, entity_id
+        FROM rag_chunks
+        WHERE source_id = $1 AND NOT chunk_id = ANY($2::text[])
+      `
+      : `
+        SELECT chunk_id, entity_id
+        FROM rag_chunks
+        WHERE source_id = $1
+      `,
+    hasCurrentChunks
+      ? [input.sourceId, input.currentChunkIds]
+      : [input.sourceId]
+  );
+
+  return result.rows;
+}
+
+function addChangedEntityIds(
+  stats: RagChunkMutationStats,
+  entityIds: Array<string | null | undefined>
+) {
+  for (const entityId of compactTextArray(entityIds)) {
+    stats.changedEntityIds.add(entityId);
+  }
+}
+
+function addChangedSourceChunkIds(
+  stats: RagChunkMutationStats,
+  sourceChunkIds: Array<string | null | undefined>
+) {
+  for (const sourceChunkId of compactTextArray(sourceChunkIds)) {
+    stats.changedSourceChunkIds.add(sourceChunkId);
+  }
+}
+
+function compactTextArray(values: Array<string | null | undefined>) {
+  return Array.from(
+    new Set(values.map((value) => value?.trim()).filter(Boolean))
+  ) as string[];
 }
 
 async function upsertChunkForSource(
@@ -772,9 +880,10 @@ async function upsertChunkForSource(
     id: string;
     chunk_id: string;
     content_hash: string;
+    entity_id: string | null;
   }>(
     `
-      SELECT id, chunk_id, content_hash
+      SELECT id, chunk_id, content_hash, entity_id
       FROM rag_chunks
       WHERE source_id = $1
         AND (
@@ -796,7 +905,11 @@ async function upsertChunkForSource(
 
   if (existing.rowCount === 0) {
     await insertRagChunk(client, input.sourceId, input.chunk);
-    return 'inserted' as const;
+    return {
+      status: 'inserted',
+      entityIds: compactTextArray([input.chunk.entityId]),
+      sourceChunkIds: [input.chunk.chunkId],
+    } satisfies RagChunkMutationResult;
   }
 
   const existingChunk = existing.rows[0];
@@ -804,11 +917,25 @@ async function upsertChunkForSource(
     existingChunk.chunk_id === input.chunk.chunkId &&
     existingChunk.content_hash === input.chunk.contentHash
   ) {
-    return 'skipped' as const;
+    return {
+      status: 'skipped',
+      entityIds: [],
+      sourceChunkIds: [],
+    } satisfies RagChunkMutationResult;
   }
 
   await updateRagChunk(client, existingChunk.id, input.chunk);
-  return 'updated' as const;
+  return {
+    status: 'updated',
+    entityIds: compactTextArray([
+      existingChunk.entity_id,
+      input.chunk.entityId,
+    ]),
+    sourceChunkIds: compactTextArray([
+      existingChunk.chunk_id,
+      input.chunk.chunkId,
+    ]),
+  } satisfies RagChunkMutationResult;
 }
 
 async function insertRagChunk(

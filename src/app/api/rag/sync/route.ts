@@ -12,6 +12,10 @@ import {
   recordFailedNotionRagSyncRun,
   releaseRagSyncLock,
 } from '@/lib/rag/database';
+import {
+  invalidateCachedAnswersForEntities,
+  invalidateCachedAnswersForSourceChunks,
+} from '@/lib/chat/database';
 import { isRagAdminRequest, unauthorizedRagResponse } from '../auth';
 
 export const runtime = 'nodejs';
@@ -26,7 +30,19 @@ type SyncedNotionPage = {
   chunkCount: number;
   inserted: number;
   updated: number;
+  deleted: number;
   skipped: number;
+  changedEntityIds: string[];
+  changedSourceChunkIds: string[];
+  warnings: string[];
+};
+
+type AnswerCacheInvalidationSummary = {
+  mode: 'none' | 'entity' | 'source_chunk' | 'ttl_fallback' | 'failed';
+  invalidated: number;
+  entityIds: string[];
+  sourceChunkIds: string[];
+  reason: string | null;
   warnings: string[];
 };
 
@@ -78,7 +94,9 @@ async function syncNotionPages(req: Request) {
             chunkCount: 0,
             inserted: 0,
             updated: 0,
+            deleted: 0,
             skipped: 0,
+            answerCacheInvalidated: 0,
             warnings: [
               ...config.warnings,
               'RAG sync is already running. Try again after the current sync finishes.',
@@ -115,7 +133,10 @@ async function syncNotionPages(req: Request) {
           chunkCount: 0,
           inserted: 0,
           updated: 0,
+          deleted: 0,
           skipped: 0,
+          changedEntityIds: [],
+          changedSourceChunkIds: [],
           warnings: [
             ...result.warnings,
             'DATABASE_URL is not set; DB persistence failed.',
@@ -135,7 +156,9 @@ async function syncNotionPages(req: Request) {
           chunkCount: aggregate.chunkCount,
           inserted: aggregate.inserted,
           updated: aggregate.updated,
+          deleted: aggregate.deleted,
           skipped: aggregate.skipped,
+          answerCacheInvalidated: 0,
           warnings: aggregate.warnings,
           sources: pageResults,
           error: 'DATABASE_URL or POSTGRES_URL is required for RAG sync.',
@@ -157,12 +180,21 @@ async function syncNotionPages(req: Request) {
         chunkCount: persistence.chunkCount,
         inserted: persistence.inserted,
         updated: persistence.updated,
+        deleted: persistence.deleted,
         skipped: persistence.skipped,
+        changedEntityIds: persistence.changedEntityIds,
+        changedSourceChunkIds: persistence.changedSourceChunkIds,
         warnings: result.warnings,
       });
     }
 
     const aggregate = aggregatePageResults(pageResults);
+    const cacheInvalidation =
+      await invalidateAnswerCacheAfterRagSync(aggregate);
+    const warnings = mergeWarnings(
+      aggregate.warnings,
+      cacheInvalidation.warnings
+    );
 
     return Response.json({
       ok: true,
@@ -174,8 +206,11 @@ async function syncNotionPages(req: Request) {
       chunkCount: aggregate.chunkCount,
       inserted: aggregate.inserted,
       updated: aggregate.updated,
+      deleted: aggregate.deleted,
       skipped: aggregate.skipped,
-      warnings: aggregate.warnings,
+      warnings,
+      answerCacheInvalidated: cacheInvalidation.invalidated,
+      cacheInvalidation,
       sources: pageResults,
     });
   } catch (error) {
@@ -202,7 +237,9 @@ async function syncNotionPages(req: Request) {
         chunkCount: aggregate.chunkCount || getFailedChunkCount(error),
         inserted: 0,
         updated: 0,
+        deleted: 0,
         skipped: 0,
+        answerCacheInvalidated: 0,
         pageId: currentPageId,
         pageIds: config.pageIds,
         error:
@@ -308,8 +345,115 @@ function aggregatePageResults(pageResults: SyncedNotionPage[]) {
     chunkCount: sum(pageResults.map((result) => result.chunkCount)),
     inserted: sum(pageResults.map((result) => result.inserted)),
     updated: sum(pageResults.map((result) => result.updated)),
+    deleted: sum(pageResults.map((result) => result.deleted)),
     skipped: sum(pageResults.map((result) => result.skipped)),
+    changedEntityIds: uniqueText(
+      pageResults.flatMap((result) => result.changedEntityIds)
+    ),
+    changedSourceChunkIds: uniqueText(
+      pageResults.flatMap((result) => result.changedSourceChunkIds)
+    ),
     warnings: mergeWarnings(...pageResults.map((result) => result.warnings)),
+  };
+}
+
+async function invalidateAnswerCacheAfterRagSync({
+  inserted,
+  updated,
+  deleted,
+  changedEntityIds,
+  changedSourceChunkIds,
+}: ReturnType<typeof aggregatePageResults>): Promise<AnswerCacheInvalidationSummary> {
+  const changedChunkCount = inserted + updated + deleted;
+  const entityIds = uniqueText(changedEntityIds);
+  const sourceChunkIds = uniqueText(changedSourceChunkIds);
+
+  if (changedChunkCount === 0) {
+    return {
+      mode: 'none',
+      invalidated: 0,
+      entityIds,
+      sourceChunkIds,
+      reason: null,
+      warnings: [],
+    };
+  }
+
+  try {
+    if (entityIds.length > 0) {
+      const reason = 'rag_sync_changed_entities';
+      const entityInvalidated = await invalidateCachedAnswersForEntities(
+        entityIds,
+        reason
+      );
+      const sourceChunkInvalidated =
+        sourceChunkIds.length > 0
+          ? await invalidateCachedAnswersForSourceChunks(
+              sourceChunkIds,
+              'rag_sync_changed_source_chunks'
+            )
+          : 0;
+
+      return {
+        mode: 'entity',
+        invalidated: entityInvalidated + sourceChunkInvalidated,
+        entityIds,
+        sourceChunkIds,
+        reason,
+        warnings:
+          sourceChunkInvalidated > 0
+            ? [
+                'RAG sync primarily invalidated answer_cache by entity ids and also invalidated source_chunk_ids without entity coverage.',
+              ]
+            : [],
+      };
+    }
+
+    if (sourceChunkIds.length > 0) {
+      const reason = 'rag_sync_changed_source_chunks';
+      const invalidated = await invalidateCachedAnswersForSourceChunks(
+        sourceChunkIds,
+        reason
+      );
+
+      return {
+        mode: 'source_chunk',
+        invalidated,
+        entityIds: [],
+        sourceChunkIds,
+        reason,
+        warnings: [
+          'RAG sync changed chunks without entity ids; invalidated answer_cache by source_chunk_ids.',
+        ],
+      };
+    }
+  } catch (error) {
+    console.warn(
+      'Answer cache invalidation failed after RAG sync.',
+      getSafeErrorLog(error)
+    );
+
+    return {
+      mode: 'failed',
+      invalidated: 0,
+      entityIds,
+      sourceChunkIds,
+      reason: 'rag_sync_cache_invalidation_failed',
+      warnings: [
+        'Answer cache invalidation failed after RAG sync; TTL will expire stale rows.',
+      ],
+    };
+  }
+
+  return {
+    mode: 'ttl_fallback',
+    invalidated: 0,
+    entityIds: [],
+    sourceChunkIds: [],
+    reason: null,
+    warnings: [
+      'RAG sync changed chunks but no entity ids or source chunk ids were available; answer_cache TTL will expire stale rows.',
+    ],
   };
 }
 
@@ -327,6 +471,12 @@ function mergeWarnings(...groups: string[][]) {
 
 function sum(values: number[]) {
   return values.reduce((total, value) => total + value, 0);
+}
+
+function uniqueText(values: string[]) {
+  return Array.from(
+    new Set(values.map((value) => value.trim()).filter(Boolean))
+  );
 }
 
 function getRagSyncLockTtlSeconds() {

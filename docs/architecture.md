@@ -22,6 +22,8 @@ Chat orchestration is intentionally cache-first:
 3. `src/lib/ai/providers.ts` selects the provider and keeps Groq key-pool/cooldown behavior isolated from the route.
 4. Generated answers are written back to `answer_cache`, while provider success/failure is logged in `ai_provider_usage` and `ai_provider_status`.
 
+`answer_cache` rows carry `matched_entity_ids` and `source_chunk_ids` so RAG sync can invalidate stale generated answers after Wiki changes. Cache reads require a fresh `created_at` within `ASKOOSU_ANSWER_CACHE_TTL_HOURS`, `invalidated_at IS NULL`, confidence >= `0.7`, and a non-fallback answer source. Cache writes are skipped for TODO evidence, warnings, safe fallbacks, insufficient-evidence answers, prompt-leakage guardrails, and low-confidence answers.
+
 Model selection is isolated in `src/lib/ai/providers.ts` with a compatibility re-export from `src/app/api/chat/model-provider.ts`:
 
 - Default provider: OpenAI with `OPENAI_MODEL` or `gpt-4o-mini`
@@ -65,7 +67,7 @@ Current behavior:
 4. Retrieval defaults to hybrid ranking. `src/lib/rag/search.ts` runs lexical FTS/ILIKE search, optional pgvector embedding search, entity-alias boost, and weighted reciprocal rank fusion. If `OPENAI_API_KEY` or stored vectors are unavailable, vector retrieval is skipped with a warning and lexical/entity ranking still works.
 5. `ASKOOSU_RAG_RETRIEVAL=lexical`, `embedding`, or `hybrid` controls the retrieval mode. Hybrid weights default to lexical `0.35`, vector `0.35`, entity `0.15`, intent `0.10`, and freshness `0.05`.
 6. `ASKOOSU_RAG_STORE=memory` keeps chunks in the running Node process. `ASKOOSU_RAG_STORE=postgres` stores chunks and vectors in Postgres using pgvector.
-7. `/api/rag/sync` recursively fetches the configured Notion wiki page or direct KO/EN child page ids, returns aggregate sync stats with per-source details, and persists chunks into `rag_sources`, `rag_chunks`, and `rag_sync_runs` when `DATABASE_URL` is configured. `/api/rag/search` exposes an admin-protected search/debug API.
+7. `/api/rag/sync` recursively fetches the configured Notion wiki page or direct KO/EN child page ids, returns aggregate sync stats with per-source details, and persists chunks into `rag_sources`, `rag_chunks`, and `rag_sync_runs` when `DATABASE_URL` is configured. Successful syncs track inserted, updated, and deleted chunks, derive changed entity ids, and soft-invalidate matching `answer_cache` rows by entity. If entity ids are unavailable, sync falls back to source chunk invalidation when possible and relies on the answer-cache TTL as the final safety net. `/api/rag/search` exposes an admin-protected search/debug API.
 8. `/api/feedback` stores answer-level up/down feedback in `answer_feedback` with truncated question/answer text, matched entity ids, source chunk ids, confidence, and an optional visitor note. Feedback write failures are isolated from chat streaming so the core chat UX remains usable.
 
 The next Mac mini/home-server step is to run sync on a schedule, keep Postgres + pgvector warm, and eventually add incremental sync based on Notion edit timestamps.

@@ -112,10 +112,14 @@ This applies:
 - `db/migrations/003_create_chat_cache_and_provider_usage.sql`
 - `db/migrations/004_add_rag_language_and_sync_lock.sql`
 - `db/migrations/005_create_rag_search_cache.sql`
+- `db/migrations/006_add_ai_provider_usage_metadata.sql`
+- `db/migrations/007_add_answer_cache_invalidation.sql`
 
 The script runs `psql` inside the `postgres` Compose service and reads `POSTGRES_USER` and `POSTGRES_DB` from `.env.production`.
 
-Migration `003` is required for `answer_cache`, `ai_provider_usage`, and `ai_provider_status`. Migration `004` is required for language-specific RAG search and sync locking. Migration `005` is required for short-lived RAG search result caching. If production was already deployed before these migrations existed, run `scripts/prod-migrate.sh` again after pulling the latest code.
+Migration `003` is required for `answer_cache`, `ai_provider_usage`, and `ai_provider_status`. Migration `004` is required for language-specific RAG search and sync locking. Migration `005` is required for short-lived RAG search result caching. Migration `006` adds provider usage metadata. Migration `007` adds entity/source-chunk indexes plus soft invalidation for `answer_cache`, and lets RAG sync record deleted chunks. If production was already deployed before these migrations existed, run `scripts/prod-migrate.sh` again after pulling the latest code.
+
+After a successful `/api/rag/sync`, AskOosu invalidates generated `answer_cache` rows by changed `matched_entity_ids` first. If changed chunks do not have entity ids, sync falls back to `source_chunk_ids` when possible and otherwise leaves stale rows to expire via `ASKOOSU_ANSWER_CACHE_TTL_HOURS`.
 
 ## Google Vertex Fallback
 
@@ -217,7 +221,7 @@ cd /Users/gabrieljang/Services/askoosu-orbstack
 ASKOOSU_BASE_URL=https://oosu.dev scripts/prod-rag-sync.sh
 ```
 
-The script sends the admin token as a header and prints `ok`, `sourceId`, `syncRunId`, `blockCount`, `chunkCount`, `inserted`, `updated`, `skipped`, and warnings. It does not print the secret.
+The script sends the admin token as a header and prints `ok`, `sourceId`, `syncRunId`, `blockCount`, `chunkCount`, `inserted`, `updated`, `deleted`, `skipped`, cache invalidation stats, and warnings. It does not print the secret.
 
 ## RAG Eval
 

@@ -269,6 +269,10 @@ export async function POST(req: Request) {
       confidence: responseMetadata.confidence,
       provider: generation.provider,
       model: generation.model,
+      hasTodoEvidence: responseMetadata.hasTodoEvidence,
+      warnings: responseMetadata.warnings,
+      routeDecision: responseMetadata.routeDecision,
+      errorCode: responseMetadata.errorCode,
     }).catch((error) => {
       console.warn('Unable to write answer cache:', error);
     });

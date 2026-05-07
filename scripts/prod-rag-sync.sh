@@ -54,7 +54,11 @@ const rows = [
   ['chunkCount', payload.chunkCount ?? 0],
   ['inserted', payload.inserted ?? 0],
   ['updated', payload.updated ?? 0],
+  ['deleted', payload.deleted ?? 0],
   ['skipped', payload.skipped ?? 0],
+  ['answerCacheInvalidated', payload.answerCacheInvalidated ?? 0],
+  ['cacheInvalidationMode', payload.cacheInvalidation?.mode ?? ''],
+  ['cacheInvalidationReason', payload.cacheInvalidation?.reason ?? ''],
 ];
 
 for (const [key, value] of rows) {

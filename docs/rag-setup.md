@@ -57,6 +57,8 @@ psql "$DATABASE_URL" -f db/migrations/002_create_answer_feedback.sql
 psql "$DATABASE_URL" -f db/migrations/003_create_chat_cache_and_provider_usage.sql
 psql "$DATABASE_URL" -f db/migrations/004_add_rag_language_and_sync_lock.sql
 psql "$DATABASE_URL" -f db/migrations/005_create_rag_search_cache.sql
+psql "$DATABASE_URL" -f db/migrations/006_add_ai_provider_usage_metadata.sql
+psql "$DATABASE_URL" -f db/migrations/007_add_answer_cache_invalidation.sql
 ```
 
 For the Mac mini Docker Compose deployment, run:
@@ -81,7 +83,7 @@ It also adds PostgreSQL indexes for `chunk_id`, `entity_id`, `source_id`, `has_t
 
 `answer_feedback` stores lightweight answer quality signals from the chat UI: session/message ids, truncated question and answer text, up/down rating, optional reason, matched entity ids, source chunk ids, confidence, and creation time. It intentionally does not store IP addresses, user agents, or authenticated user identity.
 
-`answer_cache` stores generated RAG answers by normalized question, language, and wiki version so repeat questions can skip the provider call. `ai_provider_usage` and `ai_provider_status` record provider latency, token usage, success/failure, and recent status for Groq/Google fallback operations.
+`answer_cache` stores generated RAG answers by normalized question, language, and wiki version so repeat questions can skip the provider call. It stores matched entity ids and source chunk ids; successful RAG sync invalidates changed-entity cache rows first, falls back to source chunk ids when entity ids are unavailable, and uses `ASKOOSU_ANSWER_CACHE_TTL_HOURS` as the final stale-cache safety net. `ai_provider_usage` and `ai_provider_status` record provider latency, token usage, success/failure, and recent status for Groq/Google fallback operations.
 
 `rag_sources.language` and `rag_chunks.language` let Korean questions search Korean chunks first and English questions search English chunks first. `rag_sync_locks` prevents two sync runs from mutating the same chunk set at the same time. `rag_search_cache` stores short-lived top chunk results so repeated free-form questions do not rerun ranking every time.
 
@@ -114,7 +116,7 @@ GOOGLE_APPLICATION_CREDENTIALS=
 
 ## Sync Step
 
-After the Markdown import and integration sharing are complete, call the admin-protected RAG sync endpoint. It returns aggregate metadata (`ok`, `pageId`, `pageIds`, `sourceId`, `syncRunId`, `blockCount`, `chunkCount`, `inserted`, `updated`, `skipped`, `warnings`) plus a `sources` array with per-page sync results.
+After the Markdown import and integration sharing are complete, call the admin-protected RAG sync endpoint. It returns aggregate metadata (`ok`, `pageId`, `pageIds`, `sourceId`, `syncRunId`, `blockCount`, `chunkCount`, `inserted`, `updated`, `deleted`, `skipped`, `answerCacheInvalidated`, `cacheInvalidation`, `warnings`) plus a `sources` array with per-page sync results.
 
 ```bash
 curl -X POST http://localhost:3000/api/rag/sync \
