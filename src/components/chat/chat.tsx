@@ -94,7 +94,7 @@ const Chat = () => {
   const conversationEndRef = useRef<HTMLDivElement>(null);
   const autoSubmittedQueryRef = useRef<string | null>(null);
   const { language, theme } = useDisplayPreferences();
-  const { markQueryAsked } = useSuggestedQuestions(5);
+  const { markQuestionAsked, markQueryAsked } = useSuggestedQuestions(5);
   const text = getUiText(language);
   const loadingLabel = text.chatLoadingMessages[0];
   const chatTransport = useMemo(
@@ -300,7 +300,9 @@ const Chat = () => {
       setLastSubmittedQuery(trimmedQuery);
       setChatErrorNotice(null);
       clearError();
-      if (!suggestedQuestion) {
+      if (exactSuggestedQuestion?.id) {
+        markQuestionAsked(exactSuggestedQuestion.id);
+      } else {
         markQueryAsked(trimmedQuery);
       }
       setLoadingSubmit(true);
@@ -332,6 +334,7 @@ const Chat = () => {
       clearError,
       isToolInProgress,
       language,
+      markQuestionAsked,
       markQueryAsked,
       sendMessage,
     ]

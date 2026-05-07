@@ -57,8 +57,14 @@ function HomeContent() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const { language, theme } = useDisplayPreferences();
-  const { visibleQuestions, markQuestionAsked, markQueryAsked } =
+  const {
+    visibleQuestions,
+    askedQuestionIds,
+    markQuestionAsked,
+    markQueryAsked,
+  } =
     useSuggestedQuestions(5);
+  const askedQuestionSet = new Set(askedQuestionIds);
   const text = getUiText(language);
 
   const goToChat = (query: string) => {
@@ -139,9 +145,10 @@ function HomeContent() {
         {isQuickQuestionsVisible && (
           <div
             id="home-quick-questions"
-            className="flex w-full max-w-5xl snap-x gap-2 overflow-x-auto pb-1 md:flex-wrap md:justify-center md:gap-3 md:overflow-visible md:pb-0"
+            className="flex w-full max-w-5xl flex-wrap justify-center gap-2 md:gap-3"
           >
             {visibleQuestions.map((question) => {
+              const isAsked = askedQuestionSet.has(question.id);
               const { color, icon: Icon } = questionConfig[question.id] ?? {
                 color: '#64748B',
                 icon: Sparkles,
@@ -165,7 +172,11 @@ function HomeContent() {
                   key={question.id}
                   asChild
                   variant="outline"
-                  className="bg-background/35 hover:bg-background/60 text-foreground/90 min-h-12 w-fit max-w-[82vw] shrink-0 cursor-pointer snap-center justify-start gap-2.5 rounded-2xl border border-white/55 px-3.5 py-2.5 text-left whitespace-normal shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_30px_rgba(15,23,42,0.1)] backdrop-blur-xl active:scale-[0.98] md:max-w-[25rem] md:px-4 md:py-3 dark:border-white/15 dark:bg-white/[0.11] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_10px_30px_rgba(0,0,0,0.28)] dark:hover:bg-white/[0.16]"
+                  className={`min-h-12 w-fit max-w-[82vw] shrink-0 cursor-pointer snap-center justify-start gap-2.5 rounded-2xl border px-3.5 py-2.5 text-left whitespace-normal backdrop-blur-xl active:scale-[0.98] md:max-w-[25rem] md:px-4 md:py-3 ${
+                    isAsked
+                      ? 'border-slate-200/60 bg-white/20 text-slate-400 shadow-none hover:bg-white/30 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-500 dark:hover:bg-white/[0.06]'
+                      : 'bg-background/35 hover:bg-background/60 text-foreground/90 border-white/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_30px_rgba(15,23,42,0.1)] dark:border-white/15 dark:bg-white/[0.11] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_10px_30px_rgba(0,0,0,0.28)] dark:hover:bg-white/[0.16]'
+                  }`}
                 >
                   <Link
                     href={chatHref}
@@ -180,9 +191,15 @@ function HomeContent() {
                       className="shrink-0"
                       size={18}
                       strokeWidth={2}
-                      color={color}
+                      color={isAsked ? '#CBD5E1' : color}
                     />
-                    <span className="text-foreground line-clamp-2 min-w-0 text-sm leading-snug font-medium md:text-base">
+                    <span
+                      className={`line-clamp-2 min-w-0 text-sm leading-snug font-medium md:text-base ${
+                        isAsked
+                          ? 'text-slate-400 dark:text-slate-500'
+                          : 'text-foreground'
+                      }`}
+                    >
                       {question.quickLabel}
                     </span>
                   </Link>
