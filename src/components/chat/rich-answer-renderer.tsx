@@ -402,7 +402,7 @@ function ProjectShowcaseCards({
           <article
             key={project.id}
             className={cn(
-              'bg-muted/60 text-foreground group overflow-hidden rounded-lg border shadow-sm dark:bg-slate-900/70',
+              'group overflow-hidden rounded-lg border border-neutral-200/80 bg-neutral-100/70 text-foreground shadow-sm dark:border-neutral-800 dark:bg-neutral-900/90',
               isMoreProjectsRail && 'w-[18rem] shrink-0 snap-start'
             )}
           >

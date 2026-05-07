@@ -160,9 +160,19 @@ export async function prepareChatOrchestration({
   if (
     faqRoute.routeDecision.mode === 'direct' &&
     faqRoute.answer?.cacheMode === 'direct_cache' &&
-    !shouldBypassFaqDirectAnswer(conversationIntent)
+    !shouldBypassCurrentFaqDirectAnswer({ faqRoute, conversationIntent })
   ) {
     const faqAnswer = faqRoute.answer;
+    const effectiveAnswerVariant = getEffectiveAnswerVariant({
+      question,
+      messages,
+      faqAnswer,
+      requestContext,
+    });
+    const effectiveRequestContext = {
+      ...requestContext,
+      answerVariant: effectiveAnswerVariant,
+    };
     const confidence = Math.min(
       faqAnswer.confidence,
       faqRoute.intentScore || 1
@@ -182,7 +192,7 @@ export async function prepareChatOrchestration({
       }),
       conversationIntent,
       faqAnswer,
-      requestContext,
+      requestContext: effectiveRequestContext,
       faqRoute,
     });
 
@@ -192,7 +202,7 @@ export async function prepareChatOrchestration({
       language,
       routeDecision: metadata.routeDecision,
       directAnswer: {
-        answer: getFaqAnswerText(faqAnswer, requestContext.answerVariant),
+        answer: getFaqAnswerText(faqAnswer, effectiveAnswerVariant),
         metadata,
       },
     };
@@ -332,6 +342,18 @@ export async function prepareChatOrchestration({
   };
 }
 
+function shouldBypassCurrentFaqDirectAnswer({
+  faqRoute,
+  conversationIntent,
+}: {
+  faqRoute: FaqIntentRouteResult;
+  conversationIntent: ConversationIntentResult;
+}) {
+  if (!shouldBypassFaqDirectAnswer(conversationIntent)) return false;
+
+  return faqRoute.routeDecision.router !== 'quick_question';
+}
+
 function buildConversationDirectOrchestration({
   question,
   language,
@@ -454,9 +476,47 @@ function shouldUseDetailedVariantForFollowUp(
 ) {
   return (
     reason === 'follow_up_with_conversation_context' &&
-    /(더\s*(자세히|상세히|설명|알려)|자세히|more detail|tell me more|details?)/i.test(
-      question
-    )
+    isDetailRequest(question)
+  );
+}
+
+function getEffectiveAnswerVariant({
+  question,
+  messages,
+  faqAnswer,
+  requestContext,
+}: {
+  question: string;
+  messages: UIMessage[];
+  faqAnswer: FaqAnswer;
+  requestContext: RequestContext;
+}): AnswerVariant | null {
+  if (requestContext.answerVariant) return requestContext.answerVariant;
+  if (!faqAnswer.detailedAnswer) return null;
+
+  if (isDetailRequest(question)) return 'detailed';
+
+  if (
+    faqAnswer.intentId === 'ai_usage.workflow' &&
+    hasRecentAiWorkflowAnswer(messages)
+  ) {
+    return 'detailed';
+  }
+
+  return null;
+}
+
+function isDetailRequest(question: string) {
+  return /(더\s*(자세히|상세히|구체적으로|깊게|설명|알려)|자세히|상세히|구체적으로|more detail|tell me more|details?)/i.test(
+    question
+  );
+}
+
+function hasRecentAiWorkflowAnswer(messages: UIMessage[]) {
+  const recentText = messages.slice(-8, -1).map(getMessageText).join('\n');
+
+  return /(AI-assisted Development Workflow|Plan\s*Generate\s*Review|Claude Code|Gemini CLI|Codex|AI를\s*단순\s*질문\s*도구|개발\s*파트너)/i.test(
+    recentText
   );
 }
 

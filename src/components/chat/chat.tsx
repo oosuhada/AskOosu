@@ -28,6 +28,7 @@ import { useDisplayPreferences } from '@/lib/use-display-preferences';
 import { useSuggestedQuestions } from '@/hooks/use-suggested-questions';
 import {
   findSuggestedQuestionId,
+  getSuggestedQuestionRoutingMeta,
   type SuggestedQuestion,
 } from '@/lib/suggested-questions';
 import {
@@ -286,6 +287,13 @@ const Chat = () => {
       const trimmedQuery = query.trim();
       if (!trimmedQuery || isToolInProgress) return false;
 
+      const exactSuggestedQuestion =
+        suggestedQuestion ??
+        getSuggestedQuestionRoutingMeta(
+          findSuggestedQuestionId(trimmedQuery),
+          language
+        ) ??
+        undefined;
       const conversationId = activeConversationId ?? createConversationId();
       if (!activeConversationId) setActiveConversationId(conversationId);
 
@@ -306,17 +314,14 @@ const Chat = () => {
             conversationId,
             locale: language,
             language,
-            starterQuestionId:
-              suggestedQuestion?.id ??
-              findSuggestedQuestionId(trimmedQuery) ??
-              null,
-            faqId: suggestedQuestion?.faqId,
-            intentId: suggestedQuestion?.intentId,
-            displayQuestion: suggestedQuestion?.displayQuestion,
-            originalQuickLabel: suggestedQuestion?.quickLabel,
-            answerVariant: suggestedQuestion?.answerVariant,
-            renderSpec: suggestedQuestion?.renderSpec,
-            source: suggestedQuestion ? 'quick_question' : 'typed_question',
+            starterQuestionId: exactSuggestedQuestion?.id ?? null,
+            faqId: exactSuggestedQuestion?.faqId,
+            intentId: exactSuggestedQuestion?.intentId,
+            displayQuestion: exactSuggestedQuestion?.displayQuestion,
+            originalQuickLabel: exactSuggestedQuestion?.quickLabel,
+            answerVariant: exactSuggestedQuestion?.answerVariant,
+            renderSpec: exactSuggestedQuestion?.renderSpec,
+            source: exactSuggestedQuestion ? 'quick_question' : 'typed_question',
           },
         }
       );
