@@ -116,6 +116,26 @@ export async function routeFaqIntent({
     };
   }
 
+  const hiddenRecruiterRiskMatch = getHiddenRecruiterRiskMatch({
+    question: normalizedQuestion,
+    language,
+  });
+
+  if (hiddenRecruiterRiskMatch) {
+    return {
+      answer: hiddenRecruiterRiskMatch,
+      matchedFaqId: hiddenRecruiterRiskMatch.id,
+      intentScore: 0.99,
+      intentSecondScore: 0,
+      intentMargin: 0.99,
+      routeDecision: {
+        mode: 'direct',
+        reason: 'hidden_recruiter_risk_phrase_match',
+        router: 'token_fallback',
+      },
+    };
+  }
+
   if (isAmbiguousShortQuestion(normalizedQuestion)) {
     return emptyRouteResult('ambiguous_short_input', 'semantic');
   }
@@ -202,6 +222,63 @@ function routeWithTokenFallback({
     router: 'token_fallback',
     reasonPrefix: reason,
   });
+}
+
+function getHiddenRecruiterRiskMatch({
+  question,
+  language,
+}: {
+  question: string;
+  language: ChatLanguage;
+}) {
+  const hasRetentionConcern =
+    /(오래\s*(근무|다니|못\s*다니|머물|못\s*머물)|장기\s*근속|금방\s*(그만|퇴사)|퇴사\s*리스크|이직\s*리스크|retention|stay\s+long|leave\s+quickly|job\s*hopp|learn\s+and\s+leave)/i.test(
+      question
+    );
+  const hasStartupConcern =
+    /(창업|스타트업|사업\s*하|founder|startup|entrepreneur|own\s+company)/i.test(
+      question
+    );
+  const hasLearnOnlyConcern =
+    /(배울\s*(것|거)?만|뽑아\s*먹|뽑아먹|learn\s+enough|just\s+learn)/i.test(
+      question
+    );
+  const hasAiDependencyConcern =
+    /(ai\s*(의존|없이|못|포장|wrapper)|프롬프트만|prompting|code\s+without\s+ai|rely\s+too\s+much\s+on\s+ai)/i.test(
+      question
+    );
+  const hasDepthConcern =
+    /(비전공|전환형|개발\s*깊이|깊이가\s*부족|cs\s*fundamental|non[-\s]?cs|career\s+changer\s+depth)/i.test(
+      question
+    );
+
+  if (
+    (hasRetentionConcern && (hasStartupConcern || hasLearnOnlyConcern)) ||
+    (hasStartupConcern && hasLearnOnlyConcern)
+  ) {
+    return findFaqAnswerById(
+      'faq.recruiter.retention_startup_risk.default',
+      language
+    );
+  }
+
+  if (hasRetentionConcern || hasLearnOnlyConcern) {
+    return findFaqAnswerById('faq.recruiter.retention_risk.default', language);
+  }
+
+  if (hasStartupConcern) {
+    return findFaqAnswerById('faq.recruiter.startup_intent.default', language);
+  }
+
+  if (hasAiDependencyConcern) {
+    return findFaqAnswerById('faq.recruiter.ai_dependency.default', language);
+  }
+
+  if (hasDepthConcern) {
+    return findFaqAnswerById('faq.recruiter.depth_concern.default', language);
+  }
+
+  return null;
 }
 
 function decideRoute({

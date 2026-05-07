@@ -11,7 +11,9 @@ import {
   RagSyncPersistenceError,
   recordFailedNotionRagSyncRun,
   releaseRagSyncLock,
+  replaceStoredRagChunks,
 } from '@/lib/rag/database';
+import { fetchLocalMarkdownRagChunks } from '@/lib/rag/markdown-source';
 import {
   invalidateCachedAnswersForEntities,
   invalidateCachedAnswersForSourceChunks,
@@ -21,9 +23,12 @@ import { isRagAdminRequest, unauthorizedRagResponse } from '../auth';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-type SyncedNotionPage = {
-  pageId: string;
-  pageTitle: string;
+type SyncedRagSource = {
+  sourceType: 'notion' | 'markdown';
+  sourceKey: string;
+  sourceTitle: string;
+  pageId?: string;
+  pageTitle?: string;
   sourceId: string | null;
   syncRunId: string | null;
   blockCount: number;
@@ -69,7 +74,7 @@ async function syncNotionPages(req: Request) {
     );
   }
 
-  const pageResults: SyncedNotionPage[] = [];
+  const pageResults: SyncedRagSource[] = [];
   let currentPageId = config.pageId;
   let currentWarnings = [...config.warnings];
   const lockId = `notion:${config.pageIds.join(',')}`;
@@ -125,6 +130,9 @@ async function syncNotionPages(req: Request) {
     if (!hasPostgresDatabaseUrl()) {
       pageResults.push(
         ...notionResults.map((result) => ({
+          sourceType: 'notion' as const,
+          sourceKey: result.pageId,
+          sourceTitle: result.pageTitle,
           pageId: result.pageId,
           pageTitle: result.pageTitle,
           sourceId: null,
@@ -172,6 +180,9 @@ async function syncNotionPages(req: Request) {
       currentWarnings = result.warnings;
       const persistence = await persistNotionRagSyncResult(result);
       pageResults.push({
+        sourceType: 'notion',
+        sourceKey: result.pageId,
+        sourceTitle: result.pageTitle,
         pageId: result.pageId,
         pageTitle: result.pageTitle,
         sourceId: persistence.sourceId,
@@ -188,11 +199,43 @@ async function syncNotionPages(req: Request) {
       });
     }
 
+    const localMarkdownResult = await fetchLocalMarkdownRagChunks();
+    const localMarkdownPersistences =
+      localMarkdownResult.chunks.length > 0
+        ? await replaceStoredRagChunks(localMarkdownResult.chunks)
+        : [];
+    const localDocumentsByPath = new Map(
+      localMarkdownResult.documents.map((document) => [document.path, document])
+    );
+
+    for (const persistence of localMarkdownPersistences) {
+      const document = localDocumentsByPath.get(persistence.sourceKey);
+      pageResults.push({
+        sourceType: 'markdown',
+        sourceKey: persistence.sourceKey,
+        sourceTitle: persistence.title,
+        pageId: persistence.sourceKey,
+        pageTitle: persistence.title,
+        sourceId: persistence.sourceId,
+        syncRunId: null,
+        blockCount: document?.sectionCount ?? persistence.chunkCount,
+        chunkCount: persistence.chunkCount,
+        inserted: persistence.inserted,
+        updated: persistence.updated,
+        deleted: persistence.deleted,
+        skipped: persistence.skipped,
+        changedEntityIds: persistence.changedEntityIds,
+        changedSourceChunkIds: persistence.changedSourceChunkIds,
+        warnings: localMarkdownResult.warnings,
+      });
+    }
+
     const aggregate = aggregatePageResults(pageResults);
     const cacheInvalidation =
       await invalidateAnswerCacheAfterRagSync(aggregate);
     const warnings = mergeWarnings(
       aggregate.warnings,
+      localMarkdownResult.warnings,
       cacheInvalidation.warnings
     );
 
@@ -337,7 +380,7 @@ function getSafeErrorLog(error: unknown) {
   return { message: 'Unknown error' };
 }
 
-function aggregatePageResults(pageResults: SyncedNotionPage[]) {
+function aggregatePageResults(pageResults: SyncedRagSource[]) {
   return {
     sourceId: pageResults[0]?.sourceId ?? null,
     syncRunId: pageResults[0]?.syncRunId ?? null,

@@ -1,4 +1,4 @@
-export type RagChunkSource = 'notion' | 'static';
+export type RagChunkSource = 'notion' | 'static' | 'markdown';
 
 export type RagRetrievalMode = 'lexical' | 'embedding' | 'hybrid';
 

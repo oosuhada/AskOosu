@@ -66,6 +66,20 @@ export type PersistedNotionRagSync = {
   changedSourceChunkIds: string[];
 };
 
+export type PersistedRagChunkSource = {
+  sourceId: string;
+  type: RagChunk['source'];
+  sourceKey: string;
+  title: string;
+  chunkCount: number;
+  inserted: number;
+  updated: number;
+  deleted: number;
+  skipped: number;
+  changedEntityIds: string[];
+  changedSourceChunkIds: string[];
+};
+
 type RagChunkMutationStats = {
   inserted: number;
   updated: number;
@@ -409,25 +423,44 @@ export async function recordFailedNotionRagSyncRun({
   });
 }
 
-export async function replaceStoredRagChunks(chunks: RagChunk[]) {
+export async function replaceStoredRagChunks(
+  chunks: RagChunk[]
+): Promise<PersistedRagChunkSource[]> {
   await ensureRagDatabaseSchema();
 
   const groups = groupChunksBySource(chunks);
 
-  await withPostgresTransaction(async (client) => {
+  return withPostgresTransaction(async (client) => {
     if (groups.length === 0) {
       await client.query('DELETE FROM rag_chunks');
-      return;
+      return [];
     }
+
+    const results: PersistedRagChunkSource[] = [];
 
     for (const group of groups) {
       const sourceId = await upsertRagSource(client, group);
-      await upsertChunksForSource(client, {
+      const stats = await upsertChunksForSource(client, {
         sourceId,
         chunks: group.chunks.map(ragChunkToDatabaseChunk),
       });
       await markRagSourceSynced(client, sourceId);
+      results.push({
+        sourceId,
+        type: group.type,
+        sourceKey: group.sourceKey,
+        title: group.title,
+        chunkCount: group.chunks.length,
+        inserted: stats.inserted,
+        updated: stats.updated,
+        deleted: stats.deleted,
+        skipped: stats.skipped,
+        changedEntityIds: Array.from(stats.changedEntityIds),
+        changedSourceChunkIds: Array.from(stats.changedSourceChunkIds),
+      });
     }
+
+    return results;
   });
 }
 
@@ -1054,6 +1087,8 @@ function groupChunksBySource(chunks: RagChunk[]): RagChunkGroup[] {
 
 function getRagChunkSource(chunk: RagChunk): RagSourceInput {
   const sourceKey =
+    getMetadataString(chunk.metadata, 'sourceKey') ||
+    getMetadataString(chunk.metadata, 'documentPath') ||
     getMetadataString(chunk.metadata, 'notionPageId') ||
     getMetadataString(chunk.metadata, 'parentId') ||
     chunk.url ||
@@ -1065,7 +1100,10 @@ function getRagChunkSource(chunk: RagChunk): RagSourceInput {
     title:
       chunk.source === 'notion'
         ? `Notion source ${sourceKey.slice(0, 12)}`
-        : 'Static portfolio fallback',
+        : chunk.source === 'markdown'
+          ? getMetadataString(chunk.metadata, 'sourceTitle') ||
+            `Markdown source ${sourceKey}`
+          : 'Static portfolio fallback',
     url: chunk.url,
     language: getMetadataLanguage(chunk.metadata),
   };

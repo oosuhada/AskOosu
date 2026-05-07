@@ -16,4 +16,8 @@ build
 
 Dockerfile
 ops
-docs
+docs/*
+!docs/notion-wiki-draft-v12-en-add-claude.md
+!docs/notion-wiki-draft-v12-en-add-recruiter-risk-gpt.md
+!docs/notion-wiki-draft-v12-ko-add-claude.md
+!docs/notion-wiki-draft-v12-ko-add-recruiter-risk-gpt.md
