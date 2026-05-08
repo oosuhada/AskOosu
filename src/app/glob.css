@@ -1,8 +1,10 @@
 
 .prose {
+  line-break: strict;
   overflow-wrap: break-word;
+  text-wrap: pretty;
   word-wrap: break-word;
-  word-break: break-word;
+  word-break: keep-all;
   hyphens: auto;
   width: 100%;
 }
@@ -37,4 +39,3 @@ code {
   overflow-x: visible;
   width: 100%;
 }
-

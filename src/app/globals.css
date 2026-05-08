@@ -120,7 +120,41 @@
   }
   body {
     @apply bg-background text-foreground;
+    line-break: strict;
+    overflow-wrap: break-word;
+    text-wrap: pretty;
+    word-break: keep-all;
   }
+}
+
+:where(h1, h2, h3, h4, h5, h6, p, li, blockquote, figcaption, summary, dt, dd, label) {
+  line-break: strict;
+  overflow-wrap: break-word;
+  text-wrap: pretty;
+  word-break: keep-all;
+}
+
+:where(h1, h2, h3, h4) {
+  text-wrap: balance;
+}
+
+:where(code, pre, kbd, samp, input, textarea) {
+  line-break: auto;
+  overflow-wrap: normal;
+  text-wrap: auto;
+  word-break: normal;
+}
+
+.prose {
+  line-break: strict;
+  overflow-wrap: break-word;
+  text-wrap: pretty;
+  word-break: keep-all;
+  width: 100%;
+}
+
+.prose code {
+  white-space: pre-wrap;
 }
 
 .custom-scrollbar {
