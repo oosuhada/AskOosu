@@ -100,6 +100,9 @@ const Chat = () => {
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const conversationEndRef = useRef<HTMLDivElement>(null);
+  const latestUserBubbleRef = useRef<HTMLDivElement>(null);
+  const latestScrolledUserMessageIdRef = useRef<string | null>(null);
+  const pendingQueriesCountRef = useRef(0);
   const autoSubmittedQueryRef = useRef<string | null>(null);
   const { language, theme } = useDisplayPreferences();
   const { markQuestionAsked, markQueryAsked } = useSuggestedQuestions(
@@ -298,6 +301,20 @@ const Chat = () => {
       return result;
     }, [messages]);
 
+  useEffect(() => {
+    if (!latestUserMessage?.id) return;
+    if (latestScrolledUserMessageIdRef.current === latestUserMessage.id) return;
+
+    latestScrolledUserMessageIdRef.current = latestUserMessage.id;
+    window.requestAnimationFrame(() => {
+      latestUserBubbleRef.current?.scrollIntoView({
+        block: 'start',
+        behavior: 'smooth',
+      });
+      setShowJumpToLatest(false);
+    });
+  }, [latestUserMessage?.id]);
+
   const isToolInProgress = messages.some(
     (m) =>
       m.role === 'assistant' && m.parts?.some((part) => isPendingToolPart(part))
@@ -423,6 +440,13 @@ const Chat = () => {
     setPendingQueries(remainingQueries);
     executeQuery(nextQuery.query, nextQuery.suggestedQuestion);
   }, [executeQuery, isGeneratingAnswer, pendingQueries]);
+
+  useEffect(() => {
+    if (pendingQueries.length > pendingQueriesCountRef.current) {
+      window.requestAnimationFrame(() => scrollToLatest('smooth'));
+    }
+    pendingQueriesCountRef.current = pendingQueries.length;
+  }, [pendingQueries.length, scrollToLatest]);
 
   useEffect(() => {
     const trimmedInitialQuery = initialQuery?.trim();
@@ -645,6 +669,11 @@ const Chat = () => {
                       <UserQuestionBubble
                         key={message.id}
                         content={getMessageText(message)}
+                        questionRef={
+                          message.id === latestUserMessage?.id
+                            ? latestUserBubbleRef
+                            : undefined
+                        }
                       />
                     );
                   }
@@ -769,9 +798,18 @@ const Chat = () => {
 
 export default Chat;
 
-function UserQuestionBubble({ content }: { content: string }) {
+function UserQuestionBubble({
+  content,
+  questionRef,
+}: {
+  content: string;
+  questionRef?: React.Ref<HTMLDivElement>;
+}) {
   return (
-    <div className="mx-auto flex w-full max-w-3xl justify-end px-4 pb-4">
+    <div
+      ref={questionRef}
+      className="mx-auto flex w-full max-w-3xl scroll-mt-4 justify-end px-4 pb-4"
+    >
       <ChatBubble
         variant="sent"
         className="mr-0 ml-auto max-w-[min(85%,40rem)] self-end"

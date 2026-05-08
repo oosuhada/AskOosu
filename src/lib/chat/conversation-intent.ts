@@ -102,6 +102,18 @@ const PROFILE_INTRO_PATTERNS = [
   /what\s+kind\s+of\s+developer\s+is\s+oosu/i,
 ];
 
+const SITE_PURPOSE_PATTERNS = [
+  /(이\s*)?(사이트|페이지|서비스|포트폴리오|챗봇).*(뭐|무엇|어떤|어던|용도|목적|정체|소개|설명|하는\s*곳|만든|쓰는)/i,
+  /(뭐|무엇|어떤|어던|용도|목적|정체).*(사이트|페이지|서비스|포트폴리오|챗봇)/i,
+  /(여기|이건|이거|이\s*공간).*(뭐|무엇|어떤|어던|용도|목적|정체|하는\s*곳)/i,
+  /^(무슨|어떤|어던)?\s*(용도|목적|정체)(야|예요|인가요|임|인지|죠)?[?.!\s]*$/i,
+  /^(뭐|무엇)\s*(하는|할\s*수\s*있는)\s*(곳|데|사이트|서비스)?(이야|인가요|예요|임|인지)?[?.!\s]*$/i,
+  /^왜\s*(만든|만들었|제작한|구현한)(거야|건가요|거예요|거죠|사이트야)?[?.!\s]*$/i,
+  /(아빠|엄마|친구|부모님|아버지|어머니|family|friend).*(사이트|페이지|서비스|포트폴리오).*(궁금|물어|뭐|무엇|어떤|어던|용도|목적)/i,
+  /(ask\s*oosu|askoosu).*(what|why|purpose|for|site|service|portfolio|about|explain)/i,
+  /(what|why).*(ask\s*oosu|askoosu|this\s*(site|service|portfolio))/i,
+];
+
 const OFF_TOPIC_PATTERNS = [
   /(오늘|내일).*(날씨|기온|비\s*와|눈\s*와)/,
   /(농담|유머).*해/,
@@ -182,7 +194,7 @@ const FOLLOW_UP_PATTERNS = [
 
 const PORTFOLIO_KEYWORD_PATTERNS = [
   /(askoosu|oosu|장우수|우수|portfolio|portfoli|project|aigram|instagram clone|sticks|stones|pylingo|javalingo|nomad|onjung)/i,
-  /(포트폴리오|프로젝트|개발자|기술|스택|경력|커리어|작업|협업|연락|이력서|레주메|위키|노션)/,
+  /(포트폴리오|프로젝트|개발자|기술|스택|경력|커리어|작업|협업|연락|이력서|레주메|위키|노션|사이트|서비스|페이지)/,
   /(react|typescript|spring|flutter|dart|java|python|node|backend|frontend|fullstack|ai|notion|wiki)/i,
 ];
 
@@ -285,6 +297,14 @@ export function classifyConversationIntent({
     return {
       intent: 'portfolio_factual',
       reason: 'public_life_notes_request',
+      modifiers,
+    };
+  }
+
+  if (matchesAny(trimmedQuestion, SITE_PURPOSE_PATTERNS)) {
+    return {
+      intent: 'portfolio_factual',
+      reason: 'site_purpose_request',
       modifiers,
     };
   }
