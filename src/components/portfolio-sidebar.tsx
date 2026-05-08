@@ -17,6 +17,7 @@ import {
   archiveStoredConversation,
   clearArchivedConversations,
   deleteArchivedConversation,
+  deleteStoredConversation,
   readArchivedConversations,
   readStoredConversations,
   restoreArchivedConversation,
@@ -66,26 +67,13 @@ type PortfolioSidebarProps = {
 
 type UiText = ReturnType<typeof getUiText>;
 
-const JIGGLE_ACTION_SELECTOR = '[data-jiggle-action="true"]';
-const ARCHIVE_ACTION_SELECTOR = '[data-archive-action="true"]';
+const SELECTION_ACTION_SELECTOR = '[data-selection-action="true"]';
 const ARCHIVE_ALL_ACTION_SELECTOR = '[data-archive-all-action="true"]';
-const CLOSE_REVEALED_ARCHIVE_EVENT = 'askoosu:close-revealed-archive';
-const SWIPE_REVEAL_DISTANCE = 44;
-const SWIPE_COMMIT_DISTANCE = 120;
-const SWIPE_MAX_DISTANCE = 96;
-const REVEALED_SWIPE_X = 56;
 
-function isJiggleAction(target: EventTarget | null) {
+function isSelectionAction(target: EventTarget | null) {
   return (
     target instanceof HTMLElement &&
-    Boolean(target.closest(JIGGLE_ACTION_SELECTOR))
-  );
-}
-
-function isArchiveAction(target: EventTarget | null) {
-  return (
-    target instanceof HTMLElement &&
-    Boolean(target.closest(ARCHIVE_ACTION_SELECTOR))
+    Boolean(target.closest(SELECTION_ACTION_SELECTOR))
   );
 }
 
@@ -109,7 +97,10 @@ export function PortfolioSidebar({
   const [open, setOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
-  const [jiggleMode, setJiggleMode] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedConversationId, setSelectedConversationId] = useState<
+    string | null
+  >(null);
   const [confirmArchiveAll, setConfirmArchiveAll] = useState(false);
   const [storedConversations, setStoredConversations] = useState<
     StoredChatConversation[]
@@ -147,19 +138,23 @@ export function PortfolioSidebar({
   );
 
   const handleNewChat = () => {
+    setSelectionMode(false);
+    setSelectedConversationId(null);
     onNewChat?.();
     setOpen(false);
   };
 
   const handleDrawerOpenChange = (nextOpen: boolean) => {
-    if (!nextOpen && jiggleMode) {
-      setJiggleMode(false);
+    if (!nextOpen && selectionMode) {
+      setSelectionMode(false);
+      setSelectedConversationId(null);
       return;
     }
 
     setOpen(nextOpen);
     if (!nextOpen) {
-      setJiggleMode(false);
+      setSelectionMode(false);
+      setSelectedConversationId(null);
       setConfirmArchiveAll(false);
     }
   };
@@ -174,24 +169,21 @@ export function PortfolioSidebar({
       return;
     }
 
-    if (!jiggleMode && !isArchiveAction(event.target)) {
-      window.dispatchEvent(new CustomEvent(CLOSE_REVEALED_ARCHIVE_EVENT));
-    }
-
-    if (!jiggleMode) return;
-    if (isJiggleAction(event.target)) return;
+    if (!selectionMode) return;
+    if (isSelectionAction(event.target)) return;
 
     event.preventDefault();
     event.stopPropagation();
     suppressNextDrawerClickRef.current = true;
-    setJiggleMode(false);
+    setSelectionMode(false);
+    setSelectedConversationId(null);
   };
 
   const handleDrawerContentClickCapture = (
     event: ReactMouseEvent<HTMLDivElement>
   ) => {
     if (!suppressNextDrawerClickRef.current) return;
-    if (isJiggleAction(event.target)) return;
+    if (isSelectionAction(event.target)) return;
 
     event.preventDefault();
     event.stopPropagation();
@@ -209,7 +201,10 @@ export function PortfolioSidebar({
   };
 
   const handleSelectConversation = (conversation: StoredChatConversation) => {
-    if (jiggleMode) return;
+    if (selectionMode) {
+      setSelectedConversationId(conversation.id);
+      return;
+    }
 
     if (onSelectConversation) {
       onSelectConversation(conversation);
@@ -233,6 +228,30 @@ export function PortfolioSidebar({
       setStoredConversations(archiveStoredConversation(conversationId));
     }
     setArchivedConversations(readArchivedConversations());
+    setSelectionMode(false);
+    setSelectedConversationId(null);
+  };
+
+  const handleDeleteConversation = (conversationId: string) => {
+    const nextConversations = deleteStoredConversation(conversationId);
+    setStoredConversations(nextConversations);
+    onConversationsChange?.(nextConversations);
+    setSelectionMode(false);
+    setSelectedConversationId(null);
+    if (activeConversationId === conversationId) {
+      handleNewChat();
+    }
+  };
+
+  const handleEnterSelectionMode = (conversationId?: string) => {
+    setSelectionMode(true);
+    setSelectedConversationId(conversationId ?? null);
+    setConfirmArchiveAll(false);
+  };
+
+  const handleExitSelectionMode = () => {
+    setSelectionMode(false);
+    setSelectedConversationId(null);
   };
 
   const handleArchiveAllConversations = () => {
@@ -247,7 +266,8 @@ export function PortfolioSidebar({
       setStoredConversations(archiveAllStoredConversations());
     }
     setArchivedConversations(readArchivedConversations());
-    setJiggleMode(false);
+    setSelectionMode(false);
+    setSelectedConversationId(null);
     setConfirmArchiveAll(false);
   };
 
@@ -336,8 +356,8 @@ export function PortfolioSidebar({
               return;
             }
 
-            if (jiggleMode) {
-              setJiggleMode(false);
+            if (selectionMode) {
+              handleExitSelectionMode();
               return;
             }
 
@@ -349,11 +369,11 @@ export function PortfolioSidebar({
               <PanelLeft className="h-5 w-5" />
               {text.menu}
             </DrawerTitle>
-            {jiggleMode ? (
+            {selectionMode ? (
               <button
                 type="button"
-                data-jiggle-action="true"
-                onClick={() => setJiggleMode(false)}
+                data-selection-action="true"
+                onClick={handleExitSelectionMode}
                 className="text-primary hover:bg-sidebar-accent inline-flex h-10 items-center rounded-lg px-3 text-sm font-semibold transition-colors"
               >
                 {text.done}
@@ -382,7 +402,18 @@ export function PortfolioSidebar({
               </button>
 
               <section className="space-y-3">
-                <SectionLabel icon={MessageSquare} label={text.chatHistory} />
+                <div className="flex items-center justify-between gap-3 px-1">
+                  <SectionLabel icon={MessageSquare} label={text.chatHistory} />
+                  {sortedConversations.length > 0 && !selectionMode && (
+                    <button
+                      type="button"
+                      onClick={() => handleEnterSelectionMode()}
+                      className="text-primary hover:bg-sidebar-accent inline-flex h-8 items-center rounded-lg px-2.5 text-xs font-semibold transition-colors"
+                    >
+                      {language === 'ko' ? '편집' : 'Edit'}
+                    </button>
+                  )}
+                </div>
                 {sortedConversations.length > 0 ? (
                   <div className="space-y-3">
                     <div className="space-y-2">
@@ -391,12 +422,14 @@ export function PortfolioSidebar({
                           key={conversation.id}
                           conversation={conversation}
                           isActive={activeConversationId === conversation.id}
-                          isJiggling={jiggleMode}
+                          isSelectionMode={selectionMode}
+                          isSelected={selectedConversationId === conversation.id}
                           language={language}
                           text={text}
                           onSelect={handleSelectConversation}
                           onArchive={handleArchiveConversation}
-                          onLongPress={() => setJiggleMode(true)}
+                          onDelete={handleDeleteConversation}
+                          onEnterSelection={handleEnterSelectionMode}
                         />
                       ))}
                     </div>
@@ -405,17 +438,19 @@ export function PortfolioSidebar({
                       data-archive-all-action="true"
                       onClick={handleArchiveAllConversations}
                       className={cn(
-                        'text-muted-foreground hover:text-destructive flex w-full items-center justify-center gap-2 rounded-lg border border-transparent px-4 py-2.5 text-sm font-medium transition-colors hover:bg-destructive/10',
+                        'text-muted-foreground hover:text-primary flex w-full items-center justify-center gap-2 rounded-lg border border-transparent px-4 py-2.5 text-sm font-medium transition-colors hover:bg-primary/10',
                         confirmArchiveAll &&
-                          'bg-destructive/10 text-destructive hover:bg-destructive/15'
+                          'bg-primary/10 text-primary hover:bg-primary/15'
                       )}
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Archive className="h-4 w-4" />
                       {confirmArchiveAll
                         ? language === 'ko'
-                          ? '한 번 더 눌러 전체 삭제'
-                          : 'Tap again to delete all'
-                        : text.deleteAll}
+                          ? '한 번 더 눌러 전체 보관'
+                          : 'Tap again to archive all'
+                        : language === 'ko'
+                          ? '전체 보관'
+                          : 'Archive all'}
                     </button>
                   </div>
                 ) : (
@@ -507,29 +542,29 @@ function SectionLabel({
 function ConversationHistoryItem({
   conversation,
   isActive,
-  isJiggling,
+  isSelectionMode,
+  isSelected,
   language,
   text,
   onSelect,
   onArchive,
-  onLongPress,
+  onDelete,
+  onEnterSelection,
 }: {
   conversation: StoredChatConversation;
   isActive: boolean;
-  isJiggling: boolean;
+  isSelectionMode: boolean;
+  isSelected: boolean;
   language: DisplayLanguage;
   text: UiText;
   onSelect: (conversation: StoredChatConversation) => void;
   onArchive: (conversationId: string) => void;
-  onLongPress: () => void;
+  onDelete: (conversationId: string) => void;
+  onEnterSelection: (conversationId: string) => void;
 }) {
-  const [isDeleteRevealed, setIsDeleteRevealed] = useState(false);
-  const [swipeX, setSwipeX] = useState(0);
   const startXRef = useRef(0);
   const startYRef = useRef(0);
-  const swipeXRef = useRef(0);
   const isPointerActiveRef = useRef(false);
-  const suppressClickRef = useRef(false);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clearLongPressTimer = () => {
@@ -538,27 +573,7 @@ function ConversationHistoryItem({
     longPressTimerRef.current = null;
   };
 
-  const closeRevealedArchive = () => {
-    setIsDeleteRevealed(false);
-    swipeXRef.current = 0;
-    setSwipeX(0);
-  };
-
-  useEffect(() => {
-    window.addEventListener(
-      CLOSE_REVEALED_ARCHIVE_EVENT,
-      closeRevealedArchive
-    );
-    return () => {
-      window.removeEventListener(
-        CLOSE_REVEALED_ARCHIVE_EVENT,
-        closeRevealedArchive
-      );
-    };
-  }, []);
-
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (isJiggling) return;
     if (event.pointerType === 'mouse' && event.button !== 0) return;
     if (event.pointerType === 'mouse' && event.buttons !== 1) return;
 
@@ -566,8 +581,6 @@ function ConversationHistoryItem({
     isPointerActiveRef.current = true;
     startXRef.current = event.clientX;
     startYRef.current = event.clientY;
-    swipeXRef.current = 0;
-    suppressClickRef.current = false;
 
     try {
       event.currentTarget.setPointerCapture(event.pointerId);
@@ -577,13 +590,11 @@ function ConversationHistoryItem({
 
     clearLongPressTimer();
     longPressTimerRef.current = setTimeout(() => {
-      setIsDeleteRevealed(false);
-      onLongPress();
+      onEnterSelection(conversation.id);
     }, 520);
   };
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (isJiggling) return;
     if (!isPointerActiveRef.current) return;
     if (event.pointerType === 'mouse' && event.buttons !== 1) {
       isPointerActiveRef.current = false;
@@ -594,20 +605,8 @@ function ConversationHistoryItem({
     const deltaX = event.clientX - startXRef.current;
     const deltaY = event.clientY - startYRef.current;
 
-    if (Math.abs(deltaX) > 10 && Math.abs(deltaX) > Math.abs(deltaY)) {
-      event.preventDefault();
-      event.stopPropagation();
+    if (Math.abs(deltaX) > 8 || Math.abs(deltaY) > 8) {
       clearLongPressTimer();
-      suppressClickRef.current = true;
-
-      const baseX = isDeleteRevealed ? REVEALED_SWIPE_X : 0;
-      const nextX = Math.max(
-        0,
-        Math.min(baseX + deltaX, SWIPE_MAX_DISTANCE)
-      );
-      swipeXRef.current = nextX;
-      setIsDeleteRevealed(false);
-      setSwipeX(nextX);
     }
   };
 
@@ -621,41 +620,12 @@ function ConversationHistoryItem({
     } catch {
       // Pointer capture can already be released if the gesture is cancelled.
     }
-
-    const finalX = swipeXRef.current;
-
-    if (finalX >= SWIPE_COMMIT_DISTANCE) {
-      onArchive(conversation.id);
-    } else if (finalX >= SWIPE_REVEAL_DISTANCE) {
-      setIsDeleteRevealed(true);
-    } else {
-      setIsDeleteRevealed(false);
-    }
-
-    swipeXRef.current = 0;
-    setSwipeX(0);
-  };
-
-  const handleSelect = () => {
-    if (suppressClickRef.current) {
-      suppressClickRef.current = false;
-      return;
-    }
-
-    if (isJiggling || isDeleteRevealed) {
-      setIsDeleteRevealed(false);
-      return;
-    }
-    onSelect(conversation);
   };
 
   return (
     <div
       data-testid={`conversation-row-${conversation.id}`}
-      className={cn(
-        'group relative overflow-visible rounded-xl select-none touch-pan-y',
-        isJiggling && 'askoosu-jiggle'
-      )}
+      className="group rounded-xl select-none touch-pan-y"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerEnd}
@@ -664,46 +634,16 @@ function ConversationHistoryItem({
     >
       <button
         type="button"
-        data-archive-action="true"
-        data-testid={`conversation-delete-${conversation.id}`}
-        onPointerDown={(event) => event.stopPropagation()}
-        onClick={() => onArchive(conversation.id)}
-        aria-label={text.archive}
-        className={cn(
-          'absolute inset-y-0 left-0 z-0 flex w-14 items-center justify-center rounded-xl bg-teal-500/80 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22)] transition-opacity dark:bg-teal-400/75 dark:text-slate-950',
-          isDeleteRevealed || swipeX > 0
-            ? 'pointer-events-auto opacity-100'
-            : 'pointer-events-none opacity-0'
-        )}
-      >
-        <Archive className="h-4.5 w-4.5" />
-      </button>
-
-      {isJiggling && (
-        <button
-          type="button"
-          data-jiggle-action="true"
-          data-testid={`conversation-jiggle-delete-${conversation.id}`}
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={() => onArchive(conversation.id)}
-          aria-label={text.deleteConversation}
-          className="absolute top-2 right-2 z-30 inline-flex h-6.5 w-6.5 items-center justify-center rounded-full bg-teal-500 text-white shadow-[0_6px_18px_rgba(13,148,136,0.24)] dark:bg-teal-400 dark:text-slate-950"
-        >
-          <X className="h-3.5 w-3.5" />
-        </button>
-      )}
-
-      <button
-        type="button"
+        data-selection-action={isSelectionMode ? 'true' : undefined}
         data-testid={`conversation-select-${conversation.id}`}
-        onClick={handleSelect}
-        style={{
-          transform: `translateX(${isDeleteRevealed ? REVEALED_SWIPE_X : swipeX}px)`,
-        }}
+        onClick={() => onSelect(conversation)}
         className={cn(
-          'relative z-10 flex w-full flex-col rounded-xl bg-background/88 px-4 py-3 text-left shadow-[0_1px_0_rgba(255,255,255,0.2),0_10px_26px_rgba(15,23,42,0.04)] transition-[transform,background-color,box-shadow] hover:bg-white/65 dark:bg-background/82 dark:hover:bg-white/[0.08]',
+          'relative flex w-full flex-col rounded-xl bg-background/88 px-4 py-3 text-left shadow-[0_1px_0_rgba(255,255,255,0.2),0_10px_26px_rgba(15,23,42,0.04)] transition-[background-color,box-shadow] hover:bg-white/65 dark:bg-background/82 dark:hover:bg-white/[0.08]',
+          isSelectionMode && 'pr-12',
           isActive &&
-            'text-foreground bg-white/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.16)] dark:bg-white/[0.1]'
+            'text-foreground bg-white/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.16)] dark:bg-white/[0.1]',
+          isSelected &&
+            'bg-primary/10 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.55),0_10px_28px_hsl(var(--primary)/0.08)] dark:bg-primary/15'
         )}
       >
         <span className="line-clamp-2 text-sm font-medium">
@@ -712,7 +652,36 @@ function ConversationHistoryItem({
         <span className="text-muted-foreground mt-1 text-xs">
           {formatConversationDate(conversation.updatedAt, language)}
         </span>
+        {isSelected && (
+          <span className="bg-primary text-primary-foreground absolute top-3 right-3 inline-flex h-6 w-6 items-center justify-center rounded-full">
+            <Check className="h-3.5 w-3.5" />
+          </span>
+        )}
       </button>
+      {isSelectionMode && isSelected && (
+        <div
+          data-selection-action="true"
+          onPointerDown={(event) => event.stopPropagation()}
+          className="mt-2 grid grid-cols-2 gap-2 rounded-xl bg-black/[0.04] p-1.5 dark:bg-white/[0.05]"
+        >
+          <button
+            type="button"
+            onClick={() => onArchive(conversation.id)}
+            className="text-primary hover:bg-primary/15 flex h-10 items-center justify-center gap-2 rounded-lg bg-primary/10 text-sm font-semibold transition-colors"
+          >
+            <Archive className="h-4 w-4" />
+            {text.archive}
+          </button>
+          <button
+            type="button"
+            onClick={() => onDelete(conversation.id)}
+            className="text-destructive hover:bg-destructive/15 flex h-10 items-center justify-center gap-2 rounded-lg bg-destructive/10 text-sm font-semibold transition-colors"
+          >
+            <Trash2 className="h-4 w-4" />
+            {language === 'ko' ? '삭제' : 'Delete'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

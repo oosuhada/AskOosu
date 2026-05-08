@@ -118,6 +118,14 @@ export function archiveStoredConversation(id: string) {
   return nextActiveConversations;
 }
 
+export function deleteStoredConversation(id: string) {
+  const nextActiveConversations = readStoredConversations().filter(
+    (item) => item.id !== id
+  );
+  writeStoredConversations(nextActiveConversations);
+  return nextActiveConversations;
+}
+
 export function archiveAllStoredConversations() {
   const activeConversations = readStoredConversations();
   if (activeConversations.length === 0) return [];
