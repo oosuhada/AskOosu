@@ -20,6 +20,7 @@
 
 # production
 /build
+/backups/
 
 # misc
 .DS_Store
@@ -35,6 +36,10 @@ yarn-error.log*
 .env
 .env.local
 .env*.local
+.env.production
+.env.production.local
+.env*.production
+*.env.production
 .env.*
 !.env.example
 

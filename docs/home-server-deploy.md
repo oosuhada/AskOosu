@@ -36,6 +36,7 @@ POSTGRES_DB=askoosu
 DATABASE_URL=postgres://askoosu:replace_with_a_strong_password@postgres:5432/askoosu
 ASKOOSU_POSTGRES_HOST_PORT=5433
 NEXT_PUBLIC_APP_URL=https://oosu.dev
+NEXT_PUBLIC_ASKOOSU_DEBUG_UI_ENABLED=false
 
 NOTION_API_KEY=
 NOTION_PAGE_ID=355a342869018181b578d73a791356af
@@ -60,14 +61,36 @@ RAG_SYNC_SECRET=
 ASKOOSU_RAG_ADMIN_TOKEN=
 ASKOOSU_RAG_STORE=postgres
 ASKOOSU_RAG_AUTO_SYNC=false
+ASKOOSU_RAG_RETRIEVAL=hybrid
+ASKOOSU_RAG_HYBRID_LEXICAL_WEIGHT=0.35
+ASKOOSU_RAG_HYBRID_VECTOR_WEIGHT=0.35
+ASKOOSU_RAG_HYBRID_ENTITY_WEIGHT=0.15
+ASKOOSU_RAG_HYBRID_INTENT_WEIGHT=0.10
+ASKOOSU_RAG_HYBRID_FRESHNESS_WEIGHT=0.05
 ASKOOSU_WIKI_VERSION=v10
 ASKOOSU_ANSWER_CACHE_TTL_HOURS=24
 ASKOOSU_RAG_SEARCH_CACHE_TTL_MS=300000
 ASKOOSU_RAG_SYNC_LOCK_TTL_SECONDS=300
 ASKOOSU_CHAT_MAX_REQUEST_BYTES=32768
+ASKOOSU_RATE_LIMIT_STORE=postgres
+ASKOOSU_FAQ_SEMANTIC_ROUTER_ENABLED=true
+ASKOOSU_FAQ_SEMANTIC_DIRECT_MIN=0.88
+ASKOOSU_FAQ_SEMANTIC_REWRITE_MIN=0.76
+ASKOOSU_FAQ_SEMANTIC_MARGIN_MIN=0.12
 ```
 
 Use real values only in `.env.production` or the shell environment. Do not commit secrets.
+
+Production debug UI is disabled by default. Keep `NEXT_PUBLIC_ASKOOSU_DEBUG_UI_ENABLED=false` unless you intentionally rebuild the app with guarded debug UI enabled for a short diagnostic window.
+
+Secure the production env file after editing it:
+
+```bash
+cd /Users/gabrieljang/Services/askoosu-orbstack
+scripts/prod-secure-env.sh
+```
+
+The script sets `.env.production` to mode `600` and never prints env values.
 
 Use the parent `AskOosu Wiki` page in `NOTION_PAGE_ID` first. If `/api/rag/sync` reports only a small block count or only the KO/EN child page titles, switch to direct child-page mode:
 
@@ -93,6 +116,8 @@ docker compose -f ops/orbstack/compose.prod.yml logs -f app
 ```
 
 The app binds only to `127.0.0.1:3010:3000`. Postgres binds to `127.0.0.1:${ASKOOSU_POSTGRES_HOST_PORT:-5433}:5432` for local debugging and SSH tunneling, so it does not collide with the existing Instagram Postgres on `127.0.0.1:5432`.
+
+The Compose app service has a lightweight healthcheck against `http://127.0.0.1:3000/api/health` with a 30s interval, 10s timeout, 3 retries, and 40s start period. The app and Postgres services also use `security_opt: no-new-privileges:true`. `read_only: true` is a possible future hardening step, but it is not enabled because the Next.js runtime/cache/tmp write needs should be tested first.
 
 ## Migration
 
@@ -124,9 +149,37 @@ After a successful `/api/rag/sync`, AskOosu invalidates generated `answer_cache`
 
 Rate limiting defaults to Postgres when `DATABASE_URL` or `POSTGRES_URL` is configured. Set `ASKOOSU_RATE_LIMIT_STORE=memory` only for local development without Postgres; production should keep the Postgres store so counters survive app restarts and remain consistent across future app instances.
 
+## Backups
+
+Create a timestamped custom-format Postgres dump from the Docker host:
+
+```bash
+cd /Users/gabrieljang/Services/askoosu-orbstack
+scripts/prod-backup-postgres.sh
+```
+
+The script reads `POSTGRES_USER` and `POSTGRES_DB` from `.env.production`, runs `pg_dump` inside the `postgres` Compose service, and writes backups under `backups/postgres/`. It never prints `POSTGRES_PASSWORD`. Keep the backup directory private and copy important backups off the Mac mini periodically.
+
+Restore rehearsal into a temporary database:
+
+```bash
+cd /Users/gabrieljang/Services/askoosu-orbstack
+set -a && source .env.production && set +a
+BACKUP_FILE=backups/postgres/<backup-file>.dump
+docker compose -f ops/orbstack/compose.prod.yml exec -T postgres \
+  createdb -U "$POSTGRES_USER" askoosu_restore_test
+docker compose -f ops/orbstack/compose.prod.yml exec -T postgres \
+  pg_restore --clean --if-exists -U "$POSTGRES_USER" \
+  -d askoosu_restore_test < "$BACKUP_FILE"
+docker compose -f ops/orbstack/compose.prod.yml exec -T postgres \
+  dropdb -U "$POSTGRES_USER" askoosu_restore_test
+```
+
+Only restore into the live `POSTGRES_DB` after a rehearsal succeeds and the app is stopped or in a planned maintenance window.
+
 ## Logs
 
-AskOosu writes structured JSON logs to stdout/stderr. Each line includes `ts`, `level`, `svc=askoosu`, `event`, `requestId`, and `route`, plus safe route/provider fields such as language, answer source, confidence, matched entity ids, source count, provider/model, latency, and error code. Logs do not include secrets, API keys, raw prompts, full user messages, full answers, or retrieved context.
+AskOosu writes structured JSON logs to stdout/stderr. Each line includes `ts`, `level`, `svc=askoosu`, `event`, `requestId`, and `route`, plus safe route/provider fields such as language, answer source, confidence, matched entity ids, source count, provider/model, latency, and error code. Provider attempts use the `ai.provider_attempt` event with `requestId`, `provider`, `model`, `attemptIndex`, `success`, `latencyMs`, `errorCode`, `groqKeyId`, `answerSource`, and `fallbackReason`. Logs do not include secrets, API keys, raw prompts, full user messages, full answers, or retrieved context.
 
 Inspect recent app logs from the Docker host:
 
@@ -138,6 +191,13 @@ With Compose:
 
 ```bash
 docker compose -f ops/orbstack/compose.prod.yml logs --since 1h app
+docker compose -f ops/orbstack/compose.prod.yml logs -f app
+```
+
+If `COMPOSE_FILE=ops/orbstack/compose.prod.yml` is exported in the shell, this shorter form also works:
+
+```bash
+docker compose logs -f app
 ```
 
 External log shipping can be added later by collecting container stdout/stderr and forwarding these JSON lines to the chosen logging backend.
@@ -296,6 +356,8 @@ Expected `/api/health` shape:
   }
 }
 ```
+
+The Docker app healthcheck uses this endpoint internally. A failing healthcheck usually means the app cannot serve `/api/health` or, when Postgres is configured, the DB probe is unavailable.
 
 ## Rollback
 
