@@ -62,6 +62,7 @@ const MOTION_CONFIG = {
 
 const ERROR_REPORT_EMAIL = 'gabrieldiseoul@gmail.com';
 const MAX_REQUEST_HISTORY_MESSAGES = 8;
+const LATEST_QUESTION_TOP_OFFSET = 72;
 
 type ChatErrorNotice = {
   title: string;
@@ -204,7 +205,10 @@ const Chat = () => {
       const containerRect = scrollContainer.getBoundingClientRect();
       const bubbleRect = latestUserBubble.getBoundingClientRect();
       const nextScrollTop =
-        scrollContainer.scrollTop + bubbleRect.top - containerRect.top - 12;
+        scrollContainer.scrollTop +
+        bubbleRect.top -
+        containerRect.top -
+        LATEST_QUESTION_TOP_OFFSET;
 
       scrollContainer.scrollTo({
         top: Math.max(0, nextScrollTop),
