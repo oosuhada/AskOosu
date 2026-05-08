@@ -100,6 +100,7 @@ interface ChatBubbleMessageProps
   extends React.HTMLAttributes<HTMLDivElement>,
     VariantProps<typeof chatBubbleMessageVariants> {
   isLoading?: boolean;
+  loadingLabel?: string;
 }
 
 const ChatBubbleMessage = React.forwardRef<
@@ -107,7 +108,15 @@ const ChatBubbleMessage = React.forwardRef<
   ChatBubbleMessageProps
 >(
   (
-    { className, variant, layout, isLoading = false, children, ...props },
+    {
+      className,
+      variant,
+      layout,
+      isLoading = false,
+      loadingLabel,
+      children,
+      ...props
+    },
     ref
   ) => (
     <div
@@ -120,7 +129,7 @@ const ChatBubbleMessage = React.forwardRef<
     >
       {isLoading ? (
         <div className="flex w-full items-center">
-          <MessageLoading />
+          <MessageLoading label={loadingLabel} />
         </div>
       ) : (
         children

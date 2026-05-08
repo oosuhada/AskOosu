@@ -30,7 +30,7 @@ export default function ChatBottombar({
   isToolInProgress,
   disabled = false,
   placeholder = 'Ask Oosu anything...',
-  thinkingLabel = 'Thinking...',
+  thinkingLabel = 'Drafting the answer...',
 }: ChatBottombarProps) {
   const inputRef = React.useRef<HTMLTextAreaElement>(null);
 
