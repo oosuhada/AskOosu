@@ -13,8 +13,13 @@ import {
   MessageSquareText,
   Sparkles,
 } from 'lucide-react';
-import type { ElementType } from 'react';
-import { useEffect, useState } from 'react';
+import type {
+  ElementType,
+  MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent,
+  WheelEvent as ReactWheelEvent,
+} from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface HelperBoostProps {
   submitQuery?: (query: string, suggestedQuestion?: SuggestedQuestion) => void;
@@ -43,6 +48,11 @@ export default function HelperBoost({
   hasReachedLimit = false,
 }: HelperBoostProps) {
   const [isVisible, setIsVisible] = useState(true);
+  const quickQuestionRailRef = useRef<HTMLDivElement | null>(null);
+  const dragStartXRef = useRef(0);
+  const dragStartScrollLeftRef = useRef(0);
+  const isDraggingRailRef = useRef(false);
+  const suppressRailClickRef = useRef(false);
   const { language } = useDisplayPreferences();
   const text = getUiText(language);
   const { visibleQuestions, askedQuestionIds } = useSuggestedQuestions(
@@ -56,12 +66,92 @@ export default function HelperBoost({
     setIsVisible(true);
   }, [activeSurface]);
 
+  const handleQuickQuestionWheel = (
+    event: ReactWheelEvent<HTMLDivElement>
+  ) => {
+    const rail = quickQuestionRailRef.current;
+    if (!rail || rail.scrollWidth <= rail.clientWidth) return;
+
+    const scrollDelta =
+      Math.abs(event.deltaX) > Math.abs(event.deltaY)
+        ? event.deltaX
+        : event.deltaY;
+    if (scrollDelta === 0) return;
+
+    event.preventDefault();
+    rail.scrollLeft += scrollDelta;
+  };
+
+  const handleQuickQuestionPointerDown = (
+    event: ReactPointerEvent<HTMLDivElement>
+  ) => {
+    if (event.pointerType !== 'mouse' || event.button !== 0) return;
+    const rail = quickQuestionRailRef.current;
+    if (!rail || rail.scrollWidth <= rail.clientWidth) return;
+
+    isDraggingRailRef.current = true;
+    suppressRailClickRef.current = false;
+    dragStartXRef.current = event.clientX;
+    dragStartScrollLeftRef.current = rail.scrollLeft;
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // Pointer capture can be unavailable for synthetic or cancelled gestures.
+    }
+  };
+
+  const handleQuickQuestionPointerMove = (
+    event: ReactPointerEvent<HTMLDivElement>
+  ) => {
+    if (!isDraggingRailRef.current) return;
+    const rail = quickQuestionRailRef.current;
+    if (!rail) return;
+
+    const deltaX = event.clientX - dragStartXRef.current;
+    if (Math.abs(deltaX) > 4) {
+      suppressRailClickRef.current = true;
+    }
+
+    event.preventDefault();
+    rail.scrollLeft = dragStartScrollLeftRef.current - deltaX;
+  };
+
+  const handleQuickQuestionPointerEnd = (
+    event: ReactPointerEvent<HTMLDivElement>
+  ) => {
+    if (!isDraggingRailRef.current) return;
+    isDraggingRailRef.current = false;
+
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    } catch {
+      // Pointer capture may already be released after a cancelled gesture.
+    }
+  };
+
+  const handleQuickQuestionClickCapture = (
+    event: ReactMouseEvent<HTMLDivElement>
+  ) => {
+    if (!suppressRailClickRef.current) return;
+    event.preventDefault();
+    event.stopPropagation();
+    suppressRailClickRef.current = false;
+  };
+
   return (
     <div className="w-full">
       {isVisible && (
         <div
+          ref={quickQuestionRailRef}
           id="quick-question-starters"
-          className="custom-scrollbar mb-2 w-full max-w-full touch-pan-x overflow-x-auto overflow-y-hidden overscroll-x-contain px-2 [-webkit-overflow-scrolling:touch]"
+          className="custom-scrollbar mb-2 w-full max-w-full cursor-grab touch-pan-x overflow-x-auto overflow-y-hidden overscroll-x-contain px-2 active:cursor-grabbing [-webkit-overflow-scrolling:touch]"
+          onWheel={handleQuickQuestionWheel}
+          onPointerDown={handleQuickQuestionPointerDown}
+          onPointerMove={handleQuickQuestionPointerMove}
+          onPointerUp={handleQuickQuestionPointerEnd}
+          onPointerCancel={handleQuickQuestionPointerEnd}
+          onPointerLeave={handleQuickQuestionPointerEnd}
+          onClickCapture={handleQuickQuestionClickCapture}
         >
           <div className="flex w-max min-w-full flex-nowrap justify-center gap-2 md:gap-3">
             {visibleQuestions.map((question) => {
