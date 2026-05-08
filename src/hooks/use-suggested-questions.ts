@@ -14,7 +14,8 @@ const ASKED_QUESTIONS_STORAGE_KEY = 'ask-oosu-asked-question-ids';
 
 export function useSuggestedQuestions(
   limit = 5,
-  surface: QuestionSurface = 'home'
+  surface: QuestionSurface = 'home',
+  conversationId?: string | null
 ) {
   const { language } = useDisplayPreferences();
   const [askedQuestionIds, setAskedQuestionIds] = useState<
@@ -22,8 +23,8 @@ export function useSuggestedQuestions(
   >([]);
 
   useEffect(() => {
-    setAskedQuestionIds(readAskedQuestionIds());
-  }, []);
+    setAskedQuestionIds(readAskedQuestionIds(conversationId));
+  }, [conversationId]);
 
   const allQuestions = useMemo(
     () => getSuggestedQuestions(language, surface),
@@ -34,28 +35,35 @@ export function useSuggestedQuestions(
     return allQuestions.slice(0, limit);
   }, [allQuestions, limit]);
 
-  const markQuestionAsked = useCallback((id: SuggestedQuestionId) => {
-    setAskedQuestionIds((currentIds) => {
-      if (currentIds.includes(id)) return currentIds;
+  const markQuestionAsked = useCallback(
+    (id: SuggestedQuestionId, targetConversationId = conversationId) => {
+      setAskedQuestionIds((currentIds) => {
+        const storedIds =
+          targetConversationId === conversationId
+            ? currentIds
+            : readAskedQuestionIds(targetConversationId);
+        if (storedIds.includes(id)) return currentIds;
 
-      const nextIds = [...currentIds, id];
-      writeAskedQuestionIds(nextIds);
-      return nextIds;
-    });
-  }, []);
+        const nextIds = [...storedIds, id];
+        writeAskedQuestionIds(nextIds, targetConversationId);
+        return targetConversationId === conversationId ? nextIds : currentIds;
+      });
+    },
+    [conversationId]
+  );
 
   const markQueryAsked = useCallback(
-    (query: string) => {
+    (query: string, targetConversationId = conversationId) => {
       const id = findSuggestedQuestionId(query);
-      if (id) markQuestionAsked(id);
+      if (id) markQuestionAsked(id, targetConversationId);
     },
-    [markQuestionAsked]
+    [conversationId, markQuestionAsked]
   );
 
   const resetAskedQuestions = useCallback(() => {
-    writeAskedQuestionIds([]);
+    writeAskedQuestionIds([], conversationId);
     setAskedQuestionIds([]);
-  }, []);
+  }, [conversationId]);
 
   return {
     allQuestions,
@@ -67,11 +75,16 @@ export function useSuggestedQuestions(
   };
 }
 
-function readAskedQuestionIds(): SuggestedQuestionId[] {
+function readAskedQuestionIds(
+  conversationId?: string | null
+): SuggestedQuestionId[] {
   if (typeof window === 'undefined') return [];
+  if (!conversationId) return [];
 
   try {
-    const rawValue = window.sessionStorage.getItem(ASKED_QUESTIONS_STORAGE_KEY);
+    const rawValue = window.sessionStorage.getItem(
+      getAskedQuestionsStorageKey(conversationId)
+    );
     if (!rawValue) return [];
 
     const parsedValue = JSON.parse(rawValue);
@@ -87,10 +100,18 @@ function readAskedQuestionIds(): SuggestedQuestionId[] {
   }
 }
 
-function writeAskedQuestionIds(ids: SuggestedQuestionId[]) {
+function writeAskedQuestionIds(
+  ids: SuggestedQuestionId[],
+  conversationId?: string | null
+) {
   if (typeof window === 'undefined') return;
+  if (!conversationId) return;
   window.sessionStorage.setItem(
-    ASKED_QUESTIONS_STORAGE_KEY,
+    getAskedQuestionsStorageKey(conversationId),
     JSON.stringify(ids)
   );
+}
+
+function getAskedQuestionsStorageKey(conversationId: string) {
+  return `${ASKED_QUESTIONS_STORAGE_KEY}:${conversationId}`;
 }

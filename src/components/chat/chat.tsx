@@ -32,6 +32,8 @@ import {
   type SuggestedQuestion,
 } from '@/lib/suggested-questions';
 import {
+  archiveAllStoredConversations,
+  archiveStoredConversation,
   createConversationId,
   readStoredConversations,
   upsertStoredConversation,
@@ -94,7 +96,11 @@ const Chat = () => {
   const conversationEndRef = useRef<HTMLDivElement>(null);
   const autoSubmittedQueryRef = useRef<string | null>(null);
   const { language, theme } = useDisplayPreferences();
-  const { markQuestionAsked, markQueryAsked } = useSuggestedQuestions(5);
+  const { markQuestionAsked, markQueryAsked } = useSuggestedQuestions(
+    5,
+    'home',
+    activeConversationId
+  );
   const text = getUiText(language);
   const loadingLabel = text.chatLoadingMessages[0];
   const chatTransport = useMemo(
@@ -301,9 +307,9 @@ const Chat = () => {
       setChatErrorNotice(null);
       clearError();
       if (exactSuggestedQuestion?.id) {
-        markQuestionAsked(exactSuggestedQuestion.id);
+        markQuestionAsked(exactSuggestedQuestion.id, conversationId);
       } else {
-        markQueryAsked(trimmedQuery);
+        markQueryAsked(trimmedQuery, conversationId);
       }
       setLoadingSubmit(true);
       void sendMessage(
@@ -409,6 +415,39 @@ const Chat = () => {
     [replaceChatUrl, setInput, setMessages]
   );
 
+  const handleArchiveConversation = useCallback(
+    (conversationId: string) => {
+      const nextConversations = archiveStoredConversation(conversationId);
+      setConversations(nextConversations);
+
+      if (activeConversationId === conversationId) {
+        setMessages([]);
+        setInput('');
+        setActiveConversationId(null);
+        setActiveSurface('home');
+        setLastSubmittedQuery(null);
+        setChatErrorNotice(null);
+        setLoadingSubmit(false);
+        autoSubmittedQueryRef.current = null;
+        replaceChatUrl();
+      }
+    },
+    [activeConversationId, replaceChatUrl, setInput, setMessages]
+  );
+
+  const handleArchiveAllConversations = useCallback(() => {
+    setConversations(archiveAllStoredConversations());
+    setMessages([]);
+    setInput('');
+    setActiveConversationId(null);
+    setActiveSurface('home');
+    setLastSubmittedQuery(null);
+    setChatErrorNotice(null);
+    setLoadingSubmit(false);
+    autoSubmittedQueryRef.current = null;
+    replaceChatUrl();
+  }, [replaceChatUrl, setInput, setMessages]);
+
   const latestUserText =
     (latestUserMessage ? getMessageText(latestUserMessage) : '') ||
     lastSubmittedQuery;
@@ -477,6 +516,9 @@ const Chat = () => {
         activeConversationId={activeConversationId}
         onNewChat={handleNewChat}
         onSelectConversation={handleSelectConversation}
+        onArchiveConversation={handleArchiveConversation}
+        onArchiveAllConversations={handleArchiveAllConversations}
+        onConversationsChange={setConversations}
       />
 
       <div className="absolute top-4 right-4 z-51 flex flex-col-reverse items-center justify-center gap-1 md:top-6 md:right-8 md:flex-row">
@@ -615,6 +657,7 @@ const Chat = () => {
               submitQuery={submitQuery}
               setInput={setInput}
               activeSurface={activeSurface}
+              conversationId={activeConversationId}
               hasReachedLimit={isToolInProgress}
             />
             <ChatBottombar
