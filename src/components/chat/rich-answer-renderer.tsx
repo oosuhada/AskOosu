@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { oosuProfile } from '@/lib/oosu-profile';
 import { cn } from '@/lib/utils';
 import type { QuestionSurface } from '@/data/question-surfaces.shared';
@@ -768,51 +768,27 @@ function MediaPreview({
 }
 
 function SourceBadgeList({ sourceChunkIds }: { sourceChunkIds: string[] }) {
-  const [isOpen, setIsOpen] = useState(false);
   const isDebugMode = useMemo(isDebugModeEnabled, []);
 
-  if (sourceChunkIds.length === 0) return null;
-
-  if (!isDebugMode) {
-    return (
-      <div className="space-y-2">
-        <button
-          type="button"
-          className="bg-background text-muted-foreground hover:bg-accent hover:text-accent-foreground inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition"
-          aria-expanded={isOpen}
-          onClick={() => setIsOpen((current) => !current)}
-        >
-          <BookOpenCheck className="h-3.5 w-3.5" />
-          {isOpen ? 'Hide sources' : 'View sources'}
-        </button>
-        {isOpen && (
-          <div className="flex flex-wrap gap-2" aria-label="Portfolio sources">
-            {sourceChunkIds.map((chunkId, index) => (
-              <span
-                key={`${chunkId}-${index}`}
-                className="bg-background text-muted-foreground inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs"
-              >
-                <BookOpenCheck className="text-foreground h-3.5 w-3.5 shrink-0" />
-                <span>{formatVisitorSourceLabel(chunkId)}</span>
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  }
+  if (sourceChunkIds.length === 0 || !isDebugMode) return null;
 
   return (
-    <div className="flex flex-wrap gap-2" aria-label="Source chunk badges">
-      {sourceChunkIds.map((chunkId) => (
-        <span
-          key={chunkId}
-          className="bg-background text-muted-foreground inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs"
-        >
-          <BookOpenCheck className="text-foreground h-3.5 w-3.5 shrink-0" />
-          <span className="min-w-0 truncate">{chunkId}</span>
-        </span>
-      ))}
+    <div className="space-y-2" aria-label="Source chunk debug metadata">
+      <span className="inline-flex items-center gap-1.5 rounded-lg border border-violet-300 bg-violet-50 px-2.5 py-1 text-xs font-medium text-violet-800 dark:border-violet-700/70 dark:bg-violet-950/30 dark:text-violet-200">
+        <BookOpenCheck className="h-3.5 w-3.5" />
+        Debug sources
+      </span>
+      <div className="flex flex-wrap gap-2">
+        {sourceChunkIds.map((chunkId) => (
+          <span
+            key={chunkId}
+            className="bg-background text-muted-foreground inline-flex max-w-full items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs"
+          >
+            <BookOpenCheck className="text-foreground h-3.5 w-3.5 shrink-0" />
+            <span className="min-w-0 truncate">{chunkId}</span>
+          </span>
+        ))}
+      </div>
     </div>
   );
 }
@@ -1121,15 +1097,6 @@ function parseString(value: unknown) {
 function isDebugModeEnabled() {
   if (typeof window === 'undefined') return false;
   return new URLSearchParams(window.location.search).get('debug') === 'true';
-}
-
-function formatVisitorSourceLabel(chunkId: string) {
-  if (chunkId.startsWith('project.')) return 'Project data';
-  if (chunkId.startsWith('profile.')) return 'Profile data';
-  if (chunkId.startsWith('skills.')) return 'Skills data';
-  if (chunkId.startsWith('ai.')) return 'AI workflow data';
-  if (chunkId.startsWith('career.')) return 'Career data';
-  return 'Portfolio data';
 }
 
 function parseStringArray(value: unknown) {
