@@ -43,6 +43,13 @@ import { buildAnswerConfidenceSignals } from '@/lib/rag/chat-context';
 import { getSuggestedQuestionRoutingMeta } from '@/lib/suggested-questions';
 import { normalizeQuestion } from '@/lib/chat/text';
 import {
+  getLocalQuestionPreview,
+  logError,
+  logInfo,
+  logWarn,
+  toLogError,
+} from '@/lib/observability/logger';
+import {
   checkRateLimit,
   checkRateLimitForKey,
   rateLimitHeaders,
@@ -73,9 +80,11 @@ type ValidatedChatRequestBody = Omit<
 > & {
   messages: UIMessage[];
   preferredLanguage: ChatLanguage | null;
+  requestByteSize: number;
   source: 'quick_question' | 'typed_question' | null;
 };
 
+const CHAT_ROUTE = 'api/chat';
 const DEFAULT_MAX_CHAT_REQUEST_BYTES = 32 * 1024;
 const MAX_MESSAGES = 20;
 const MAX_MESSAGE_PARTS = 80;
@@ -101,6 +110,15 @@ export async function POST(req: Request) {
     });
 
     if (!rateLimit.allowed) {
+      logWarn('chat.request_failed', {
+        requestId,
+        route: CHAT_ROUTE,
+        status: 429,
+        errorCode: 'rate_limited',
+        scope: 'api:chat',
+        retryAfter: rateLimit.retryAfter,
+        language: responseLanguage,
+      });
       return createRateLimitedJsonResponse({
         requestId,
         language: responseLanguage,
@@ -115,6 +133,18 @@ export async function POST(req: Request) {
       getLatestUserText(messages),
       body.preferredLanguage
     );
+    logInfo('chat.request_received', {
+      requestId,
+      route: CHAT_ROUTE,
+      requestByteSize: body.requestByteSize,
+      messageCount: messages.length,
+      source: body.source,
+      language: responseLanguage,
+      conversationIdPresent: Boolean(body.conversationId),
+      questionLength: getLatestUserText(messages).length,
+      questionPreview: getLocalQuestionPreview(getLatestUserText(messages)),
+    });
+
     const sessionRateLimit = body.conversationId
       ? await checkRateLimitForKey(body.conversationId, {
           scope: 'api:chat:session',
@@ -127,6 +157,15 @@ export async function POST(req: Request) {
       : null;
 
     if (sessionRateLimit && !sessionRateLimit.allowed) {
+      logWarn('chat.request_failed', {
+        requestId,
+        route: CHAT_ROUTE,
+        status: 429,
+        errorCode: 'rate_limited',
+        scope: 'api:chat:session',
+        retryAfter: sessionRateLimit.retryAfter,
+        language: responseLanguage,
+      });
       return createRateLimitedJsonResponse({
         requestId,
         language: responseLanguage,
@@ -149,54 +188,63 @@ export async function POST(req: Request) {
       source: body.source,
     });
 
+    logInfo('chat.route_decided', {
+      requestId,
+      route: CHAT_ROUTE,
+      ...getRouteDecisionLogData(
+        orchestration.mode === 'direct'
+          ? orchestration.directAnswer.metadata
+          : orchestration.metadata
+      ),
+    });
+
     if (orchestration.mode === 'direct') {
+      const directAnswer = orchestration.directAnswer;
+      const directMetadata = directAnswer.metadata;
       const isCacheHit =
         orchestration.routeDecision.mode === 'faq_direct' ||
         orchestration.routeDecision.mode === 'answer_cache';
-      logChatRouteEvent({
-        requestId,
-        triggerId: body.starterQuestionId,
-        faqId: body.faqId ?? orchestration.directAnswer.metadata.faqId,
-        lang: orchestration.language,
-        cacheHit: isCacheHit,
-        skippedGroq: true,
-        renderSpec:
-          body.renderSpec ?? orchestration.directAnswer.metadata.renderSpecKey,
-        routeDecision: orchestration.routeDecision,
-      });
+      if (isCacheHit) {
+        logInfo('chat.cache_hit', {
+          requestId,
+          route: CHAT_ROUTE,
+          cacheKind: orchestration.routeDecision.mode,
+          ...getRouteDecisionLogData(directMetadata),
+        });
+      }
+
+      if (orchestration.routeDecision.mode === 'safe_fallback') {
+        logInfo('chat.fallback_returned', {
+          requestId,
+          route: CHAT_ROUTE,
+          ...getRouteDecisionLogData(directMetadata),
+        });
+      }
 
       void recordAiProviderUsage({
         provider: isCacheHit ? 'cache' : 'guardrail',
-        model: orchestration.directAnswer.metadata.answerSource,
+        model: directMetadata.answerSource,
         route: 'api/chat',
-        answerSource: orchestration.directAnswer.metadata.answerSource,
-        metadata: toUsageMetadata(orchestration.directAnswer.metadata),
+        answerSource: directMetadata.answerSource,
+        metadata: toUsageMetadata(directMetadata),
         latencyMs: 0,
         success: true,
       }).catch((error) => {
-        console.warn('Unable to record cache usage:', {
+        logWarn('chat.provider_usage_write_failed', {
           requestId,
-          error: getSafeErrorLog(error),
+          route: CHAT_ROUTE,
+          provider: isCacheHit ? 'cache' : 'guardrail',
+          answerSource: directMetadata.answerSource,
+          error: toLogError(error),
         });
       });
 
       return createDirectAnswerResponse({
         messages,
-        answer: orchestration.directAnswer.answer,
-        metadata: orchestration.directAnswer.metadata,
+        answer: directAnswer.answer,
+        metadata: directMetadata,
       });
     }
-
-    logChatRouteEvent({
-      requestId,
-      triggerId: body.starterQuestionId,
-      faqId: body.faqId ?? orchestration.metadata.faqId,
-      lang: orchestration.language,
-      cacheHit: false,
-      skippedGroq: false,
-      renderSpec: body.renderSpec ?? orchestration.metadata.renderSpecKey,
-      routeDecision: orchestration.routeDecision,
-    });
 
     const tools = {
       getProjects,
@@ -213,8 +261,17 @@ export async function POST(req: Request) {
       tools,
       ignoreIncompleteToolCalls: true,
     });
+    const primaryModel = getPrimaryChatModelWithSelectionFallback(requestId);
+    logInfo('chat.generation_started', {
+      requestId,
+      route: CHAT_ROUTE,
+      ...getRouteDecisionLogData(orchestration.metadata),
+      provider: primaryModel.provider,
+      model: primaryModel.modelName,
+    });
+
     const generation = await generateAnswerWithFallback({
-      primaryModel: getPrimaryChatModelWithSelectionFallback(),
+      primaryModel,
       system: [
         SYSTEM_PROMPT_TEXT,
         RAG_CHAT_SYSTEM_PROMPT,
@@ -225,10 +282,25 @@ export async function POST(req: Request) {
       messages: promptMessages,
       tools,
       stopWhen: stepCountIs(2),
-      usageMetadata: toUsageMetadata(orchestration.metadata),
+      usageMetadata: {
+        route: CHAT_ROUTE,
+        ...toUsageMetadata(orchestration.metadata),
+      },
+    });
+    const leakDetected = detectPromptLeakage(generation.answer);
+    logInfo('chat.generation_completed', {
+      requestId,
+      route: CHAT_ROUTE,
+      ...getRouteDecisionLogData(orchestration.metadata),
+      provider: generation.provider,
+      model: generation.model,
+      answerSource: generation.answerSource,
+      latencyMs: generation.latencyMs,
+      skippedGroq: generation.provider !== 'groq',
+      leakDetected,
     });
 
-    if (detectPromptLeakage(generation.answer)) {
+    if (leakDetected) {
       const safeAnswer = buildInsufficientEvidenceAnswer(
         orchestration.language
       );
@@ -265,16 +337,11 @@ export async function POST(req: Request) {
         errorCode: PROMPT_LEAK_DETECTED_ERROR_CODE,
       };
 
-      logChatRouteEvent({
+      logInfo('chat.fallback_returned', {
         requestId,
-        triggerId: body.starterQuestionId,
-        faqId: body.faqId ?? orchestration.metadata.faqId,
-        lang: orchestration.language,
-        cacheHit: false,
-        skippedGroq: true,
-        renderSpec: body.renderSpec ?? orchestration.metadata.renderSpecKey,
-        routeDecision: responseMetadata.routeDecision,
+        route: CHAT_ROUTE,
         errorCode: PROMPT_LEAK_DETECTED_ERROR_CODE,
+        ...getRouteDecisionLogData(responseMetadata),
       });
 
       return createDirectAnswerResponse({
@@ -312,9 +379,12 @@ export async function POST(req: Request) {
 
     if (shouldCacheAnswer(cacheInput)) {
       void upsertCachedAnswer(cacheInput).catch((error) => {
-        console.warn('Unable to write answer cache:', {
+        logWarn('chat.cache_write_failed', {
           requestId,
-          error: getSafeErrorLog(error),
+          route: CHAT_ROUTE,
+          answerSource: generation.answerSource,
+          confidence: responseMetadata.confidence,
+          error: toLogError(error),
         });
       });
     }
@@ -326,6 +396,14 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     if (err instanceof ChatRequestError) {
+      logWarn('chat.request_failed', {
+        requestId,
+        route: CHAT_ROUTE,
+        status: err.status,
+        errorCode: 'bad_request',
+        reason: err.message,
+      });
+
       return Response.json(
         {
           ok: false,
@@ -345,20 +423,18 @@ export async function POST(req: Request) {
       error: err,
       errorCode,
     });
-    logChatRouteEvent({
+    logError('chat.request_failed', {
       requestId,
-      triggerId: body?.starterQuestionId,
-      faqId: body?.faqId ?? fallbackMetadata.faqId,
-      lang: fallbackMetadata.language,
-      cacheHit: false,
-      skippedGroq: true,
-      renderSpec: body?.renderSpec ?? fallbackMetadata.renderSpecKey,
-      routeDecision: fallbackMetadata.routeDecision,
+      route: CHAT_ROUTE,
       errorCode,
+      error: toLogError(err),
+      ...getRouteDecisionLogData(fallbackMetadata),
     });
-    console.error('[api/chat] unhandled error', {
+    logInfo('chat.fallback_returned', {
       requestId,
-      error: getSafeErrorLog(err),
+      route: CHAT_ROUTE,
+      errorCode,
+      ...getRouteDecisionLogData(fallbackMetadata),
     });
 
     return createDirectAnswerResponse({
@@ -369,6 +445,25 @@ export async function POST(req: Request) {
   }
 }
 
+function getRouteDecisionLogData(metadata: ChatAnswerMetadata) {
+  return {
+    language: metadata.language,
+    answerSource: metadata.answerSource,
+    confidence: metadata.confidence,
+    matchedFaqId: metadata.matchedFaqId ?? null,
+    matchedEntityIds: metadata.matchedEntityIds,
+    sourceCount: metadata.sources.length,
+    warningCount: metadata.warnings.length,
+    hasTodoEvidence: metadata.hasTodoEvidence,
+    skippedGroq: metadata.skippedGroq,
+    provider: metadata.provider,
+    model: metadata.model,
+    routeMode: metadata.routeDecision.mode,
+    routeReason: metadata.routeDecision.reason,
+    renderSpec: metadata.renderSpecKey,
+  };
+}
+
 function toUsageMetadata(metadata: unknown): Record<string, unknown> {
   if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
     return {};
@@ -377,6 +472,7 @@ function toUsageMetadata(metadata: unknown): Record<string, unknown> {
   const record = metadata as Record<string, unknown>;
   const allowedKeys = [
     'requestId',
+    'route',
     'faqId',
     'triggerId',
     'matchedFaqId',
@@ -469,10 +565,13 @@ async function readChatRequestBody(
     throw new ChatRequestError('Invalid JSON body.', 400);
   }
 
-  return validateChatRequestBody(parsedBody);
+  return validateChatRequestBody(parsedBody, byteLength);
 }
 
-function validateChatRequestBody(value: unknown): ValidatedChatRequestBody {
+function validateChatRequestBody(
+  value: unknown,
+  requestByteSize: number
+): ValidatedChatRequestBody {
   const parsedBody = chatRequestBodySchema.safeParse(value);
   if (!parsedBody.success) {
     throw new ChatRequestError('Malformed chat request.', 400);
@@ -504,6 +603,7 @@ function validateChatRequestBody(value: unknown): ValidatedChatRequestBody {
   return {
     messages,
     preferredLanguage,
+    requestByteSize,
     conversationId: body.conversationId ?? null,
     ...routing,
   };
@@ -538,7 +638,10 @@ function resolveRequestRouting({
 }: {
   body: z.infer<typeof chatRequestBodySchema>;
   preferredLanguage: ChatLanguage | null;
-}): Omit<ValidatedChatRequestBody, 'messages' | 'preferredLanguage'> {
+}): Omit<
+  ValidatedChatRequestBody,
+  'messages' | 'preferredLanguage' | 'requestByteSize'
+> {
   if (body.source !== 'quick_question') {
     return {
       conversationId: body.conversationId ?? null,
@@ -768,22 +871,6 @@ function uniqueWarnings(warnings: string[]) {
   );
 }
 
-function getSafeErrorLog(error: unknown) {
-  if (error instanceof Error) {
-    return {
-      name: error.name,
-      message: error.message,
-    };
-  }
-
-  return {
-    message:
-      typeof error === 'string'
-        ? error.slice(0, 240)
-        : 'Unknown non-error throw',
-  };
-}
-
 function getMaxChatRequestBytes() {
   const rawValue = process.env.ASKOOSU_CHAT_MAX_REQUEST_BYTES;
   const parsedValue = rawValue ? Number.parseInt(rawValue, 10) : Number.NaN;
@@ -792,12 +879,20 @@ function getMaxChatRequestBytes() {
     : DEFAULT_MAX_CHAT_REQUEST_BYTES;
 }
 
-function getPrimaryChatModelWithSelectionFallback() {
+function getPrimaryChatModelWithSelectionFallback(requestId: string) {
   try {
     return getChatModel();
   } catch (error) {
     const fallbackModel = getFallbackChatModel();
     if (!fallbackModel) throw error;
+    logWarn('ai.provider_selection_fallback', {
+      requestId,
+      route: CHAT_ROUTE,
+      provider: fallbackModel.provider,
+      model: fallbackModel.modelName,
+      errorCode: getChatProviderErrorCode(error),
+      error: toLogError(error),
+    });
     return fallbackModel;
   }
 }
@@ -826,39 +921,4 @@ function buildSafeFallbackRouteDecision({
       : 'provider_unavailable',
     confidence,
   };
-}
-
-function logChatRouteEvent({
-  requestId,
-  triggerId,
-  faqId,
-  lang,
-  cacheHit,
-  skippedGroq,
-  renderSpec,
-  routeDecision,
-  errorCode,
-}: {
-  requestId: string;
-  triggerId?: string | null;
-  faqId?: string | null;
-  lang?: string | null;
-  cacheHit: boolean;
-  skippedGroq: boolean;
-  renderSpec?: string | null;
-  routeDecision?: AnswerRouteDecision | null;
-  errorCode?: string | null;
-}) {
-  console.info('[api/chat]', {
-    requestId,
-    triggerId: triggerId ?? null,
-    faqId: faqId ?? null,
-    lang: lang ?? null,
-    cacheHit,
-    skippedGroq,
-    renderSpec: renderSpec ?? null,
-    routeMode: routeDecision?.mode ?? null,
-    routeReason: routeDecision?.reason ?? null,
-    errorCode: errorCode ?? null,
-  });
 }
