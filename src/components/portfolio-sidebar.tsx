@@ -115,6 +115,16 @@ export function PortfolioSidebar({
     setOpen(false);
   };
 
+  const handleDrawerOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && jiggleMode) {
+      setJiggleMode(false);
+      return;
+    }
+
+    setOpen(nextOpen);
+    if (!nextOpen) setJiggleMode(false);
+  };
+
   const openSettings = () => {
     setSettingsOpen(true);
     setOpen(false);
@@ -181,7 +191,7 @@ export function PortfolioSidebar({
 
   return (
     <>
-      <Drawer direction="left" open={open} onOpenChange={setOpen}>
+      <Drawer direction="left" open={open} onOpenChange={handleDrawerOpenChange}>
         <aside
           className={cn(
             'text-sidebar-foreground bg-background/50 fixed inset-y-0 left-0 z-[60] hidden w-[72px] flex-col items-center border-r border-white/45 py-7 shadow-[inset_1px_0_0_rgba(255,255,255,0.18),0_18px_50px_rgba(15,23,42,0.12)] backdrop-blur-2xl md:flex dark:border-white/10 dark:bg-white/[0.08] dark:shadow-[inset_1px_0_0_rgba(255,255,255,0.08),0_18px_50px_rgba(0,0,0,0.35)]',
@@ -221,7 +231,18 @@ export function PortfolioSidebar({
           <Menu className="h-6 w-6" />
         </DrawerTrigger>
 
-        <DrawerContent className="text-sidebar-foreground bg-background/70 z-[70] flex w-[min(420px,calc(100vw-24px))] max-w-none flex-col rounded-none border-r border-white/45 shadow-[inset_1px_0_0_rgba(255,255,255,0.16),0_24px_70px_rgba(15,23,42,0.18)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.08] dark:shadow-[inset_1px_0_0_rgba(255,255,255,0.08),0_24px_70px_rgba(0,0,0,0.42)]">
+        <DrawerContent
+          className="text-sidebar-foreground bg-background/70 z-[70] flex w-[min(420px,calc(100vw-24px))] max-w-none flex-col rounded-none border-r border-white/45 shadow-[inset_1px_0_0_rgba(255,255,255,0.16),0_24px_70px_rgba(15,23,42,0.18)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.08] dark:shadow-[inset_1px_0_0_rgba(255,255,255,0.08),0_24px_70px_rgba(0,0,0,0.42)]"
+          onPointerDownOutside={(event) => {
+            event.preventDefault();
+            if (jiggleMode) {
+              setJiggleMode(false);
+              return;
+            }
+
+            setOpen(false);
+          }}
+        >
           <DrawerHeader className="flex flex-row items-center justify-between px-8 pt-8 pb-5">
             <DrawerTitle className="flex items-center gap-3 text-2xl">
               <PanelLeft className="h-5 w-5" />
@@ -249,34 +270,32 @@ export function PortfolioSidebar({
               </button>
 
               <section className="space-y-3">
-                <div className="flex items-center justify-between gap-3">
-                  <SectionLabel icon={MessageSquare} label={text.chatHistory} />
-                  {sortedConversations.length > 0 && (
+                <SectionLabel icon={MessageSquare} label={text.chatHistory} />
+                {sortedConversations.length > 0 ? (
+                  <div className="space-y-3">
+                    <div className="space-y-2">
+                      {sortedConversations.map((conversation) => (
+                        <ConversationHistoryItem
+                          key={conversation.id}
+                          conversation={conversation}
+                          isActive={activeConversationId === conversation.id}
+                          isJiggling={jiggleMode}
+                          language={language}
+                          text={text}
+                          onSelect={handleSelectConversation}
+                          onArchive={handleArchiveConversation}
+                          onLongPress={() => setJiggleMode(true)}
+                        />
+                      ))}
+                    </div>
                     <button
                       type="button"
                       onClick={handleArchiveAllConversations}
-                      className="text-muted-foreground hover:text-destructive inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs transition-colors"
+                      className="text-muted-foreground hover:text-destructive flex w-full items-center justify-center gap-2 rounded-lg border border-transparent px-4 py-2.5 text-sm font-medium transition-colors hover:bg-destructive/10"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 className="h-4 w-4" />
                       {text.deleteAll}
                     </button>
-                  )}
-                </div>
-                {sortedConversations.length > 0 ? (
-                  <div className="space-y-2">
-                    {sortedConversations.map((conversation) => (
-                      <ConversationHistoryItem
-                        key={conversation.id}
-                        conversation={conversation}
-                        isActive={activeConversationId === conversation.id}
-                        isJiggling={jiggleMode}
-                        language={language}
-                        text={text}
-                        onSelect={handleSelectConversation}
-                        onArchive={handleArchiveConversation}
-                        onLongPress={() => setJiggleMode(true)}
-                      />
-                    ))}
                   </div>
                 ) : (
                   <p className="text-sidebar-foreground/65 px-4 py-3 text-sm">
@@ -415,8 +434,8 @@ function ConversationHistoryItem({
   const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     const deltaX = event.clientX - startXRef.current;
     if (Math.abs(deltaX) > 12) clearLongPressTimer();
-    if (deltaX < -44) setIsDeleteRevealed(true);
-    if (deltaX > 24) setIsDeleteRevealed(false);
+    if (deltaX > 44) setIsDeleteRevealed(true);
+    if (deltaX < -24) setIsDeleteRevealed(false);
   };
 
   const handlePointerEnd = () => {
@@ -435,7 +454,7 @@ function ConversationHistoryItem({
     <div
       data-testid={`conversation-row-${conversation.id}`}
       className={cn(
-        'group relative overflow-hidden rounded-lg',
+        'group relative overflow-visible rounded-lg',
         isJiggling && 'askoosu-jiggle'
       )}
       onPointerDown={handlePointerDown}
@@ -449,7 +468,12 @@ function ConversationHistoryItem({
         data-testid={`conversation-delete-${conversation.id}`}
         onClick={() => onArchive(conversation.id)}
         aria-label={text.deleteConversation}
-        className="bg-destructive text-destructive-foreground absolute inset-y-0 right-0 flex w-16 items-center justify-center"
+        className={cn(
+          'bg-destructive text-destructive-foreground absolute inset-y-0 left-0 z-0 flex w-16 items-center justify-center rounded-lg transition-opacity',
+          isDeleteRevealed
+            ? 'pointer-events-auto opacity-100'
+            : 'pointer-events-none opacity-0'
+        )}
       >
         <Trash2 className="h-5 w-5" />
       </button>
@@ -460,7 +484,7 @@ function ConversationHistoryItem({
           data-testid={`conversation-jiggle-delete-${conversation.id}`}
           onClick={() => onArchive(conversation.id)}
           aria-label={text.deleteConversation}
-          className="bg-destructive text-destructive-foreground absolute -top-1 -left-1 z-20 inline-flex h-6 w-6 items-center justify-center rounded-full shadow-sm"
+          className="bg-destructive text-destructive-foreground absolute -top-2 -right-2 z-30 inline-flex h-6 w-6 items-center justify-center rounded-full shadow-sm ring-2 ring-background"
         >
           <X className="h-3.5 w-3.5" />
         </button>
@@ -471,8 +495,8 @@ function ConversationHistoryItem({
         data-testid={`conversation-select-${conversation.id}`}
         onClick={handleSelect}
         className={cn(
-          'relative z-10 flex w-full flex-col rounded-lg bg-background/70 px-4 py-3 text-left transition-transform hover:bg-white/35 dark:bg-background/50 dark:hover:bg-white/[0.07]',
-          isDeleteRevealed && '-translate-x-16',
+          'relative z-10 flex w-full flex-col rounded-lg bg-background/85 px-4 py-3 text-left shadow-[0_1px_0_rgba(255,255,255,0.18)] transition-transform hover:bg-white/60 dark:bg-background/80 dark:hover:bg-white/[0.07]',
+          isDeleteRevealed && 'translate-x-16',
           isActive &&
             'text-foreground bg-white/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.16)] dark:bg-white/[0.1]'
         )}
@@ -692,7 +716,7 @@ function ArchivePanel({
           <button
             type="button"
             onClick={onClear}
-            className="text-destructive hover:bg-destructive/10 flex w-full items-center justify-center gap-2 rounded-lg px-3 py-3 text-sm font-medium transition-colors"
+            className="text-destructive hover:bg-destructive/10 mx-1 flex w-[calc(100%-0.5rem)] items-center justify-center gap-2 rounded-lg px-3 py-3 text-sm font-medium transition-colors"
           >
             <Trash2 className="h-4 w-4" />
             {text.clearArchive}
