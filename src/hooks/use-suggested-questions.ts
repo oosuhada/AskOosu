@@ -2,6 +2,7 @@
 
 import {
   findSuggestedQuestionId,
+  getRelatedSuggestedQuestionIds,
   getSuggestedQuestions,
   suggestedQuestionIds,
   type SuggestedQuestionId,
@@ -11,6 +12,7 @@ import { useDisplayPreferences } from '@/lib/use-display-preferences';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 const ASKED_QUESTIONS_STORAGE_KEY = 'ask-oosu-asked-question-ids';
+const ASKED_QUESTIONS_CHANGE_EVENT = 'askoosu:asked-questions-change';
 
 export function useSuggestedQuestions(
   limit = 5,
@@ -23,7 +25,30 @@ export function useSuggestedQuestions(
   >([]);
 
   useEffect(() => {
-    setAskedQuestionIds(readAskedQuestionIds(conversationId));
+    const refreshAskedQuestionIds = () => {
+      setAskedQuestionIds(readAskedQuestionIds(conversationId));
+    };
+
+    refreshAskedQuestionIds();
+
+    const handleAskedQuestionsChange = (event: Event) => {
+      const changedConversationId = (
+        event as CustomEvent<{ conversationId?: string | null }>
+      ).detail?.conversationId;
+      if (changedConversationId !== conversationId) return;
+      refreshAskedQuestionIds();
+    };
+
+    window.addEventListener(
+      ASKED_QUESTIONS_CHANGE_EVENT,
+      handleAskedQuestionsChange
+    );
+    return () => {
+      window.removeEventListener(
+        ASKED_QUESTIONS_CHANGE_EVENT,
+        handleAskedQuestionsChange
+      );
+    };
   }, [conversationId]);
 
   const allQuestions = useMemo(
@@ -37,17 +62,22 @@ export function useSuggestedQuestions(
 
   const markQuestionAsked = useCallback(
     (id: SuggestedQuestionId, targetConversationId = conversationId) => {
-      setAskedQuestionIds((currentIds) => {
-        const storedIds =
-          targetConversationId === conversationId
-            ? currentIds
-            : readAskedQuestionIds(targetConversationId);
-        if (storedIds.includes(id)) return currentIds;
+      const storedIds = readAskedQuestionIds(targetConversationId);
+      const nextIds = [
+        ...new Set([...storedIds, ...getRelatedSuggestedQuestionIds(id)]),
+      ];
 
-        const nextIds = [...storedIds, id];
-        writeAskedQuestionIds(nextIds, targetConversationId);
-        return targetConversationId === conversationId ? nextIds : currentIds;
-      });
+      if (nextIds.length === storedIds.length) {
+        if (targetConversationId === conversationId) {
+          setAskedQuestionIds(storedIds);
+        }
+        return;
+      }
+
+      writeAskedQuestionIds(nextIds, targetConversationId);
+      if (targetConversationId === conversationId) {
+        setAskedQuestionIds(nextIds);
+      }
     },
     [conversationId]
   );
@@ -90,11 +120,14 @@ function readAskedQuestionIds(
     const parsedValue = JSON.parse(rawValue);
     if (!Array.isArray(parsedValue)) return [];
 
-    return parsedValue.filter(
+    const storedIds = parsedValue.filter(
       (id): id is SuggestedQuestionId =>
         typeof id === 'string' &&
         suggestedQuestionIds.includes(id as SuggestedQuestionId)
     );
+    return [
+      ...new Set(storedIds.flatMap((id) => getRelatedSuggestedQuestionIds(id))),
+    ];
   } catch {
     return [];
   }
@@ -110,6 +143,13 @@ function writeAskedQuestionIds(
     getAskedQuestionsStorageKey(conversationId),
     JSON.stringify(ids)
   );
+  window.queueMicrotask(() => {
+    window.dispatchEvent(
+      new CustomEvent(ASKED_QUESTIONS_CHANGE_EVENT, {
+        detail: { conversationId },
+      })
+    );
+  });
 }
 
 function getAskedQuestionsStorageKey(conversationId: string) {

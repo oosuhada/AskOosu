@@ -168,6 +168,6 @@ pre {
 }
 
 .askoosu-jiggle {
-  animation: askoosu-jiggle 160ms ease-in-out infinite;
+  animation: askoosu-jiggle 320ms ease-in-out infinite;
   transform-origin: 50% 50%;
 }

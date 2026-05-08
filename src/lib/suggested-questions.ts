@@ -8,9 +8,11 @@ import {
 } from '@/data/question-surfaces.shared';
 import type { DisplayLanguage } from '@/lib/preferences';
 
-export const suggestedQuestionIds = questionSurfacesKo.map(
-  (question) => question.id
-);
+export const suggestedQuestionIds = [
+  ...new Set(
+    [...questionSurfacesKo, ...questionSurfacesEn].map((question) => question.id)
+  ),
+];
 
 export type SuggestedQuestionId = string;
 
@@ -128,6 +130,20 @@ export function getSuggestedQuestionRoutingMeta(
     intentId: faqIntentIds[question.faqId] ?? question.faqId,
     text: question.quickLabel,
   };
+}
+
+export function getRelatedSuggestedQuestionIds(id: string | null | undefined) {
+  const question = getSuggestedQuestionMeta(id);
+  if (!question) return id ? [id] : [];
+
+  const relatedIds = new Set<string>([question.id]);
+  for (const surfaceQuestion of [...questionSurfacesKo, ...questionSurfacesEn]) {
+    if (surfaceQuestion.faqId === question.faqId) {
+      relatedIds.add(surfaceQuestion.id);
+    }
+  }
+
+  return [...relatedIds];
 }
 
 export function findSuggestedQuestionId(query: string) {

@@ -25,9 +25,9 @@ import {
 import { cn } from '@/lib/utils';
 import { useDisplayPreferences } from '@/lib/use-display-preferences';
 import {
-  Check,
   Archive,
   ArchiveRestore,
+  Check,
   ChevronRight,
   Code2,
   ExternalLink,
@@ -46,7 +46,11 @@ import {
   X,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import type { ElementType, PointerEvent as ReactPointerEvent } from 'react';
+import type {
+  ElementType,
+  MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent,
+} from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 type PortfolioSidebarProps = {
@@ -61,6 +65,28 @@ type PortfolioSidebarProps = {
 };
 
 type UiText = ReturnType<typeof getUiText>;
+
+const JIGGLE_ACTION_SELECTOR = '[data-jiggle-action="true"]';
+const ARCHIVE_ACTION_SELECTOR = '[data-archive-action="true"]';
+const CLOSE_REVEALED_ARCHIVE_EVENT = 'askoosu:close-revealed-archive';
+const SWIPE_REVEAL_DISTANCE = 34;
+const SWIPE_COMMIT_DISTANCE = 68;
+const SWIPE_MAX_DISTANCE = 76;
+const REVEALED_SWIPE_X = 56;
+
+function isJiggleAction(target: EventTarget | null) {
+  return (
+    target instanceof HTMLElement &&
+    Boolean(target.closest(JIGGLE_ACTION_SELECTOR))
+  );
+}
+
+function isArchiveAction(target: EventTarget | null) {
+  return (
+    target instanceof HTMLElement &&
+    Boolean(target.closest(ARCHIVE_ACTION_SELECTOR))
+  );
+}
 
 export function PortfolioSidebar({
   conversations,
@@ -82,6 +108,7 @@ export function PortfolioSidebar({
   const [archivedConversations, setArchivedConversations] = useState<
     StoredChatConversation[]
   >([]);
+  const suppressNextDrawerClickRef = useRef(false);
   const router = useRouter();
   const { language, theme, setLanguagePreference, setThemePreference } =
     useDisplayPreferences();
@@ -123,6 +150,33 @@ export function PortfolioSidebar({
 
     setOpen(nextOpen);
     if (!nextOpen) setJiggleMode(false);
+  };
+
+  const handleDrawerContentPointerDownCapture = (
+    event: ReactPointerEvent<HTMLDivElement>
+  ) => {
+    if (!jiggleMode && !isArchiveAction(event.target)) {
+      window.dispatchEvent(new CustomEvent(CLOSE_REVEALED_ARCHIVE_EVENT));
+    }
+
+    if (!jiggleMode) return;
+    if (isJiggleAction(event.target)) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    suppressNextDrawerClickRef.current = true;
+    setJiggleMode(false);
+  };
+
+  const handleDrawerContentClickCapture = (
+    event: ReactMouseEvent<HTMLDivElement>
+  ) => {
+    if (!suppressNextDrawerClickRef.current) return;
+    if (isJiggleAction(event.target)) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    suppressNextDrawerClickRef.current = false;
   };
 
   const openSettings = () => {
@@ -191,10 +245,15 @@ export function PortfolioSidebar({
 
   return (
     <>
-      <Drawer direction="left" open={open} onOpenChange={handleDrawerOpenChange}>
+      <Drawer
+        direction="left"
+        open={open}
+        onOpenChange={handleDrawerOpenChange}
+        handleOnly
+      >
         <aside
           className={cn(
-            'text-sidebar-foreground bg-background/50 fixed inset-y-0 left-0 z-[60] hidden w-[72px] flex-col items-center border-r border-white/45 py-7 shadow-[inset_1px_0_0_rgba(255,255,255,0.18),0_18px_50px_rgba(15,23,42,0.12)] backdrop-blur-2xl md:flex dark:border-white/10 dark:bg-white/[0.08] dark:shadow-[inset_1px_0_0_rgba(255,255,255,0.08),0_18px_50px_rgba(0,0,0,0.35)]',
+            'text-sidebar-foreground fixed inset-y-0 left-0 z-[60] hidden w-[72px] flex-col items-center border-r border-slate-200/70 bg-white/58 py-7 shadow-[inset_1px_0_0_rgba(255,255,255,0.55),0_18px_50px_rgba(15,23,42,0.14)] backdrop-blur-2xl md:flex dark:border-white/10 dark:bg-white/[0.08] dark:shadow-[inset_1px_0_0_rgba(255,255,255,0.08),0_18px_50px_rgba(0,0,0,0.35)]',
             className
           )}
         >
@@ -226,13 +285,15 @@ export function PortfolioSidebar({
 
         <DrawerTrigger
           aria-label={text.menu}
-          className="text-sidebar-foreground bg-background/50 hover:bg-background/65 fixed top-4 left-4 z-[60] inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_12px_30px_rgba(15,23,42,0.12)] backdrop-blur-2xl transition-colors md:hidden dark:border-white/10 dark:bg-white/[0.08] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_12px_30px_rgba(0,0,0,0.32)] dark:hover:bg-white/[0.12]"
+          className="text-sidebar-foreground fixed top-4 left-4 z-[60] inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200/70 bg-white/62 shadow-[inset_0_1px_0_rgba(255,255,255,0.55),0_12px_30px_rgba(15,23,42,0.16)] backdrop-blur-2xl transition-colors hover:bg-white/75 md:hidden dark:border-white/10 dark:bg-white/[0.08] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_12px_30px_rgba(0,0,0,0.32)] dark:hover:bg-white/[0.12]"
         >
           <Menu className="h-6 w-6" />
         </DrawerTrigger>
 
         <DrawerContent
-          className="text-sidebar-foreground bg-background/70 z-[70] flex w-[min(420px,calc(100vw-24px))] max-w-none flex-col rounded-none border-r border-white/45 shadow-[inset_1px_0_0_rgba(255,255,255,0.16),0_24px_70px_rgba(15,23,42,0.18)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.08] dark:shadow-[inset_1px_0_0_rgba(255,255,255,0.08),0_24px_70px_rgba(0,0,0,0.42)]"
+          className="text-sidebar-foreground z-[70] flex w-[min(420px,calc(100vw-24px))] max-w-none flex-col rounded-none border-r border-slate-200/70 bg-white/68 shadow-[inset_1px_0_0_rgba(255,255,255,0.55),0_24px_70px_rgba(15,23,42,0.2)] backdrop-blur-2xl dark:border-white/10 dark:bg-white/[0.08] dark:shadow-[inset_1px_0_0_rgba(255,255,255,0.08),0_24px_70px_rgba(0,0,0,0.42)]"
+          onPointerDownCapture={handleDrawerContentPointerDownCapture}
+          onClickCapture={handleDrawerContentClickCapture}
           onPointerDownOutside={(event) => {
             event.preventDefault();
             if (jiggleMode) {
@@ -248,14 +309,25 @@ export function PortfolioSidebar({
               <PanelLeft className="h-5 w-5" />
               {text.menu}
             </DrawerTitle>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              aria-label={text.close}
-              className="hover:bg-sidebar-accent inline-flex h-10 w-10 items-center justify-center rounded-lg transition-colors"
-            >
-              <X className="h-5 w-5" />
-            </button>
+            {jiggleMode ? (
+              <button
+                type="button"
+                data-jiggle-action="true"
+                onClick={() => setJiggleMode(false)}
+                className="text-primary hover:bg-sidebar-accent inline-flex h-10 items-center rounded-lg px-3 text-sm font-semibold transition-colors"
+              >
+                {text.done}
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                aria-label={text.close}
+                className="hover:bg-sidebar-accent inline-flex h-10 w-10 items-center justify-center rounded-lg transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            )}
           </DrawerHeader>
 
           <ScrollArea className="min-h-0 flex-1 px-6">
@@ -273,7 +345,7 @@ export function PortfolioSidebar({
                 <SectionLabel icon={MessageSquare} label={text.chatHistory} />
                 {sortedConversations.length > 0 ? (
                   <div className="space-y-3">
-                    <div className="space-y-2">
+                    <div className="space-y-2 pr-3">
                       {sortedConversations.map((conversation) => (
                         <ConversationHistoryItem
                           key={conversation.id}
@@ -308,16 +380,6 @@ export function PortfolioSidebar({
 
           <div className="border-t border-white/40 px-6 py-5 dark:border-white/10">
             <div className="grid gap-2">
-              {jiggleMode && (
-                <button
-                  type="button"
-                  onClick={() => setJiggleMode(false)}
-                  className="hover:bg-sidebar-accent flex w-full items-center gap-4 rounded-lg px-4 py-3 text-left text-sm font-medium transition-colors"
-                >
-                  <Check className="h-5 w-5" />
-                  {text.done}
-                </button>
-              )}
               <button
                 type="button"
                 onClick={openSettings}
@@ -413,7 +475,12 @@ function ConversationHistoryItem({
   onLongPress: () => void;
 }) {
   const [isDeleteRevealed, setIsDeleteRevealed] = useState(false);
+  const [swipeX, setSwipeX] = useState(0);
   const startXRef = useRef(0);
+  const startYRef = useRef(0);
+  const swipeXRef = useRef(0);
+  const isPointerActiveRef = useRef(false);
+  const suppressClickRef = useRef(false);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clearLongPressTimer = () => {
@@ -422,8 +489,43 @@ function ConversationHistoryItem({
     longPressTimerRef.current = null;
   };
 
+  const closeRevealedArchive = () => {
+    setIsDeleteRevealed(false);
+    swipeXRef.current = 0;
+    setSwipeX(0);
+  };
+
+  useEffect(() => {
+    window.addEventListener(
+      CLOSE_REVEALED_ARCHIVE_EVENT,
+      closeRevealedArchive
+    );
+    return () => {
+      window.removeEventListener(
+        CLOSE_REVEALED_ARCHIVE_EVENT,
+        closeRevealedArchive
+      );
+    };
+  }, []);
+
   const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (isJiggling) return;
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+    if (event.pointerType === 'mouse' && event.buttons !== 1) return;
+
+    event.stopPropagation();
+    isPointerActiveRef.current = true;
     startXRef.current = event.clientX;
+    startYRef.current = event.clientY;
+    swipeXRef.current = 0;
+    suppressClickRef.current = false;
+
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // Synthetic or cancelled pointer events may not be capturable.
+    }
+
     clearLongPressTimer();
     longPressTimerRef.current = setTimeout(() => {
       setIsDeleteRevealed(false);
@@ -432,17 +534,65 @@ function ConversationHistoryItem({
   };
 
   const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (isJiggling) return;
+    if (!isPointerActiveRef.current) return;
+    if (event.pointerType === 'mouse' && event.buttons !== 1) {
+      isPointerActiveRef.current = false;
+      clearLongPressTimer();
+      return;
+    }
+
     const deltaX = event.clientX - startXRef.current;
-    if (Math.abs(deltaX) > 12) clearLongPressTimer();
-    if (deltaX > 44) setIsDeleteRevealed(true);
-    if (deltaX < -24) setIsDeleteRevealed(false);
+    const deltaY = event.clientY - startYRef.current;
+
+    if (Math.abs(deltaX) > 10 && Math.abs(deltaX) > Math.abs(deltaY)) {
+      event.preventDefault();
+      event.stopPropagation();
+      clearLongPressTimer();
+      suppressClickRef.current = true;
+
+      const baseX = isDeleteRevealed ? REVEALED_SWIPE_X : 0;
+      const nextX = Math.max(
+        0,
+        Math.min(baseX + deltaX, SWIPE_MAX_DISTANCE)
+      );
+      swipeXRef.current = nextX;
+      setIsDeleteRevealed(false);
+      setSwipeX(nextX);
+    }
   };
 
-  const handlePointerEnd = () => {
+  const handlePointerEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (!isPointerActiveRef.current) return;
+    isPointerActiveRef.current = false;
     clearLongPressTimer();
+
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    } catch {
+      // Pointer capture can already be released if the gesture is cancelled.
+    }
+
+    const finalX = swipeXRef.current;
+
+    if (finalX >= SWIPE_COMMIT_DISTANCE) {
+      onArchive(conversation.id);
+    } else if (finalX >= SWIPE_REVEAL_DISTANCE) {
+      setIsDeleteRevealed(true);
+    } else {
+      setIsDeleteRevealed(false);
+    }
+
+    swipeXRef.current = 0;
+    setSwipeX(0);
   };
 
   const handleSelect = () => {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
+
     if (isJiggling || isDeleteRevealed) {
       setIsDeleteRevealed(false);
       return;
@@ -454,7 +604,7 @@ function ConversationHistoryItem({
     <div
       data-testid={`conversation-row-${conversation.id}`}
       className={cn(
-        'group relative overflow-visible rounded-lg',
+        'group relative overflow-visible rounded-lg pr-3 select-none touch-pan-y',
         isJiggling && 'askoosu-jiggle'
       )}
       onPointerDown={handlePointerDown}
@@ -465,28 +615,32 @@ function ConversationHistoryItem({
     >
       <button
         type="button"
+        data-archive-action="true"
         data-testid={`conversation-delete-${conversation.id}`}
+        onPointerDown={(event) => event.stopPropagation()}
         onClick={() => onArchive(conversation.id)}
-        aria-label={text.deleteConversation}
+        aria-label={text.archive}
         className={cn(
-          'bg-destructive text-destructive-foreground absolute inset-y-0 left-0 z-0 flex w-16 items-center justify-center rounded-lg transition-opacity',
-          isDeleteRevealed
+          'absolute inset-y-0 left-0 z-0 flex w-14 items-center justify-center rounded-lg bg-teal-500/85 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22)] transition-opacity dark:bg-teal-400/80 dark:text-slate-950',
+          isDeleteRevealed || swipeX > 0
             ? 'pointer-events-auto opacity-100'
             : 'pointer-events-none opacity-0'
         )}
       >
-        <Trash2 className="h-5 w-5" />
+        <Archive className="h-5 w-5" />
       </button>
 
       {isJiggling && (
         <button
           type="button"
+          data-jiggle-action="true"
           data-testid={`conversation-jiggle-delete-${conversation.id}`}
+          onPointerDown={(event) => event.stopPropagation()}
           onClick={() => onArchive(conversation.id)}
           aria-label={text.deleteConversation}
-          className="bg-destructive text-destructive-foreground absolute -top-2 -right-2 z-30 inline-flex h-6 w-6 items-center justify-center rounded-full shadow-sm ring-2 ring-background"
+          className="absolute top-0 right-3 z-30 inline-flex h-7 w-7 translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-teal-500 text-white shadow-md dark:bg-teal-400 dark:text-slate-950"
         >
-          <X className="h-3.5 w-3.5" />
+          <X className="h-4 w-4" />
         </button>
       )}
 
@@ -494,9 +648,11 @@ function ConversationHistoryItem({
         type="button"
         data-testid={`conversation-select-${conversation.id}`}
         onClick={handleSelect}
+        style={{
+          transform: `translateX(${isDeleteRevealed ? REVEALED_SWIPE_X : swipeX}px)`,
+        }}
         className={cn(
-          'relative z-10 flex w-full flex-col rounded-lg bg-background/85 px-4 py-3 text-left shadow-[0_1px_0_rgba(255,255,255,0.18)] transition-transform hover:bg-white/60 dark:bg-background/80 dark:hover:bg-white/[0.07]',
-          isDeleteRevealed && 'translate-x-16',
+          'relative z-10 flex w-full flex-col rounded-lg bg-background/85 px-4 py-3 text-left shadow-[0_1px_0_rgba(255,255,255,0.18)] transition-[transform,background-color] hover:bg-white/60 dark:bg-background/80 dark:hover:bg-white/[0.07]',
           isActive &&
             'text-foreground bg-white/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.16)] dark:bg-white/[0.1]'
         )}

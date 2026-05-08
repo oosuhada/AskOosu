@@ -61,55 +61,56 @@ export default function HelperBoost({
       {isVisible && (
         <div
           id="quick-question-starters"
-          className="mb-2 flex flex-wrap justify-center gap-2 px-2 md:gap-3 md:px-0"
+          className="custom-scrollbar mb-2 w-full max-w-full touch-pan-x overflow-x-auto overflow-y-hidden overscroll-x-contain px-2 [-webkit-overflow-scrolling:touch]"
         >
-          {visibleQuestions.map((question) => {
-            const isAsked = askedQuestionSet.has(question.id);
-            const { color, icon: Icon } = questionConfig[question.id] ?? {
-              color: '#64748B',
-              icon: Sparkles,
-            };
+          <div className="flex w-max min-w-full flex-nowrap justify-center gap-2 md:gap-3">
+            {visibleQuestions.map((question) => {
+              const isAsked = askedQuestionSet.has(question.id);
+              const { color, icon: Icon } = questionConfig[question.id] ?? {
+                color: '#64748B',
+                icon: Sparkles,
+              };
 
-            return (
-              <button
-                type="button"
-                key={question.id}
-                onClick={() => {
-                  if (!submitQuery || hasReachedLimit) return;
-                  submitQuery(question.displayQuestion, question);
-                }}
-                className={`focus-visible:border-ring focus-visible:ring-ring/50 relative inline-flex h-auto w-fit max-w-[82vw] shrink-0 snap-center items-center justify-start gap-2.5 overflow-hidden rounded-2xl border bg-clip-padding px-3.5 py-2.5 text-left whitespace-normal backdrop-blur-2xl backdrop-contrast-125 backdrop-saturate-150 transition-all outline-none before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[radial-gradient(circle_at_18%_0%,rgba(255,255,255,0.22),transparent_52%)] before:opacity-60 focus-visible:ring-[3px] md:max-w-[25rem] md:px-4 md:py-3 dark:before:bg-[radial-gradient(circle_at_18%_0%,rgba(255,255,255,0.12),transparent_52%)] ${
-                  hasReachedLimit
-                    ? 'border-border/50 cursor-not-allowed bg-[linear-gradient(135deg,rgba(255,255,255,0.09),rgba(255,255,255,0.02))] opacity-50 dark:bg-[linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))]'
-                    : isAsked
-                      ? 'cursor-pointer border-slate-200/55 bg-white/20 text-slate-400 shadow-none hover:bg-white/30 active:scale-[0.98] dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-500 dark:hover:bg-white/[0.06]'
-                    : 'text-foreground/90 cursor-pointer border-white/35 bg-[linear-gradient(135deg,rgba(255,255,255,0.16),rgba(255,255,255,0.035))] shadow-[inset_0_1px_0_rgba(255,255,255,0.24),inset_0_-1px_0_rgba(255,255,255,0.07),0_10px_30px_rgba(15,23,42,0.06)] hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.22),rgba(255,255,255,0.055))] active:scale-[0.98] dark:border-white/18 dark:bg-[linear-gradient(135deg,rgba(255,255,255,0.075),rgba(255,255,255,0.018))] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.15),inset_0_-1px_0_rgba(255,255,255,0.035),0_10px_30px_rgba(0,0,0,0.16)] dark:hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.11),rgba(255,255,255,0.03))]'
-                }`}
-                disabled={hasReachedLimit}
-                aria-label={
-                  isAsked
-                    ? `Already asked starter question: ${question.displayQuestion}`
-                    : `Ask starter question: ${question.displayQuestion}`
-                }
-              >
-                <div className="relative z-10 flex min-w-0 items-center gap-2.5">
-                  <Icon
-                    className="shrink-0"
-                    size={17}
-                    strokeWidth={2}
-                    color={isAsked ? '#CBD5E1' : color}
-                  />
-                  <span
-                    className={`line-clamp-2 min-w-0 text-sm leading-snug font-medium md:text-base ${
-                      isAsked ? 'text-slate-400 dark:text-slate-500' : ''
-                    }`}
-                  >
-                    {question.quickLabel}
-                  </span>
-                </div>
-              </button>
-            );
-          })}
+              return (
+                <button
+                  type="button"
+                  key={question.id}
+                  onClick={() => {
+                    if (!submitQuery) return;
+                    submitQuery(question.displayQuestion, question);
+                  }}
+                  className={`focus-visible:border-ring focus-visible:ring-ring/50 relative inline-flex h-auto w-fit max-w-[82vw] shrink-0 snap-center items-center justify-start gap-2.5 overflow-hidden rounded-2xl border bg-clip-padding px-3.5 py-2.5 text-left whitespace-nowrap backdrop-blur-2xl backdrop-contrast-125 backdrop-saturate-150 transition-all outline-none before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[radial-gradient(circle_at_18%_0%,rgba(255,255,255,0.22),transparent_52%)] before:opacity-60 focus-visible:ring-[3px] md:max-w-[25rem] md:px-4 md:py-3 dark:before:bg-[radial-gradient(circle_at_18%_0%,rgba(255,255,255,0.12),transparent_52%)] ${
+                    hasReachedLimit
+                      ? 'border-border/50 cursor-pointer bg-[linear-gradient(135deg,rgba(255,255,255,0.09),rgba(255,255,255,0.02))] opacity-70 active:scale-[0.98] dark:bg-[linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))]'
+                      : isAsked
+                        ? 'cursor-pointer border-slate-200/55 bg-white/20 text-slate-400 shadow-none hover:bg-white/30 active:scale-[0.98] dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-500 dark:hover:bg-white/[0.06]'
+                      : 'text-foreground/90 cursor-pointer border-white/35 bg-[linear-gradient(135deg,rgba(255,255,255,0.16),rgba(255,255,255,0.035))] shadow-[inset_0_1px_0_rgba(255,255,255,0.24),inset_0_-1px_0_rgba(255,255,255,0.07),0_10px_30px_rgba(15,23,42,0.06)] hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.22),rgba(255,255,255,0.055))] active:scale-[0.98] dark:border-white/18 dark:bg-[linear-gradient(135deg,rgba(255,255,255,0.075),rgba(255,255,255,0.018))] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.15),inset_0_-1px_0_rgba(255,255,255,0.035),0_10px_30px_rgba(0,0,0,0.16)] dark:hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.11),rgba(255,255,255,0.03))]'
+                  }`}
+                  aria-label={
+                    isAsked
+                      ? `Already asked starter question: ${question.displayQuestion}`
+                      : `Ask starter question: ${question.displayQuestion}`
+                  }
+                >
+                  <div className="relative z-10 flex min-w-0 items-center gap-2.5">
+                    <Icon
+                      className="shrink-0"
+                      size={17}
+                      strokeWidth={2}
+                      color={isAsked ? '#CBD5E1' : color}
+                    />
+                    <span
+                      className={`min-w-0 truncate text-sm leading-snug font-medium md:text-base ${
+                        isAsked ? 'text-slate-400 dark:text-slate-500' : ''
+                      }`}
+                    >
+                      {question.quickLabel}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
