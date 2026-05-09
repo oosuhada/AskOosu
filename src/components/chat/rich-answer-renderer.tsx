@@ -845,15 +845,7 @@ function ProfileHeroCard({ language }: { language: 'ko' | 'en' }) {
     <section className="overflow-hidden rounded-lg border bg-white/80 shadow-sm dark:bg-white/[0.05]">
       <div className="grid gap-4 p-4 md:grid-cols-[0.95fr_1.15fr] md:items-center">
         <div className="overflow-hidden rounded-lg border bg-slate-100 dark:bg-slate-900">
-          <Image
-            src="/images/profile/oosu-profile-slow.gif"
-            alt="Oosu profile portrait"
-            width={432}
-            height={572}
-            unoptimized
-            className="aspect-[4/3] h-full w-full object-contain object-bottom md:aspect-[5/4]"
-            sizes="(min-width: 768px) 360px, calc(100vw - 3rem)"
-          />
+          <ProgressiveProfileMotion />
         </div>
         <div className="min-w-0 space-y-3">
           <div className="space-y-1">
@@ -894,6 +886,51 @@ function ProfileHeroCard({ language }: { language: 'ko' | 'en' }) {
         </div>
       </div>
     </section>
+  );
+}
+
+function ProgressiveProfileMotion() {
+  const [canLoadMotion, setCanLoadMotion] = useState(false);
+  const [isMotionLoaded, setIsMotionLoaded] = useState(false);
+
+  return (
+    <div
+      className="relative aspect-[4/3] h-full w-full md:aspect-[5/4]"
+      role="img"
+      aria-label="Oosu profile portrait"
+    >
+      <Image
+        src="/images/profile/oosu-profile-poster.webp"
+        alt=""
+        width={432}
+        height={572}
+        priority
+        onLoad={() => setCanLoadMotion(true)}
+        onError={() => setCanLoadMotion(true)}
+        className={cn(
+          'absolute inset-0 h-full w-full object-contain object-bottom transition-opacity duration-300',
+          isMotionLoaded ? 'opacity-0' : 'opacity-100'
+        )}
+        sizes="(min-width: 768px) 360px, calc(100vw - 3rem)"
+      />
+      {canLoadMotion && (
+        <Image
+          src="/images/profile/oosu-profile-motion.webp"
+          alt=""
+          width={300}
+          height={397}
+          aria-hidden="true"
+          decoding="async"
+          loading="eager"
+          unoptimized
+          onLoad={() => setIsMotionLoaded(true)}
+          className={cn(
+            'absolute inset-0 h-full w-full object-contain object-bottom transition-opacity duration-300',
+            isMotionLoaded ? 'opacity-100' : 'opacity-0'
+          )}
+        />
+      )}
+    </div>
   );
 }
 
