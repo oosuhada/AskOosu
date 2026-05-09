@@ -125,14 +125,15 @@ export default function WelcomeModal({ trigger }: WelcomeModalProps) {
               >
                 {text.startChatting}
               </Button>
-              <div
-                className="mt-6 flex cursor-pointer flex-wrap gap-1 text-center text-sm"
-                onClick={handleContactMe}
-              >
+              <div className="mt-6 flex w-full flex-col items-center justify-center gap-1 text-center text-sm">
                 <p className="text-muted-foreground">{text.feedback}</p>
-                <div className="flex cursor-pointer items-center text-blue-500 hover:underline">
+                <button
+                  type="button"
+                  className="cursor-pointer text-center text-blue-500 hover:underline"
+                  onClick={handleContactMe}
+                >
                   {text.contactMe}
-                </div>
+                </button>
               </div>
             </div>
           </motion.div>
