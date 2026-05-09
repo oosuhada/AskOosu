@@ -836,7 +836,8 @@ function ProfileHeroCard({ language }: { language: 'ko' | 'en' }) {
           <OosuAvatar
             animate
             variant="hover"
-            interval={260}
+            interval={1000}
+            frameStep={3}
             className="aspect-[4/3] h-full w-full md:aspect-[5/4]"
             imageClassName="object-contain object-bottom"
           />

@@ -35,7 +35,8 @@ export function FastfolioPopup({
           <OosuAvatar
             variant="hover"
             animate
-            interval={150}
+            interval={1000}
+            frameStep={3}
             className="h-32 w-32"
           />
         </div>

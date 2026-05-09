@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 interface OosuAvatarProps {
   animate?: boolean;
   interval?: number;
+  frameStep?: number;
   className?: string;
   imageClassName?: string;
   priority?: boolean;
@@ -21,30 +22,33 @@ const frames = Array.from(
 export function OosuAvatar({
   animate = false,
   interval = 120,
+  frameStep = 1,
   className,
   imageClassName,
   priority = false,
-  variant = 'static',
+  variant,
 }: OosuAvatarProps) {
   const [frame, setFrame] = useState(0);
   const [imageFailed, setImageFailed] = useState(false);
+  const resolvedVariant = variant ?? (animate ? 'hover' : 'static');
+  const normalizedFrameStep = Math.max(1, Math.floor(frameStep));
   const currentFrame = useMemo(
-    () => (variant === 'hover' ? frames[frame] : '/oosuhada.png'),
-    [frame, variant]
+    () => (resolvedVariant === 'hover' ? frames[frame] : '/oosuhada.png'),
+    [frame, resolvedVariant]
   );
 
   useEffect(() => {
-    if (variant !== 'hover' || !animate) {
+    if (resolvedVariant !== 'hover' || !animate) {
       setFrame(0);
       return;
     }
 
     const timer = window.setInterval(() => {
-      setFrame((current) => (current + 1) % frames.length);
+      setFrame((current) => (current + normalizedFrameStep) % frames.length);
     }, interval);
 
     return () => window.clearInterval(timer);
-  }, [animate, interval, variant]);
+  }, [animate, interval, normalizedFrameStep, resolvedVariant]);
 
   useEffect(() => {
     setImageFailed(false);
@@ -67,6 +71,7 @@ export function OosuAvatar({
         </div>
       ) : (
         <Image
+          key={currentFrame}
           src={currentFrame}
           alt=""
           width={1080}
