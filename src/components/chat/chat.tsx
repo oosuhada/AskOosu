@@ -57,6 +57,7 @@ const MOTION_CONFIG = {
 };
 
 const ERROR_REPORT_EMAIL = 'gabrieldiseoul@gmail.com';
+const MAX_REQUEST_HISTORY_MESSAGES = 8;
 
 type ChatErrorNotice = {
   title: string;
@@ -96,8 +97,31 @@ const Chat = () => {
   const loadingLabel = text.chatLoadingMessages[0];
   const chatTransport = useMemo(
     () =>
-      new DefaultChatTransport({
+      new DefaultChatTransport<UIMessage>({
         api: '/api/chat',
+        prepareSendMessagesRequest({
+          api,
+          body,
+          credentials,
+          headers,
+          id,
+          messageId,
+          messages,
+          trigger,
+        }) {
+          return {
+            api,
+            credentials,
+            headers,
+            body: {
+              ...(body ?? {}),
+              id,
+              messageId,
+              trigger,
+              messages: prepareClientMessagesForRequest(messages),
+            },
+          };
+        },
       }),
     []
   );
@@ -665,6 +689,31 @@ function getMessageText(message: UIMessage) {
     .map((part) => part.text)
     .join('\n')
     .trim();
+}
+
+function prepareClientMessagesForRequest(messages: UIMessage[]): UIMessage[] {
+  return messages
+    .slice(-MAX_REQUEST_HISTORY_MESSAGES)
+    .map((message) => {
+      const parts = message.parts
+        .map((part) => {
+          if (part.type !== 'text') return null;
+          const text = part.text.trim();
+          if (!text) return null;
+
+          return { type: 'text' as const, text };
+        })
+        .filter((part): part is { type: 'text'; text: string } =>
+          Boolean(part)
+        );
+
+      return {
+        id: message.id,
+        role: message.role,
+        parts,
+      } as UIMessage;
+    })
+    .filter((message) => message.parts.length > 0);
 }
 
 function getPreviousUserText(messages: UIMessage[], assistantIndex: number) {
