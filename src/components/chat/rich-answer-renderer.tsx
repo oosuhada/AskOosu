@@ -4,7 +4,6 @@ import Image from 'next/image';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useMemo, useState } from 'react';
-import { OosuAvatar } from '@/components/oosu-avatar';
 import { oosuProfile } from '@/lib/oosu-profile';
 import { cn } from '@/lib/utils';
 import { isAskOosuDebugUiEnabled } from '@/lib/debug-ui';
@@ -833,13 +832,14 @@ function ProfileHeroCard({ language }: { language: 'ko' | 'en' }) {
     <section className="overflow-hidden rounded-lg border bg-white/80 shadow-sm dark:bg-white/[0.05]">
       <div className="grid gap-4 p-4 md:grid-cols-[0.95fr_1.15fr] md:items-center">
         <div className="overflow-hidden rounded-lg border bg-slate-100 dark:bg-slate-900">
-          <OosuAvatar
-            animate
-            variant="hover"
-            interval={1000}
-            frameStep={3}
-            className="aspect-[4/3] h-full w-full md:aspect-[5/4]"
-            imageClassName="object-contain object-bottom"
+          <Image
+            src="/images/profile/oosu-profile-slow.gif"
+            alt="Oosu profile portrait"
+            width={432}
+            height={572}
+            unoptimized
+            className="aspect-[4/3] h-full w-full object-contain object-bottom md:aspect-[5/4]"
+            sizes="(min-width: 768px) 360px, calc(100vw - 3rem)"
           />
         </div>
         <div className="min-w-0 space-y-3">
