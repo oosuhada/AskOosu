@@ -11,13 +11,20 @@ import type { QuestionSurface } from '@/data/question-surfaces.shared';
 import {
   BookOpenCheck,
   BriefcaseBusiness,
+  CalendarDays,
   Code2,
   ExternalLink,
   Github,
+  Goal,
+  Globe2,
+  Layers3,
   Linkedin,
   Mail,
+  MapPin,
   MessageSquareText,
+  Rocket,
   Sparkles,
+  type LucideIcon,
 } from 'lucide-react';
 
 type RichAnswerPart =
@@ -70,6 +77,7 @@ type RichPayload = {
 type ProjectItem = {
   id: string;
   title: string;
+  label?: string;
   subtitle?: string;
   description?: string;
   image?: string;
@@ -219,6 +227,7 @@ function renderPart({
       <ContactCard
         key={`${block.type}-${index}`}
         block={block}
+        mediaRefs={payload.mediaRefs}
         language={payload.language}
       />
     );
@@ -328,43 +337,60 @@ function ProjectShowcaseCards({
 
   return (
     <section className="space-y-2" aria-label={block.title ?? 'Projects'}>
-      {block.title && (
-        <h3 className="text-sm font-semibold tracking-normal">{block.title}</h3>
-      )}
+      <div className="flex items-center justify-between gap-3">
+        {block.title && (
+          <h3 className="min-w-0 text-sm font-semibold tracking-normal">
+            {block.title}
+          </h3>
+        )}
+        {isMoreProjectsRail && (
+          <span className="text-muted-foreground shrink-0 text-xs">
+            {language === 'ko' ? '좌우로 더 보기' : 'Scroll for more'}
+          </span>
+        )}
+      </div>
       <div
         className={
           isMoreProjectsRail
-            ? 'flex snap-x gap-3 overflow-x-auto pb-1'
-            : 'grid grid-cols-1 gap-3 sm:grid-cols-3'
+            ? 'flex snap-x gap-3 overflow-x-auto pb-2'
+            : 'grid grid-cols-1 gap-3 md:grid-cols-3'
         }
       >
         {projects.map((project) => (
           <article
             key={project.id}
             className={cn(
-              'overflow-hidden rounded-lg border bg-white/70 shadow-sm dark:bg-white/[0.05]',
-              isMoreProjectsRail && 'w-64 shrink-0 snap-start'
+              'group overflow-hidden rounded-lg border bg-slate-950 text-white shadow-sm dark:border-white/10 dark:bg-slate-950',
+              isMoreProjectsRail && 'w-[18rem] shrink-0 snap-start'
             )}
           >
             <MediaPreview
               assetKey={project.image}
               mediaRefs={mediaRefs}
-              className="aspect-[16/9]"
+              className={isMoreProjectsRail ? 'aspect-[4/3]' : 'aspect-[4/5]'}
+              preferMobile
               language={language}
             />
-            <div className="space-y-2 p-3">
+            <div className="space-y-3 p-3">
               <div className="space-y-1">
-                <h4 className="min-w-0 text-sm font-semibold break-words">
+                <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+                  <span className="inline-flex max-w-full min-w-0 rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[11px] font-semibold text-white/75">
+                    <span className="min-w-0 truncate">
+                      {project.label ?? project.subtitle ?? project.id}
+                    </span>
+                  </span>
+                </div>
+                <h4 className="min-w-0 text-lg font-semibold tracking-normal break-words">
                   {project.title}
                 </h4>
                 {project.subtitle && (
-                  <p className="text-muted-foreground text-xs leading-relaxed">
+                  <p className="text-xs leading-relaxed text-white/65">
                     {project.subtitle}
                   </p>
                 )}
               </div>
               {project.description && (
-                <p className="text-muted-foreground text-xs leading-relaxed">
+                <p className="line-clamp-3 text-xs leading-relaxed text-white/72">
                   {project.description}
                 </p>
               )}
@@ -372,7 +398,7 @@ function ProjectShowcaseCards({
                 {project.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="bg-background text-muted-foreground inline-flex max-w-full min-w-0 rounded-md border px-2 py-0.5 text-[11px]"
+                    className="inline-flex max-w-full min-w-0 rounded-md border border-white/10 bg-white/[0.07] px-2 py-0.5 text-[11px] text-white/78"
                   >
                     <span className="min-w-0 truncate">{tag}</span>
                   </span>
@@ -383,7 +409,7 @@ function ProjectShowcaseCards({
                   <button
                     type="button"
                     onClick={() => switchQuestionSurface(project.id)}
-                    className="bg-background hover:bg-accent hover:text-accent-foreground inline-flex h-8 max-w-full min-w-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition"
+                    className="inline-flex h-8 max-w-full min-w-0 items-center gap-1.5 rounded-lg border border-white/15 bg-white/10 px-2.5 text-xs font-medium text-white/85 transition hover:bg-white/15 hover:text-white"
                   >
                     <MessageSquareText className="h-3.5 w-3.5" />
                     <span className="min-w-0 truncate">
@@ -396,7 +422,7 @@ function ProjectShowcaseCards({
                     href={project.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="bg-background hover:bg-accent hover:text-accent-foreground inline-flex h-8 max-w-full min-w-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition"
+                    className="inline-flex h-8 max-w-full min-w-0 items-center gap-1.5 rounded-lg border border-white/15 bg-white/10 px-2.5 text-xs font-medium text-white/85 transition hover:bg-white/15 hover:text-white"
                   >
                     <span className="min-w-0 truncate">
                       {language === 'ko' ? '열기' : 'Open'}
@@ -473,31 +499,33 @@ function SkillChipGroup({ block }: { block: VisualBlock }) {
   if (skillGroups.length === 0) return null;
 
   return (
-    <section className="space-y-2" aria-label={block.title ?? 'Skills'}>
+    <section className="space-y-3" aria-label={block.title ?? 'Skills'}>
       {block.title && (
         <h3 className="text-sm font-semibold tracking-normal">{block.title}</h3>
       )}
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <div className="space-y-4">
         {skillGroups.map((group) => (
           <div
             key={group.group}
-            className="rounded-lg border bg-slate-50/80 p-3 dark:bg-slate-900/30"
+            className="rounded-lg border bg-white/80 p-3 shadow-sm dark:bg-white/[0.05]"
           >
-            <div className="mb-2 flex items-center gap-2">
-              <Code2 className="h-4 w-4 text-sky-600 dark:text-sky-300" />
-              <h4 className="min-w-0 text-sm font-semibold break-words">
+            <div className="mb-3 flex items-center gap-2">
+              <div className="rounded-lg bg-slate-950 p-1.5 text-white dark:bg-white dark:text-slate-950">
+                <Code2 className="h-4 w-4" />
+              </div>
+              <h4 className="min-w-0 text-base font-semibold tracking-normal break-words">
                 {group.group}
               </h4>
             </div>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-2">
               {group.skills.map((skill) => (
                 <span
                   key={`${group.group}-${skill.name}`}
-                  className="inline-flex max-w-full min-w-0 items-center gap-1 rounded-md border border-sky-200 bg-white px-2 py-1 text-xs text-slate-700 dark:border-sky-800/70 dark:bg-slate-950/50 dark:text-slate-200"
+                  className="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-lg border border-slate-950 bg-slate-950 px-3 py-1.5 text-sm text-white shadow-sm dark:border-white/15 dark:bg-white/10"
                 >
                   <span className="min-w-0 truncate">{skill.name}</span>
                   {skill.proficiency && (
-                    <span className="shrink-0 rounded bg-slate-100 px-1 text-[10px] text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+                    <span className="shrink-0 rounded-md bg-white/12 px-1.5 py-0.5 text-[10px] text-white/70">
                       {skill.proficiency}
                     </span>
                   )}
@@ -505,8 +533,8 @@ function SkillChipGroup({ block }: { block: VisualBlock }) {
               ))}
             </div>
             {group.evidence.length > 0 && (
-              <p className="text-muted-foreground mt-2 text-xs leading-relaxed">
-                {group.evidence.join(' / ')}
+              <p className="text-muted-foreground mt-3 text-xs leading-relaxed">
+                {group.evidence.join(' -> ')}
               </p>
             )}
           </div>
@@ -518,40 +546,101 @@ function SkillChipGroup({ block }: { block: VisualBlock }) {
 
 function ContactCard({
   block,
+  mediaRefs,
   language,
 }: {
   block: VisualBlock;
+  mediaRefs: MediaRef[];
   language: 'ko' | 'en';
 }) {
   const actions = block.items.map(parseContactAction).filter(isDefined);
 
   return (
-    <section className="rounded-lg border bg-white/70 p-4 dark:bg-white/[0.05]">
-      <div className="flex items-start gap-3">
-        <div className="rounded-lg bg-emerald-50 p-2 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200">
-          <Mail className="h-4 w-4" />
+    <section className="rounded-lg border bg-slate-50 p-4 shadow-sm dark:bg-white/[0.05]">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="h-14 w-14 overflow-hidden rounded-full border bg-white shadow-sm dark:bg-slate-900">
+            <MediaPreview
+              assetKey="profile.oosu.portrait"
+              mediaRefs={mediaRefs}
+              className="h-full w-full"
+              compact
+              language={language}
+            />
+          </div>
+          <div className="min-w-0">
+            <h3 className="min-w-0 text-xl font-bold tracking-normal break-words">
+              {oosuProfile.name}
+            </h3>
+            <p className="text-muted-foreground text-sm">
+              {language === 'ko'
+                ? '공개 협업 브리프'
+                : 'Public Collaboration Brief'}
+            </p>
+          </div>
         </div>
-        <div className="min-w-0 space-y-1">
-          <h3 className="text-sm font-semibold break-words">
-            {block.title ?? 'Contact Oosu'}
-          </h3>
-          <p className="text-muted-foreground text-sm leading-relaxed">
+        <div className="inline-flex w-fit items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200">
+          <span className="h-2 w-2 rounded-full bg-emerald-500" />
+          {language === 'ko' ? 'Open' : 'Open'}
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        <ContactBriefItem
+          icon={CalendarDays}
+          title={language === 'ko' ? 'Mode' : 'Mode'}
+          text={
+            language === 'ko'
+              ? '프로젝트/협업 대화 열려 있음'
+              : 'Open to project and collaboration conversations'
+          }
+        />
+        <ContactBriefItem
+          icon={Globe2}
+          title={language === 'ko' ? 'Location' : 'Location'}
+          text={oosuProfile.location}
+        />
+        <ContactBriefItem
+          icon={Layers3}
+          title={language === 'ko' ? 'Good fit' : 'Good fit'}
+          text={
+            language === 'ko'
+              ? 'AI 웹 제품, RAG/검색 UX, 풀스택 프로토타입'
+              : 'AI web products, RAG/search UX, fullstack prototypes'
+          }
+        />
+        <ContactBriefItem
+          icon={Rocket}
+          title={language === 'ko' ? 'Stack' : 'Stack'}
+          text="Next.js, TypeScript, Spring Boot, PostgreSQL, RAG"
+        />
+      </div>
+
+      <div className="mt-5 space-y-4">
+        <div>
+          <h4 className="flex items-center gap-2 text-sm font-semibold">
+            <Sparkles className="h-4 w-4" />
+            {language === 'ko' ? 'What I bring' : 'What I bring'}
+          </h4>
+          <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
             {language === 'ko'
-              ? '검증된 공개 채널만 표시합니다.'
-              : 'Only verified public channels are shown.'}
+              ? '아이디어를 실제 화면, API, 데이터, AI 답변 흐름까지 끌고 가는 연결력이 강점입니다. 빠르게 만들되, 근거 없는 수치나 비공개 정보는 말하지 않는 쪽으로 제품 감각을 맞춥니다.'
+              : 'I connect ideas into screens, APIs, data flows, and AI answer experiences. I like shipping quickly, while keeping unsupported metrics and private information out of the story.'}
+          </p>
+        </div>
+        <div>
+          <h4 className="flex items-center gap-2 text-sm font-semibold">
+            <Goal className="h-4 w-4" />
+            {language === 'ko' ? 'Goal' : 'Goal'}
+          </h4>
+          <p className="mt-2 text-sm leading-6 text-slate-700 dark:text-slate-200">
+            {language === 'ko'
+              ? '사용자가 실제로 쓰고 이해할 수 있는 AI-connected 제품을 더 많이 만들고 싶습니다. 재미는 챙기되, 결과물은 작동하게 만드는 쪽으로요.'
+              : 'I want to build more AI-connected products that people can actually use and understand: playful where it helps, but working where it matters.'}
           </p>
         </div>
       </div>
-      <dl className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-        <div className="bg-background rounded-lg border p-2">
-          <dt className="text-muted-foreground text-xs">Email</dt>
-          <dd className="font-medium break-words">{oosuProfile.email}</dd>
-        </div>
-        <div className="bg-background rounded-lg border p-2">
-          <dt className="text-muted-foreground text-xs">Location</dt>
-          <dd className="font-medium break-words">{oosuProfile.location}</dd>
-        </div>
-      </dl>
+
       {actions.length > 0 && (
         <div className="mt-3">
           <CtaButtons
@@ -560,6 +649,28 @@ function ContactCard({
         </div>
       )}
     </section>
+  );
+}
+
+function ContactBriefItem({
+  icon: Icon,
+  title,
+  text,
+}: {
+  icon: LucideIcon;
+  title: string;
+  text: string;
+}) {
+  return (
+    <div className="flex min-w-0 gap-3 rounded-lg border bg-white p-3 dark:bg-slate-950/40">
+      <Icon className="mt-0.5 h-4 w-4 shrink-0 text-slate-700 dark:text-slate-200" />
+      <div className="min-w-0">
+        <p className="text-sm font-semibold">{title}</p>
+        <p className="text-muted-foreground mt-1 text-sm leading-5 break-words">
+          {text}
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -686,36 +797,54 @@ function ProfileHeroCard({
   language: 'ko' | 'en';
 }) {
   return (
-    <section className="rounded-lg border bg-white/70 p-4 dark:bg-white/[0.05]">
-      <div className="flex items-start gap-3">
-        <div className="h-14 w-14 overflow-hidden rounded-lg border bg-slate-100 dark:bg-slate-900">
+    <section className="overflow-hidden rounded-lg border bg-white/80 shadow-sm dark:bg-white/[0.05]">
+      <div className="grid gap-4 p-4 md:grid-cols-[0.95fr_1.15fr] md:items-center">
+        <div className="overflow-hidden rounded-lg border bg-slate-100 dark:bg-slate-900">
           <MediaPreview
             assetKey="profile.oosu.portrait"
             mediaRefs={mediaRefs}
-            className="h-full w-full"
-            compact
+            className="aspect-[4/3] md:aspect-[5/4]"
+            preferMobile
             language={language}
           />
         </div>
-        <div className="min-w-0 space-y-1">
-          <h3 className="text-sm font-semibold break-words">
-            {oosuProfile.name}
-          </h3>
-          <p className="text-muted-foreground text-sm">{oosuProfile.title}</p>
-          <p className="text-muted-foreground text-xs">
-            {oosuProfile.location}
+        <div className="min-w-0 space-y-3">
+          <div className="space-y-1">
+            <h3 className="text-2xl font-bold tracking-normal break-words md:text-3xl">
+              {oosuProfile.name}
+            </h3>
+            <p className="text-muted-foreground text-base">
+              {oosuProfile.title}
+            </p>
+            <p className="text-muted-foreground flex items-center gap-1.5 text-sm">
+              <MapPin className="h-3.5 w-3.5" />
+              {oosuProfile.location}
+            </p>
+          </div>
+
+          <p className="text-sm leading-6 text-slate-700 dark:text-slate-200">
+            {language === 'ko'
+              ? '안녕하세요. 우수는 화면만 예쁘게 만드는 데서 멈추지 않고, API, 데이터, RAG, 배포까지 이어 붙여 실제로 굴러가는 흐름을 만들고 싶어하는 개발자입니다.'
+              : 'Hi, I am Oosu: a developer who does not want to stop at a nice screen. I like connecting UI, APIs, data, RAG, and deployment into something that actually runs.'}
+          </p>
+          <p className="text-sm leading-6 text-slate-700 dark:text-slate-200">
+            {language === 'ko'
+              ? 'AskOosu는 그 성향을 그대로 담은 작은 실험실이에요. 포트폴리오가 스스로 질문을 받고, Wiki 근거를 찾아, 카드와 답변으로 보여주게 만들고 있습니다.'
+              : 'AskOosu is that tendency turned into a small lab: the portfolio takes questions, checks Wiki evidence, and turns the answer into cards and conversation.'}
           </p>
         </div>
       </div>
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {['Frontend', 'Fullstack', 'AI/RAG', 'UX', 'Business'].map((tag) => (
-          <span
-            key={tag}
-            className="bg-background text-muted-foreground rounded-md border px-2 py-1 text-xs"
-          >
-            {tag}
-          </span>
-        ))}
+      <div className="border-t px-4 py-3">
+        <div className="flex flex-wrap gap-1.5">
+          {['Frontend', 'Fullstack', 'AI/RAG', 'UX', 'Business'].map((tag) => (
+            <span
+              key={tag}
+              className="bg-background text-muted-foreground rounded-lg border px-2.5 py-1 text-xs"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
       </div>
     </section>
   );
@@ -726,12 +855,14 @@ function MediaPreview({
   mediaRefs,
   className,
   compact = false,
+  preferMobile = false,
   language,
 }: {
   assetKey?: string;
   mediaRefs: MediaRef[];
   className?: string;
   compact?: boolean;
+  preferMobile?: boolean;
   language: 'ko' | 'en';
 }) {
   const media = assetKey ? findMediaRef(mediaRefs, assetKey) : null;
@@ -752,7 +883,15 @@ function MediaPreview({
           className
         )}
       >
-        {mobileSrc ? (
+        {preferMobile && mobileSrc ? (
+          <Image
+            src={mobileSrc}
+            alt={media.alt}
+            fill
+            sizes="(max-width: 768px) 100vw, 33vw"
+            className="object-cover"
+          />
+        ) : mobileSrc ? (
           <>
             <Image
               src={mobileSrc}
@@ -1048,6 +1187,7 @@ function parseProjectItem(value: unknown): ProjectItem | null {
   return {
     id,
     title,
+    label: parseString(value.label) ?? undefined,
     subtitle: parseString(value.subtitle) ?? undefined,
     description: parseString(value.description) ?? undefined,
     image: parseString(value.image) ?? undefined,

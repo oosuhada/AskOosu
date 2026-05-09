@@ -53,6 +53,7 @@ const faqIntentIds: Record<string, string> = {
   'faq.project.sticks.importance.default': 'project.sticks.importance',
   'faq.tech.rag_vs_faq_cache.default': 'tech.rag_vs_faq_cache',
   'faq.tech.springboot.postgresql.default': 'tech.springboot_postgresql',
+  'faq.profile.public_life_notes.default': 'profile.public_life_notes',
   'faq.recruiter.first_30_days.default': 'recruiter.first_30_days',
   'faq.collaboration.project_yes.default': 'collaboration.project_yes',
 };

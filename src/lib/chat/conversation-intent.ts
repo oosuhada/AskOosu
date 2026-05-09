@@ -103,13 +103,9 @@ const OFF_TOPIC_PATTERNS = [
 const AMBIGUOUS_PORTFOLIO_INPUTS = new Set([
   '우수',
   '장우수',
-  '프로젝트',
-  '기술',
-  '스택',
   '경력',
   '커리어',
   '포트폴리오',
-  '연락',
   '더',
   '그래서',
   '알려줘',
@@ -117,12 +113,8 @@ const AMBIGUOUS_PORTFOLIO_INPUTS = new Set([
   '궁금해',
   'ㅇㅇ',
   'ㄱㄱ',
-  'project',
-  'projects',
-  'skills',
   'career',
   'portfolio',
-  'contact',
   'more',
   'tell me',
   'show me',
@@ -222,6 +214,38 @@ export function classifyConversationIntent({
 
   if (matchesAny(trimmedQuestion, PLAYFUL_PROBE_PATTERNS)) {
     return { intent: 'playful_probe', reason: 'playful_probe', modifiers };
+  }
+
+  if (isBroadProjectRequest(normalizedQuestion)) {
+    return {
+      intent: 'portfolio_recommendation',
+      reason: 'broad_project_request',
+      modifiers,
+    };
+  }
+
+  if (isBroadSkillRequest(normalizedQuestion)) {
+    return {
+      intent: 'technical_deep_dive',
+      reason: 'broad_skill_request',
+      modifiers,
+    };
+  }
+
+  if (isBroadContactRequest(normalizedQuestion)) {
+    return {
+      intent: 'contact_or_link_request',
+      reason: 'contact_or_public_link_request',
+      modifiers,
+    };
+  }
+
+  if (isPublicLifeRequest(trimmedQuestion)) {
+    return {
+      intent: 'portfolio_factual',
+      reason: 'public_life_notes_request',
+      modifiers,
+    };
   }
 
   if (
@@ -408,6 +432,41 @@ function containsQuestionShape(question: string) {
   );
 }
 
+function isBroadProjectRequest(normalizedQuestion: string) {
+  return [
+    '프로젝트',
+    '대표 프로젝트',
+    '프로젝트 소개',
+    'projects',
+    'project',
+    'top projects',
+    'representative projects',
+  ].includes(normalizedQuestion);
+}
+
+function isBroadSkillRequest(normalizedQuestion: string) {
+  return [
+    '기술',
+    '기술 스택',
+    '스택',
+    'skills',
+    'skill',
+    'tech stack',
+  ].includes(normalizedQuestion);
+}
+
+function isBroadContactRequest(normalizedQuestion: string) {
+  return ['연락', '연락처', 'contact', 'contacts'].includes(
+    normalizedQuestion
+  );
+}
+
+function isPublicLifeRequest(question: string) {
+  return /(fun|취미|취향|작업\s*성향|일하는\s*스타일|라이프|개인적인|사람다운|oosu\s*salon|우수살롱)/i.test(
+    question
+  );
+}
+
 function buildOffTopicRedirectAnswer({
   question,
   language,
@@ -417,14 +476,14 @@ function buildOffTopicRedirectAnswer({
 }) {
   if (isLightTranslationRequest(question)) {
     return language === 'ko'
-      ? '"우주"는 보통 "universe", 공간의 느낌이면 "space"에 가까워요. 제 망원경은 Oosu Wiki 쪽에 맞춰져 있으니, 다음 별자리는 AskOosu 구조나 우수의 프로젝트로 잡아볼까요?'
-      : '"우주" is usually "universe," or "space" when you mean outer space. My telescope is tuned to the Oosu Wiki, so the next constellation can be AskOosu architecture or Oosu\'s projects.';
+      ? '좋은 샛길이에요. "우주"는 universe, 문맥에 따라 space라고 보면 됩니다. 이제 AskOosu 안쪽 우주도 둘러볼까요? 프로젝트부터 보면 꽤 재밌습니다.'
+      : 'Nice little detour. "우주" is universe, or space depending on the context. Want to tour the little universe inside AskOosu now? The projects are a fun place to start.';
   }
 
   if (/(우주|space|universe|cosmos|별|행성|은하|너머)/i.test(question)) {
     return language === 'ko'
-      ? '스케일이 갑자기 은하급이네요. 저는 우주 지도보다 Oosu Wiki 지도를 더 잘 읽으니, AskOosu 구조나 우수의 대표 프로젝트 쪽으로 항로를 잡아볼까요?'
-      : "That question just went galaxy-scale. I read the Oosu Wiki map better than a star chart, so shall we chart a course through AskOosu's architecture or Oosu's projects?";
+      ? '좋은 샛길이에요. 우주 끝까지는 같이 못 가도 AskOosu 안쪽 우주는 꽤 잘 안내할 수 있어요. 프로젝트부터 보면 꽤 재밌습니다.'
+      : "Nice detour. I cannot guide us to the edge of space, but I can tour the little universe inside AskOosu. The projects are a fun place to start.";
   }
 
   if (/(날씨|기온|비\s*와|눈\s*와|weather|temperature|rain|snow)/i.test(question)) {

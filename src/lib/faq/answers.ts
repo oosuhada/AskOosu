@@ -213,6 +213,7 @@ const representativeProjectsKo = [
   {
     id: 'askoosu',
     title: 'AskOosu 2026',
+    label: 'AI Portfolio',
     subtitle: 'AI-connected 대화형 포트폴리오',
     description:
       'Next.js 채팅 UI, Notion Wiki, RAG, Groq, PostgreSQL 검색 캐시를 연결한 현재 대표 프로젝트입니다.',
@@ -223,6 +224,7 @@ const representativeProjectsKo = [
   {
     id: 'instagram_clone',
     title: 'Aigram',
+    label: 'Fullstack SNS',
     subtitle: 'Instagram Clone 기반 1인 풀스택 SNS 프로젝트',
     description:
       'Spring Boot, PostgreSQL, React/Next.js, 검색과 AI 기능까지 연결하며 SNS 데이터 흐름을 익힌 프로젝트입니다.',
@@ -233,6 +235,7 @@ const representativeProjectsKo = [
   {
     id: 'sticks_and_stones',
     title: 'Sticks & Stones',
+    label: 'Real Migration',
     subtitle: '실서비스 레거시 리빌드',
     description:
       '기존 WordPress/PHP 기반 홈페이지를 TypeScript/Vite 기반으로 재구성한 실제 브랜드 사이트 작업입니다.',
@@ -246,6 +249,7 @@ const representativeProjectsEn = [
   {
     id: 'askoosu',
     title: 'AskOosu 2026',
+    label: 'AI Portfolio',
     subtitle: 'AI-connected conversational portfolio',
     description:
       'The current flagship project connecting a Next.js chat UI, Notion Wiki, RAG, Groq, and PostgreSQL search cache.',
@@ -256,6 +260,7 @@ const representativeProjectsEn = [
   {
     id: 'instagram_clone',
     title: 'Aigram',
+    label: 'Fullstack SNS',
     subtitle: 'Solo fullstack SNS project inspired by Instagram Clone',
     description:
       'A project for learning SNS data flow across Spring Boot, PostgreSQL, React/Next.js, search, and AI features.',
@@ -266,6 +271,7 @@ const representativeProjectsEn = [
   {
     id: 'sticks_and_stones',
     title: 'Sticks & Stones',
+    label: 'Real Migration',
     subtitle: 'Real-service website rebuild',
     description:
       'A real brand-site rebuild that moved an older WordPress/PHP structure into a TypeScript/Vite frontend.',
@@ -706,8 +712,10 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
     displayQuestion:
       '우수님의 대표 프로젝트와 성장 흐름이 어떻게 연결되는지 보여줄래요?',
     patterns: [
+      '프로젝트',
       '대표 프로젝트',
       '대표 프로젝트 3개',
+      '프로젝트 소개',
       '우수님의 대표 프로젝트 3개를 한눈에 볼 수 있게 소개해줄래요?',
       '우수님의 대표 프로젝트와 성장 흐름이 어떻게 연결되는지 보여줄래요?',
       '우수 대표 프로젝트',
@@ -716,9 +724,9 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
     shortAnswer:
       '대표 프로젝트는 AskOosu, Aigram, Sticks & Stones이고, Portfoli-Oh!, Onjung, Nomad Market 같은 프로젝트가 성장 흐름을 보완합니다.',
     defaultAnswer: [
-      '우수의 대표 흐름은 AskOosu, Aigram / Instagram Clone, Sticks & Stones를 중심으로 보면 가장 선명합니다.',
+      '프로젝트부터 보면 꽤 재밌습니다. 우수의 대표 흐름은 AskOosu, Aigram, Sticks & Stones 세 장으로 먼저 잡는 게 가장 선명해요.',
       '',
-      '다만 포트폴리오의 강점은 세 프로젝트만이 아니라, Portfoli-Oh!에서의 인터랙션 실험, Onjung/Nomad Market의 Flutter 앱 경험, Webtoon AI Translate의 AI 파이프라인 실험처럼 성장 단계가 함께 보인다는 점입니다.',
+      'AskOosu는 AI Portfolio, Aigram은 Fullstack SNS, Sticks & Stones는 Real Migration으로 보면 됩니다. 카드 안에는 기술 스택, 관련 질문, 공개 링크를 같이 남겨뒀고, 더보기 레일에서는 Portfoli-Oh!, Onjung, Nomad Market, Webtoon AI Translate 같은 이전/확장 프로젝트까지 이어서 탐색할 수 있어요.',
     ].join('\n'),
     renderSpec: {
       layout: 'project_showcase',
@@ -775,7 +783,10 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
     displayQuestion:
       "Could you show Oosu's representative projects and how they connect to his growth?",
     patterns: [
+      'projects',
+      'project',
       'top projects',
+      'project overview',
       "Can you show Oosu's top three projects at a glance?",
       "Could you show Oosu's representative projects and how they connect to his growth?",
       'representative projects',
@@ -787,9 +798,9 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
     shortAnswer:
       'The featured projects are AskOosu, Aigram / Instagram Clone, and Sticks & Stones, with additional projects showing earlier growth and experiments.',
     defaultAnswer: [
-      'The clearest featured projects are AskOosu, Aigram / Instagram Clone, and Sticks & Stones.',
+      'Projects are a fun place to start. The clearest first three are AskOosu, Aigram, and Sticks & Stones.',
       '',
-      'But the portfolio becomes stronger when those are read together with Portfoli-Oh!, Onjung, Nomad Market, Webtoon AI Translate, and smaller learning or lab projects. They show the path from UI experiments and mobile apps into fullstack, AI-connected product work.',
+      'AskOosu reads as AI Portfolio, Aigram as Fullstack SNS, and Sticks & Stones as Real Migration. The cards keep the stack tags, related questions, and public links close by, while the more-projects rail lets visitors keep exploring Portfoli-Oh!, Onjung, Nomad Market, Webtoon AI Translate, and smaller experiments.',
     ].join('\n'),
     renderSpec: {
       layout: 'project_showcase',
@@ -846,6 +857,8 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
     displayQuestion:
       '우수님은 어떤 기술 스택을 다루고, 각 기술은 어떤 프로젝트에서 써봤나요?',
     patterns: [
+      '기술',
+      '스택',
       '기술 스택',
       '우수님은 어떤 기술 스택을 다루고, 각 기술은 어떤 프로젝트에서 써봤나요?',
       '프론트엔드 백엔드 AI 기술',
@@ -855,9 +868,9 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
     shortAnswer:
       '우수의 현재 핵심 스택은 Next.js, React, TypeScript, Spring Boot, PostgreSQL, Notion API, RAG, Groq이며, Flutter/FastAPI/GSAP 같은 프로젝트 기반 경험도 함께 있습니다.',
     defaultAnswer: [
-      '우수의 기술 스택은 현재 가장 강조할 Current Core Stack과 프로젝트에서 실제 사용한 Project-Proven Stack으로 나눠 보는 것이 정확합니다.',
+      '기술 스택은 단순 목록보다 “어디에 써봤는지”가 더 중요해요. 그래서 AskOosu에서는 기술을 프로젝트 근거와 같이 보여주는 쪽으로 정리했습니다.',
       '',
-      '현재는 Next.js, React, TypeScript, Tailwind CSS, Spring Boot, PostgreSQL, Notion API, RAG, Groq를 중심으로 보여주는 것이 좋고, Onjung/Nomad Market/Webtoon AI Translate/Portfoli-Oh!를 통해 Flutter, Dart, Firebase, Python, FastAPI, SQLite, Cloudinary, Meilisearch, Vite, GSAP, Three.js, Lottie 같은 사용 경험도 함께 설명할 수 있습니다. 다만 모든 기술을 같은 숙련도로 말하지 않고 confident, usable, learning, experimental로 구분합니다.',
+      '현재 핵심은 Next.js, React, TypeScript, Tailwind CSS, Spring Boot, PostgreSQL, Notion API, RAG, Groq입니다. AskOosu에서는 Next.js, AI SDK, Groq, Notion RAG, PostgreSQL이 연결되어 있고, Aigram 쪽에서는 Spring Boot와 PostgreSQL이 풀스택 흐름을 보여줍니다. 모든 기술을 같은 숙련도로 과장하지 않고 confident, usable, learning, experimental로 나눠 표시합니다.',
     ].join('\n'),
     renderSpec: {
       layout: 'skill_cloud',
@@ -907,6 +920,8 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
     displayQuestion:
       'What technologies does Oosu use, and where has he applied them?',
     patterns: [
+      'skills',
+      'skill',
       'tech stack',
       'What technologies does Oosu use, and where has he applied them?',
       'frontend backend AI skills',
@@ -915,9 +930,9 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
     shortAnswer:
       'Oosu’s current core stack is Next.js, React, TypeScript, Spring Boot, PostgreSQL, Notion API, RAG, and Groq, with wider project-proven experience across Flutter, FastAPI, GSAP, and more.',
     defaultAnswer: [
-      'Oosu’s stack is best read in layers: Current Core Stack, Project-Proven Stack, AI / Dev Tools, and Design / UX / Business.',
+      'A tech stack is more useful when you can see where it was actually used. AskOosu groups skills by project evidence instead of presenting every keyword at the same level.',
       '',
-      'The current emphasis is Next.js, React, TypeScript, Tailwind CSS, Spring Boot, PostgreSQL, Notion API, RAG, and Groq. Wider project evidence includes Flutter, Dart, Firebase, Python, FastAPI, SQLite, Cloudinary, Meilisearch, Vite, GSAP, Three.js, and Lottie through Onjung, Nomad Market, Webtoon AI Translate, Portfoli-Oh!, and related experiments. The answer separates confident, usable, learning, and experimental levels so the breadth does not sound inflated.',
+      'The current emphasis is Next.js, React, TypeScript, Tailwind CSS, Spring Boot, PostgreSQL, Notion API, RAG, and Groq. AskOosu connects Next.js, AI SDK, Groq, Notion RAG, and PostgreSQL, while Aigram shows Spring Boot and PostgreSQL in a fullstack SNS flow. The answer separates confident, usable, learning, and experimental levels so the breadth does not sound inflated.',
     ].join('\n'),
     renderSpec: {
       layout: 'skill_cloud',
@@ -967,6 +982,7 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
     displayQuestion:
       '우수님에게 어떻게 연락할 수 있고, 어떤 협업을 열어두고 있나요?',
     patterns: [
+      '연락',
       '연락/협업',
       '우수님에게 어떻게 연락할 수 있고, 어떤 협업을 열어두고 있나요?',
       '협업하거나 연락하려면 어떻게 해요?',
@@ -977,14 +993,14 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
     shortAnswer:
       '우수에게 연락하려면 이메일, LinkedIn, GitHub를 사용할 수 있습니다.',
     defaultAnswer: [
-      '우수에게 연락하거나 작업을 확인하려면 이메일, LinkedIn, GitHub가 가장 안전한 공개 채널입니다.',
+      '연락은 공개 채널 기준으로 안내할게요. 우수는 AI를 붙인 웹 제품, RAG/검색 UX, 풀스택 프로토타입처럼 “아이디어를 실제로 만져지는 화면까지 끌고 가는” 협업에 특히 잘 맞습니다.',
       '',
       `- Email: ${oosuProfile.email}`,
       `- GitHub: ${oosuProfile.github}`,
       `- LinkedIn: ${oosuProfile.linkedin}`,
       `- Portfolio: ${oosuProfile.currentPortfolioUrl}`,
       '',
-      '협업은 포트폴리오 피드백, 사이드 프로젝트, 사용자 문제 정의, 프론트엔드 구현, RAG/AI 기능 설계처럼 우수의 경험이 연결될 수 있는 영역과 잘 맞습니다.',
+      '비공개 레포, 준비되지 않은 이력서 링크, 사적인 주소 같은 정보는 공개하지 않고, 공개 가능한 프로젝트/연락/협업 맥락만 정리합니다.',
     ].join('\n'),
     renderSpec: {
       layout: 'contact_card',
@@ -1000,6 +1016,7 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
         items: contactActionsKo,
       },
     ],
+    mediaRefs,
     sourceChunkIds: [
       'profile.basic_info',
       'profile.faq.contact',
@@ -1022,6 +1039,7 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
       'How can I reach Oosu, and what kind of collaboration is he open to?',
     patterns: [
       'contact',
+      'contacts',
       'How can I reach Oosu, and what kind of collaboration is he open to?',
       'How can I get in touch or collaborate?',
       'contact oosu',
@@ -1030,14 +1048,14 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
     shortAnswer:
       'The safest public contact channels are email, LinkedIn, and GitHub.',
     defaultAnswer: [
-      'The safest public channels for contacting Oosu or reviewing his work are email, LinkedIn, and GitHub.',
+      'Contact is shown through public channels only. Oosu is a good fit for AI-connected web products, RAG/search UX, and fullstack prototypes where an idea needs to become a working screen.',
       '',
       `- Email: ${oosuProfile.email}`,
       `- GitHub: ${oosuProfile.github}`,
       `- LinkedIn: ${oosuProfile.linkedin}`,
       `- Portfolio: ${oosuProfile.currentPortfolioUrl}`,
       '',
-      'Good collaboration fits include portfolio feedback, side projects, user problem framing, frontend implementation, and RAG/AI feature design.',
+      'Private repositories, unprepared resume links, and personal addresses stay out of the public portfolio response.',
     ].join('\n'),
     renderSpec: {
       layout: 'contact_card',
@@ -1053,6 +1071,7 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
         items: contactActionsEn,
       },
     ],
+    mediaRefs,
     sourceChunkIds: [
       'profile.basic_info',
       'profile.faq.contact',
@@ -1273,9 +1292,9 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
     shortAnswer:
       '우수는 고객 경험, 비즈니스 인사이트, 프론트엔드, 백엔드, AI를 실제 서비스 흐름으로 연결하려는 AI-connected Fullstack Developer입니다.',
     defaultAnswer: [
-      '우수는 프론트엔드에서 출발해 백엔드, 데이터베이스, AI 연결까지 확장하고 있는 AI-connected Fullstack Developer입니다.',
+      '안녕하세요. 우수는 화면만 예쁘게 만드는 데서 멈추지 않고, API, 데이터, RAG, 배포까지 이어 붙여 실제로 굴러가는 흐름을 만들고 싶어하는 개발자입니다.',
       '',
-      '강점은 새 도메인을 빠르게 구조화하고, 배운 내용을 실제 서비스 흐름으로 연결하는 쪽에 있습니다. AskOosu 자체도 그 방향을 보여주는 프로젝트로, Next.js UI, API Route Handler, Notion RAG, PostgreSQL, Groq를 하나로 묶어 포트폴리오가 직접 질문에 답하게 만들고 있습니다.',
+      'AskOosu는 그 성향을 그대로 담은 작은 실험실이에요. 포트폴리오가 스스로 질문을 받고, Wiki 근거를 찾아, 카드와 답변으로 보여주게 만들고 있습니다. 근거는 하단에 조용히 붙여두되, 답변은 너무 AI 티 나지 않게 우수의 말투와 위트를 살리는 방향으로 다듬고 있어요.',
     ].join('\n'),
     renderSpec: {
       layout: 'profile_hero',
@@ -1315,9 +1334,9 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
     shortAnswer:
       'Oosu is an AI-connected fullstack developer connecting customer experience, business insight, frontend, backend, and AI into service flows.',
     defaultAnswer: [
-      'Oosu is an AI-connected fullstack developer who started from frontend work and is expanding into backend systems, databases, and AI-powered product flows.',
+      'Hi, I am Oosu: a developer who does not want to stop at a nice screen. I like connecting UI, APIs, data, RAG, and deployment into something that actually runs.',
       '',
-      'His strength is turning new domains into practical service structures. AskOosu demonstrates that directly by connecting a Next.js chat UI, API Route Handlers, Notion RAG, PostgreSQL, and Groq into a conversational portfolio.',
+      'AskOosu is that tendency turned into a small lab: the portfolio takes questions, checks Wiki evidence, and turns the answer into cards and conversation. The evidence stays quietly at the bottom, while the answer itself should feel more like Oosu than a generic AI voice.',
     ].join('\n'),
     renderSpec: {
       layout: 'profile_hero',
@@ -2086,6 +2105,132 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
     guardrails: sharedGuardrails,
     matchedEntityIds: ['career', 'oosu_salon'],
     confidence: 0.94,
+  }),
+  createFaqAnswer({
+    id: 'faq.profile.public_life_notes.default',
+    legacyIds: ['fun.public_notes.ko'],
+    intentId: 'profile.public_life_notes',
+    entityId: 'profile.public_life_notes',
+    language: 'ko',
+    quickLabel: '작업 취향',
+    displayQuestion:
+      '우수님의 작업 성향이나 공개 가능한 취향을 가볍게 알려줄 수 있나요?',
+    patterns: [
+      '작업 취향',
+      '취미',
+      '취향',
+      'Fun',
+      '우수님 취미',
+      '우수님은 어떤 취향이 있어요?',
+      '우수님의 작업 성향이나 공개 가능한 취향을 가볍게 알려줄 수 있나요?',
+      '우수살롱',
+      '일하는 스타일',
+    ],
+    shortAnswer:
+      '우수의 Fun 영역은 사생활보다 공개 가능한 작업 성향과 감각적인 인터페이스 취향을 중심으로 다룹니다.',
+    defaultAnswer: [
+      'Fun 쪽으로 살짝 새면, 우수는 새로운 도구나 감각적인 인터페이스를 만져보는 걸 꽤 좋아하는 편이에요.',
+      '',
+      '다만 이 Wiki에서는 사적인 정보가 아니라 공개 가능한 작업 취향까지만 다룹니다. OOSU SALON 운영 경험, 시각적인 실험, 도구를 실제 흐름으로 연결하려는 습관은 프로젝트를 풀어가는 방식과도 이어져요. 더 유용한 이야기는 “이 사람이 프로젝트를 어떻게 구조화하나?” 쪽에서 이어가볼게요.',
+    ].join('\n'),
+    renderSpec: {
+      layout: 'experience_bridge',
+      density: 'standard',
+      leadVisual: 'ImageCard',
+      components: ['ImageCard', 'SourceBadgeList'],
+    },
+    visualBlocks: [
+      {
+        type: 'imageCard',
+        title: 'Public Life Notes',
+        dataKey: 'profile.public_life_notes',
+        items: [
+          {
+            image: 'life.oosu_salon.cover',
+            caption: 'OOSU SALON 운영 경험은 고객 경험과 서비스 감각으로 이어집니다.',
+          },
+          {
+            image: 'life.sensory_interests.cover',
+            caption: '감각적인 인터페이스와 도구 실험을 프로젝트 맥락으로 연결합니다.',
+          },
+        ],
+      },
+      { type: 'sourceBadges' },
+    ],
+    mediaRefs,
+    sourceChunkIds: [
+      'career.oosu_salon',
+      'profile.public_interests',
+      'profile.strengths',
+    ],
+    hasTodo: false,
+    freshness: 'stable',
+    guardrails: sharedGuardrails,
+    matchedEntityIds: ['profile', 'career', 'oosu_salon'],
+    confidence: 0.91,
+  }),
+  createFaqAnswer({
+    id: 'faq.profile.public_life_notes.default',
+    legacyIds: ['fun.public_notes.en'],
+    intentId: 'profile.public_life_notes',
+    entityId: 'profile.public_life_notes',
+    language: 'en',
+    quickLabel: 'Work taste',
+    displayQuestion:
+      'Can you share Oosu’s working style or public personal interests lightly?',
+    patterns: [
+      'fun',
+      'hobbies',
+      'work taste',
+      'working style',
+      'public interests',
+      'Can you share Oosu’s working style or public personal interests lightly?',
+      'oosu salon',
+    ],
+    shortAnswer:
+      'The Fun area should stay around public working taste and interface curiosity, not private life.',
+    defaultAnswer: [
+      'A light Fun detour: Oosu seems drawn to new tools, tactile interfaces, and visual experiments.',
+      '',
+      'This Wiki keeps that public and work-adjacent. OOSU SALON, sensory UI references, and tooling experiments are useful because they explain how Oosu approaches projects: not as abstract tech lists, but as experiences someone has to actually touch and understand.',
+    ].join('\n'),
+    renderSpec: {
+      layout: 'experience_bridge',
+      density: 'standard',
+      leadVisual: 'ImageCard',
+      components: ['ImageCard', 'SourceBadgeList'],
+    },
+    visualBlocks: [
+      {
+        type: 'imageCard',
+        title: 'Public Life Notes',
+        dataKey: 'profile.public_life_notes',
+        items: [
+          {
+            image: 'life.oosu_salon.cover',
+            caption:
+              'OOSU SALON connects to customer experience and service taste.',
+          },
+          {
+            image: 'life.sensory_interests.cover',
+            caption:
+              'Visual interface and tool experiments feed back into project work.',
+          },
+        ],
+      },
+      { type: 'sourceBadges' },
+    ],
+    mediaRefs,
+    sourceChunkIds: [
+      'career.oosu_salon',
+      'profile.public_interests',
+      'profile.strengths',
+    ],
+    hasTodo: false,
+    freshness: 'stable',
+    guardrails: sharedGuardrails,
+    matchedEntityIds: ['profile', 'career', 'oosu_salon'],
+    confidence: 0.91,
   }),
   createFaqAnswer({
     id: 'faq.link.resume.default',
