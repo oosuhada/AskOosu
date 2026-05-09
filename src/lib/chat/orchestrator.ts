@@ -342,6 +342,7 @@ function buildConversationDirectOrchestration({
             ? 'portfolio_ambiguous'
             : conversationIntent.intent,
         language,
+        question,
       }),
       metadata,
     },

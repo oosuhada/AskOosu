@@ -72,7 +72,6 @@ const Chat = () => {
   const initialQuery = searchParams.get('query');
   const initialConversationId = searchParams.get('conversationId');
   const isDebugMode = isAskOosuDebugUiEnabled(searchParams);
-  const [autoSubmitted, setAutoSubmitted] = useState(false);
   const [loadingSubmit, setLoadingSubmit] = useState(false);
   const [activeConversationId, setActiveConversationId] = useState<
     string | null
@@ -207,7 +206,6 @@ const Chat = () => {
     setMessages(requestedConversation.messages);
     setInput('');
     setActiveConversationId(requestedConversation.id);
-    setAutoSubmitted(true);
   }, [activeConversationId, initialConversationId, setInput, setMessages]);
 
   useEffect(() => {
@@ -261,7 +259,7 @@ const Chat = () => {
   const submitQuery = useCallback(
     (query: string, suggestedQuestion?: SuggestedQuestion) => {
       const trimmedQuery = query.trim();
-      if (!trimmedQuery || isToolInProgress) return;
+      if (!trimmedQuery || isToolInProgress) return false;
 
       const conversationId = activeConversationId ?? createConversationId();
       if (!activeConversationId) setActiveConversationId(conversationId);
@@ -297,6 +295,7 @@ const Chat = () => {
           },
         }
       );
+      return true;
     },
     [
       activeConversationId,
@@ -310,25 +309,29 @@ const Chat = () => {
 
   useEffect(() => {
     const trimmedInitialQuery = initialQuery?.trim();
+    const initialQueryKey = trimmedInitialQuery
+      ? buildInitialQueryKey(searchParams, trimmedInitialQuery)
+      : null;
     if (
       trimmedInitialQuery &&
-      !autoSubmitted &&
-      autoSubmittedQueryRef.current !== trimmedInitialQuery
+      !initialConversationId &&
+      autoSubmittedQueryRef.current !== initialQueryKey
     ) {
       const suggestedQuestion = buildInitialSuggestedQuestion(
         searchParams,
         trimmedInitialQuery
       );
 
-      autoSubmittedQueryRef.current = trimmedInitialQuery;
-      setAutoSubmitted(true);
       setInput('');
-      submitQuery(trimmedInitialQuery, suggestedQuestion);
-      replaceChatUrl();
+      const didSubmit = submitQuery(trimmedInitialQuery, suggestedQuestion);
+      if (didSubmit) {
+        autoSubmittedQueryRef.current = initialQueryKey;
+        replaceChatUrl();
+      }
     }
   }, [
     initialQuery,
-    autoSubmitted,
+    initialConversationId,
     replaceChatUrl,
     searchParams,
     setInput,
@@ -356,7 +359,6 @@ const Chat = () => {
     setLastSubmittedQuery(null);
     setChatErrorNotice(null);
     setLoadingSubmit(false);
-    setAutoSubmitted(false);
     autoSubmittedQueryRef.current = null;
     replaceChatUrl();
   }, [replaceChatUrl, setInput, setMessages]);
@@ -718,6 +720,21 @@ function buildInitialSuggestedQuestion(
     renderSpec: searchParams.get('renderSpec') ?? undefined,
     visibleByDefault: false,
   };
+}
+
+function buildInitialQueryKey(
+  searchParams: Pick<URLSearchParams, 'get'>,
+  query: string
+) {
+  return [
+    query,
+    searchParams.get('source') ?? '',
+    searchParams.get('starterQuestionId') ?? '',
+    searchParams.get('faqId') ?? '',
+    searchParams.get('intentId') ?? '',
+    searchParams.get('answerVariant') ?? '',
+    searchParams.get('renderSpec') ?? '',
+  ].join('|');
 }
 
 function toAnswerVariant(value: string | null): AnswerVariant {
