@@ -1,5 +1,9 @@
 import type { ChatLanguage } from '@/lib/i18n/detect-language';
 import type { AnswerConfidence, RagChatMetadata } from '@/lib/rag/chat-context';
+import type {
+  ConversationIntent,
+  ConversationModifier,
+} from './conversation-intent';
 
 export type { AnswerConfidence };
 
@@ -8,6 +12,11 @@ export type ChatAnswerSource =
   | 'faq_rewrite'
   | 'answer_cache'
   | 'deterministic_rule'
+  | 'smalltalk'
+  | 'off_topic_redirect'
+  | 'clarify'
+  | 'private_guardrail'
+  | 'prompt_guardrail'
   | 'rag_generation'
   | 'rag_groq'
   | 'rag_google'
@@ -36,6 +45,35 @@ export type AnswerRouteDecision =
       mode: 'answer_cache';
       confidence: number;
       reason: 'fresh_cache_hit';
+    }
+  | {
+      mode: 'smalltalk';
+      confidence: number;
+      reason: 'greeting_or_light_smalltalk';
+    }
+  | {
+      mode: 'off_topic_redirect';
+      confidence: number;
+      reason:
+        | 'off_topic_light'
+        | 'playful_probe'
+        | 'hostile_or_sharp_feedback'
+        | 'no_portfolio_intent_detected';
+    }
+  | {
+      mode: 'portfolio_clarify';
+      confidence: number;
+      reason: 'short_or_ambiguous_portfolio_input' | 'follow_up_without_context';
+    }
+  | {
+      mode: 'private_guardrail';
+      confidence: number;
+      reason: 'private_or_sensitive_request';
+    }
+  | {
+      mode: 'prompt_guardrail';
+      confidence: number;
+      reason: 'prompt_or_internal_request';
     }
   | {
       mode: 'rag_generate';
@@ -78,6 +116,9 @@ export type ChatAnswerMetadata = RagChatMetadata & {
   usedVisualBlocks?: string[];
   mediaReadyCount?: number;
   mediaTodoCount?: number;
+  conversationIntent?: ConversationIntent;
+  conversationModifiers?: ConversationModifier[];
+  showEvidence?: boolean;
   matchedFaqId?: string;
   intentScore?: number;
   intentSecondScore?: number;

@@ -54,6 +54,7 @@ type RagMetadata = {
   provider?: string;
   model?: string;
   errorCode?: string;
+  showEvidence?: boolean;
   routeDecision?: {
     mode?: string;
     reason?: string;
@@ -286,6 +287,8 @@ export function RagEvidencePanel({
   const isDebugMode = useMemo(isAskOosuDebugUiEnabled, []);
 
   if (!ragMetadata) return null;
+  if (ragMetadata.showEvidence === false && !isDebugMode) return null;
+  if (!isDebugMode && ragMetadata.sources.length === 0) return null;
 
   const sourceCount = ragMetadata.sources.length;
   const publicRemainingSourceCount = Math.max(0, sourceCount - 1);
@@ -921,6 +924,8 @@ function parseRagMetadata(value: unknown): RagMetadata | null {
     provider: parseString(value.provider) ?? undefined,
     model: parseString(value.model) ?? undefined,
     errorCode: parseString(value.errorCode) ?? undefined,
+    showEvidence:
+      typeof value.showEvidence === 'boolean' ? value.showEvidence : undefined,
     routeDecision: parseRouteDecision(value.routeDecision),
   };
 }
@@ -1030,6 +1035,20 @@ function getAnswerSourceLabel(metadata: RagMetadata, language: 'ko' | 'en') {
       en: 'Cached portfolio answer',
     },
     deterministic_rule: { ko: '포트폴리오 정책', en: 'Portfolio policy' },
+    smalltalk: { ko: '가벼운 대화', en: 'Small talk' },
+    off_topic_redirect: {
+      ko: '포트폴리오 안내',
+      en: 'Portfolio redirect',
+    },
+    clarify: { ko: '질문 확인', en: 'Clarifying question' },
+    private_guardrail: {
+      ko: '공개 불가 안내',
+      en: 'Public safety notice',
+    },
+    prompt_guardrail: {
+      ko: '내부 정보 보호 안내',
+      en: 'Internal safety notice',
+    },
     rag_generation: {
       ko: '포트폴리오 데이터 기반',
       en: 'Based on portfolio data',
