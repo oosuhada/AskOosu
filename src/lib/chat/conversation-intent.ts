@@ -93,6 +93,15 @@ const PLAYFUL_PROBE_PATTERNS = [
   /(are you real|write me a poem|play a game)/i,
 ];
 
+const PROFILE_INTRO_PATTERNS = [
+  /^(소개|자기소개|우수\s*소개|우수님?\s*소개|장우수\s*소개|about\s*oosu|introduce\s*oosu)$/i,
+  /(우수|우수님|장우수|oosu).*(소개|자기소개|누구|어떤\s*(사람|개발자))/i,
+  /(소개|자기소개).*(우수|우수님|장우수|oosu)/i,
+  /^(너|당신|이\s*사람)\s*누구/,
+  /who\s+is\s+oosu/i,
+  /what\s+kind\s+of\s+developer\s+is\s+oosu/i,
+];
+
 const OFF_TOPIC_PATTERNS = [
   /(오늘|내일).*(날씨|기온|비\s*와|눈\s*와)/,
   /(농담|유머).*해/,
@@ -247,6 +256,14 @@ export function classifyConversationIntent({
     return {
       intent: 'portfolio_factual',
       reason: 'public_life_notes_request',
+      modifiers,
+    };
+  }
+
+  if (matchesAny(trimmedQuestion, PROFILE_INTRO_PATTERNS)) {
+    return {
+      intent: 'portfolio_factual',
+      reason: 'profile_intro_request',
       modifiers,
     };
   }
