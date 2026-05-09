@@ -189,7 +189,7 @@ function renderPart({
   markdownContent: string;
 }) {
   if (part.type === 'markdown') {
-    const content = part.content ?? markdownContent;
+    const content = sanitizeRichMarkdownContent(part.content ?? markdownContent);
     if (!content.trim()) return null;
 
     return <MarkdownBlock key={`markdown-${index}`} content={content} />;
@@ -325,6 +325,22 @@ function MarkdownBlock({ content }: { content: string }) {
       </Markdown>
     </div>
   );
+}
+
+function sanitizeRichMarkdownContent(content: string) {
+  const hiddenPublicPolicyLines = new Set([
+    '비공개 레포, 준비되지 않은 이력서 링크, 사적인 주소 같은 정보는 공개하지 않고, 공개 가능한 프로젝트/연락/협업 맥락만 정리합니다.',
+    '지금 화면에서는 공개된 연락 채널과 협업에 바로 이어질 수 있는 프로젝트 맥락만 깔끔하게 정리합니다.',
+    'Private repositories, unprepared resume links, and personal addresses stay out of the public portfolio response.',
+    'This view keeps the focus on public contact channels and project context that can lead into a practical collaboration conversation.',
+  ]);
+
+  return content
+    .split('\n')
+    .filter((line) => !hiddenPublicPolicyLines.has(line.trim()))
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
 function ProjectShowcaseCards({
