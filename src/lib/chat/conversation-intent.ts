@@ -1,5 +1,9 @@
 import type { UIMessage } from 'ai';
 import type { ChatLanguage } from '@/lib/i18n/detect-language';
+import {
+  getContextualQuote,
+  type ContextualQuoteCategory,
+} from '@/data/contextual-quotes';
 
 export type ConversationIntent =
   | 'greeting_smalltalk'
@@ -512,15 +516,34 @@ export function buildConversationIntentAnswer({
   question: string;
 }) {
   if (intent === 'off_topic_redirect') {
-    return buildOffTopicRedirectAnswer({ question, language });
+    return appendContextualQuote({
+      answer: buildOffTopicRedirectAnswer({ question, language }),
+      category: getOffTopicQuoteCategory(question),
+      language,
+      seed: question,
+    });
   }
 
   const copy = isDirectAnswerIntent(intent)
     ? CONVERSATION_DIRECT_ANSWERS[intent]
     : undefined;
-  return (
+  const answer =
     copy?.[language] ?? CONVERSATION_DIRECT_ANSWERS.off_topic_redirect[language]
-  );
+
+  if (
+    intent === 'greeting_smalltalk' ||
+    intent === 'portfolio_ambiguous' ||
+    intent === 'playful_probe'
+  ) {
+    return appendContextualQuote({
+      answer,
+      category: intent === 'portfolio_ambiguous' ? 'product' : 'ai_era',
+      language,
+      seed: `${intent}:${question}`,
+    });
+  }
+
+  return answer;
 }
 
 function isDirectAnswerIntent(
@@ -690,6 +713,35 @@ function buildOffTopicRedirectAnswer({
 
 function isLightTranslationRequest(question: string) {
   return /우주(?:를|을)?\s*영어로/.test(question);
+}
+
+function getOffTopicQuoteCategory(
+  question: string
+): ContextualQuoteCategory {
+  if (/(우주|space|universe|cosmos|별|행성|은하|너머)/i.test(question)) {
+    return 'product';
+  }
+
+  if (/(농담|유머|심심|지루|joke|bored)/i.test(question)) {
+    return 'ux';
+  }
+
+  return 'ai_era';
+}
+
+function appendContextualQuote({
+  answer,
+  category,
+  language,
+  seed,
+}: {
+  answer: string;
+  category: ContextualQuoteCategory;
+  language: ChatLanguage;
+  seed: string;
+}) {
+  const quote = getContextualQuote({ category, language, seed });
+  return `${answer}\n\n---\n> ${quote}`;
 }
 
 function stableIndex(value: string, modulo: number) {

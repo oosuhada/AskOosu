@@ -1082,7 +1082,8 @@ function getIntentBoost(
 ) {
   const sourceAwareBoost = Math.max(
     getVisionaryIntentBoost(row, query, weights),
-    getSecondBrainIntentBoost(row, query, weights)
+    getSecondBrainIntentBoost(row, query, weights),
+    getFaqAddonIntentBoost(row, query, weights)
   );
   const normalizedQuery = normalizeAliasText(query);
   const searchableText = normalizeAliasText(
@@ -1181,6 +1182,30 @@ function getSecondBrainIntentBoost(
   return 0;
 }
 
+function getFaqAddonIntentBoost(
+  row: RagChunkSearchRow,
+  query: string,
+  weights: RagHybridWeights
+) {
+  const metadata = row.metadata ?? {};
+  const sourceType =
+    typeof metadata.sourceType === 'string' ? metadata.sourceType : '';
+  const intentGroup =
+    typeof metadata.intentGroup === 'string' ? metadata.intentGroup : '';
+  const sourceCategory =
+    typeof metadata.sourceCategory === 'string' ? metadata.sourceCategory : '';
+
+  if (
+    sourceType !== 'faq_addon' &&
+    sourceCategory !== 'faq_addon' &&
+    intentGroup !== 'ai_era_competitiveness'
+  ) {
+    return 0;
+  }
+
+  return isAiEraCompetitivenessSearchQuery(query) ? weights.intent * 2.1 : 0;
+}
+
 function isOperatingSystemSearchQuery(query: string) {
   return /(어떻게\s*(활용|일|검토|리뷰|완성|나눠|운영)|코드.*(검토|리뷰)|리뷰.*코드|AI.*(코드|검토|리뷰)|AI\s*(활용|에이전트|워크플로)|Codex|Claude|definition\s+of\s+done|done|workflow|code\s+review|agent\s+workflow|how\s+does\s+Oosu\s+(use|work)|when\s+does\s+Oosu\s+consider)/i.test(
     query
@@ -1189,6 +1214,12 @@ function isOperatingSystemSearchQuery(query: string) {
 
 function isDecisionLogSearchQuery(query: string) {
   return /(왜|이유|선택|결정|판단|tradeoff|RAG|cache\s*first|FAQ\s*cache|source\s*badge|confidence\s*badge|Notion|recruiter\s*risk|overclaim|why\s+did|why\s+cache|why\s+rag|decision)/i.test(
+    query
+  );
+}
+
+function isAiEraCompetitivenessSearchQuery(query: string) {
+  return /(AI\s*시대.*(경쟁력|개발자|차별점|강점)|AI가\s*(개발자|주니어|사람).*(대체|필요\s*없)|AI\s*(의존|기본기|실력)|AI와\s*경쟁|AI를\s*잘\s*쓰|AI\s*fluency|AI\s*dependency|ai\s+era.*(developer|edge|competitive)|ai.*replace.*developer|developers?.*(obsolete|replace)|why\s+hire.*developer|competitive\s+advantage|competing\s+with\s+ai|can\s+you\s+code\s+without\s+ai)/i.test(
     query
   );
 }
@@ -1408,6 +1439,11 @@ function getSourceAwareFilters(value: string) {
 
   if (isPostmortemSearchQuery(value)) {
     sourceTypes.push('postmortem_doc');
+  }
+
+  if (isAiEraCompetitivenessSearchQuery(value)) {
+    sourceTypes.push('faq_addon');
+    sourceCategories.push('faq_addon');
   }
 
   return {
