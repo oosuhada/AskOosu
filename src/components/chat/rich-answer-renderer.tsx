@@ -610,8 +610,8 @@ function ContactCard({
 
   return (
     <section className="rounded-lg border bg-slate-50 p-4 shadow-sm dark:bg-white/[0.05]">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex min-w-0 items-center gap-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-1 items-center gap-3">
           <div className="h-14 w-14 overflow-hidden rounded-full border bg-white shadow-sm dark:bg-slate-900">
             <MediaPreview
               assetKey="profile.oosu.portrait"
@@ -630,7 +630,7 @@ function ContactCard({
             </p>
           </div>
         </div>
-        <div className="inline-flex w-fit items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-sm font-medium text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200">
+        <div className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 sm:px-3 sm:text-sm dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-200">
           <span className="h-2 w-2 rounded-full bg-emerald-500" />
           {language === 'ko' ? 'Open' : 'Open'}
         </div>
@@ -895,7 +895,7 @@ function ProgressiveProfileMotion() {
 
   return (
     <div
-      className="relative aspect-[4/3] h-full w-full md:aspect-[5/4]"
+      className="relative aspect-[4/5] h-full w-full md:aspect-[5/6]"
       role="img"
       aria-label="Oosu profile portrait"
     >
@@ -908,7 +908,7 @@ function ProgressiveProfileMotion() {
         onLoad={() => setCanLoadMotion(true)}
         onError={() => setCanLoadMotion(true)}
         className={cn(
-          'absolute inset-0 h-full w-full object-contain object-bottom transition-opacity duration-300',
+          'absolute inset-0 h-full w-full origin-bottom scale-[1.18] object-cover object-bottom transition-opacity duration-300',
           isMotionLoaded ? 'opacity-0' : 'opacity-100'
         )}
         sizes="(min-width: 768px) 360px, calc(100vw - 3rem)"
@@ -925,7 +925,7 @@ function ProgressiveProfileMotion() {
           unoptimized
           onLoad={() => setIsMotionLoaded(true)}
           className={cn(
-            'absolute inset-0 h-full w-full object-contain object-bottom transition-opacity duration-300',
+            'absolute inset-0 h-full w-full origin-bottom scale-[1.18] object-cover object-bottom transition-opacity duration-300',
             isMotionLoaded ? 'opacity-100' : 'opacity-0'
           )}
         />
