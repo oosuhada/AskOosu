@@ -908,7 +908,7 @@ function ProgressiveProfileMotion() {
         onLoad={() => setCanLoadMotion(true)}
         onError={() => setCanLoadMotion(true)}
         className={cn(
-          'absolute inset-0 h-full w-full origin-bottom scale-[1.18] object-cover object-bottom transition-opacity duration-300',
+          'absolute inset-0 h-full w-full origin-bottom translate-y-[4%] scale-[1.18] object-cover object-bottom transition-opacity duration-300',
           isMotionLoaded ? 'opacity-0' : 'opacity-100'
         )}
         sizes="(min-width: 768px) 360px, calc(100vw - 3rem)"
@@ -925,7 +925,7 @@ function ProgressiveProfileMotion() {
           unoptimized
           onLoad={() => setIsMotionLoaded(true)}
           className={cn(
-            'absolute inset-0 h-full w-full origin-bottom scale-[1.18] object-cover object-bottom transition-opacity duration-300',
+            'absolute inset-0 h-full w-full origin-bottom translate-y-[4%] scale-[1.18] object-cover object-bottom transition-opacity duration-300',
             isMotionLoaded ? 'opacity-100' : 'opacity-0'
           )}
         />

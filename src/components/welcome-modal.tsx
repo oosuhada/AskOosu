@@ -67,28 +67,28 @@ export default function WelcomeModal({ trigger }: WelcomeModalProps) {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className="flex h-full flex-col"
+            className="relative flex h-full flex-col"
           >
             {/* Header */}
-            <DialogHeader className="relative flex flex-row items-start justify-between px-8 pt-8 pb-6">
-              <div>
-                <DialogTitle className="flex items-center gap-2 text-4xl font-bold tracking-tight">
+            <DialogHeader className="px-6 pt-16 pb-6 text-left sm:px-8">
+              <div className="min-w-0">
+                <DialogTitle className="text-3xl leading-tight font-bold tracking-tight break-words sm:text-4xl">
                   {text.welcomeTitle}
                 </DialogTitle>
-                <DialogDescription className="mt-2 text-base">
+                <DialogDescription className="mt-3 text-base">
                   {text.welcomeDescription}
                 </DialogDescription>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="sticky top-0 right-0 cursor-pointer rounded-full bg-black p-2 text-white hover:bg-black/90 hover:text-white"
-                onClick={() => setIsOpen(false)}
-              >
-                <X className="h-6 w-6" />
-                <span className="sr-only">{text.close}</span>
-              </Button>
             </DialogHeader>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-4 right-4 z-10 cursor-pointer rounded-full bg-black p-2 text-white hover:bg-black/90 hover:text-white"
+              onClick={() => setIsOpen(false)}
+            >
+              <X className="h-6 w-6" />
+              <span className="sr-only">{text.close}</span>
+            </Button>
 
             {/* Content area */}
             <div className="space-y-6 overflow-y-auto px-2 py-4 md:px-8">
