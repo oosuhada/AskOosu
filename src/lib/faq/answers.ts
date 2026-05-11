@@ -1,6 +1,7 @@
 import { oosuProfile } from '@/lib/oosu-profile';
 import type { ChatLanguage } from '@/lib/i18n/detect-language';
 import type { ChatAnswerSource } from '@/lib/chat/types';
+import { RECRUITER_RISK_FAQ_ANSWERS } from './recruiter-risk-answers';
 
 export type FaqCacheMode = 'direct_cache' | 'cache_rewrite' | 'rag_required';
 
@@ -724,6 +725,7 @@ const sharedGuardrails = [
 ];
 
 export const FAQ_ANSWERS: FaqAnswer[] = [
+  ...RECRUITER_RISK_FAQ_ANSWERS,
   createFaqAnswer({
     id: 'faq.project.top_three.default',
     legacyIds: ['faq.projects.top3.summary'],

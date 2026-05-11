@@ -6,6 +6,7 @@ import {
   shouldUseEmbeddings,
 } from './config';
 import { embedRagChunks, embedRagQuery } from './embeddings';
+import { fetchLocalMarkdownRagChunks } from './markdown-source';
 import { fetchNotionChunks } from './notion-source';
 import { getStaticChunks } from './static-source';
 import { getRagStore } from './stores';
@@ -107,8 +108,11 @@ async function syncPortfolioKnowledgeBaseOnce(): Promise<RagSyncSummary> {
   const startedAt = Date.now();
   const warnings: string[] = [];
   const store = await getRagStore();
+  const localMarkdown = await fetchLocalMarkdownRagChunks();
+  warnings.push(...localMarkdown.warnings);
   const sourceChunks = dedupeChunks([
     ...(await fetchNotionChunks()),
+    ...localMarkdown.chunks,
     ...getStaticChunks(),
   ]);
   let chunks = sourceChunks;

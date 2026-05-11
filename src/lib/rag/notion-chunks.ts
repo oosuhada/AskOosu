@@ -135,6 +135,38 @@ export const NOTION_ENTITY_ALIAS_MAP: Record<string, EntityAlias> = {
       'Public Answer Redaction',
     ],
   },
+  recruiter: {
+    entityId: 'recruiter',
+    aliases: [
+      'recruiter',
+      'recruiter risk',
+      'retention risk',
+      'founder mindset',
+      'startup risk',
+      'hiring risk',
+      '채용담당자',
+      '채용 담당자',
+      '면접관',
+      '채용 리스크',
+      '장기 근속',
+      '이직 리스크',
+      '퇴사 리스크',
+      '창업 리스크',
+      '배울 것만',
+      '금방 그만둘',
+    ],
+  },
+  ai_usage: {
+    entityId: 'skill.ai_usage',
+    aliases: [
+      'AI dependency',
+      'AI tool dependency',
+      'AI 의존도',
+      'AI 없이도',
+      '직접 코딩',
+      '프롬프트만',
+    ],
+  },
 };
 
 const TODO_PATTERN = /\bTODO\b|확인 필요|채워야|미정/i;
@@ -162,7 +194,7 @@ export function hasTodoMarker(value: string) {
 
 export function detectEntityId(value: string) {
   const explicitEntityId = value.match(
-    /\b(?:person|project|career|profile|skill|knowledge|policy|contact|audience|question)\.[a-z0-9_.-]+\b/i
+    /\b(?:person|project|career|profile|skill|knowledge|policy|contact|audience|question|recruiter|collaboration|ai_usage)\.[a-z0-9_.-]+\b/i
   );
 
   if (explicitEntityId) return explicitEntityId[0].toLowerCase();

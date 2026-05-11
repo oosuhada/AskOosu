@@ -154,7 +154,8 @@ const TECHNICAL_DEEP_DIVE_PATTERNS = [
 
 const RECRUITER_EVALUATION_PATTERNS = [
   /(뽑|채용|포지션|주니어|시니어|실무|투입|강점|약점|협업|평가)/,
-  /(hire|recruiter|position|junior|senior|strength|weakness|collaboration|fit)/i,
+  /(오래\s*(근무|다니|못\s*다니|머물|못\s*머물)|장기\s*근속|금방\s*(그만|퇴사)|퇴사\s*리스크|이직\s*리스크|배울\s*(것|거)?만|뽑아\s*먹|뽑아먹|창업\s*(쪽|생각|리스크)|회사에\s*집중|비전공|전환형|깊이가\s*부족|AI\s*(의존|없이|포장))/i,
+  /(hire|recruiter|position|junior|senior|strength|weakness|collaboration|fit|retention|leave quickly|learn and leave|founder mindset|startup risk|career changer depth|ai dependency)/i,
 ];
 
 const METRIC_REQUEST_PATTERNS = [
@@ -385,6 +386,14 @@ export function getConversationEntityHints(question: string) {
 
   if (/(sticks?\s*&?\s*stones?|스틱스|스톤즈|stks)/i.test(question)) {
     hints.push('project.sticks_and_stones');
+  }
+
+  if (
+    /(채용|리크루터|면접|오래\s*(근무|다니|머물)|금방\s*(그만|퇴사)|배울\s*(것|거)?만|창업\s*(쪽|생각|리스크)|retention|recruiter|founder|startup\s*risk)/i.test(
+      question
+    )
+  ) {
+    hints.push('recruiter', 'profile.career');
   }
 
   return Array.from(new Set(hints));
