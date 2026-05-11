@@ -291,6 +291,7 @@ function getGeneratedAnswerSource(provider: string): ChatAnswerSource {
   if (provider === 'groq') return 'rag_groq';
   if (provider === 'google_vertex') return 'rag_google';
   if (provider === 'xai') return 'rag_xai';
+  if (provider === 'openrouter') return 'rag_openrouter';
   if (provider === 'openai') return 'rag_openai';
   return 'fallback';
 }

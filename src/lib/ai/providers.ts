@@ -4,11 +4,16 @@ import path from 'node:path';
 import { APICallError, RetryError, type LanguageModel } from 'ai';
 import { createVertex } from '@ai-sdk/google-vertex';
 import { createGroq } from '@ai-sdk/groq';
-import { openai } from '@ai-sdk/openai';
+import { createOpenAI, openai } from '@ai-sdk/openai';
 import { createXai } from '@ai-sdk/xai';
 import { logInfo, logWarn } from '@/lib/observability/logger';
 
-export type ChatProviderName = 'openai' | 'xai' | 'groq' | 'google_vertex';
+export type ChatProviderName =
+  | 'openai'
+  | 'xai'
+  | 'groq'
+  | 'google_vertex'
+  | 'openrouter';
 type XaiApiMode = 'responses' | 'chat';
 
 export type ChatModelSelection = {
@@ -49,32 +54,40 @@ const DEFAULT_XAI_MODEL = 'grok-4';
 const DEFAULT_GROQ_MODEL = 'llama-3.3-70b-versatile';
 const DEFAULT_GOOGLE_VERTEX_MODEL = 'gemini-2.5-flash';
 const DEFAULT_GOOGLE_VERTEX_LOCATION = 'us-central1';
+const DEFAULT_OPENROUTER_MODEL = 'google/gemini-2.5-flash';
 const DEFAULT_GROQ_FAILURE_THRESHOLD = 3;
 const DEFAULT_GROQ_COOLDOWN_MS = 15 * 60 * 1000;
 const DEFAULT_GROQ_QUOTA_COOLDOWN_MS = 60 * 60 * 1000;
 const XAI_BASE_URL = 'https://api.x.ai/v1';
 const GROQ_BASE_URL = 'https://api.groq.com/openai/v1';
+const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
 export function getChatModel(): ChatModelSelection {
-  const provider = getChatProviderName();
-
-  if (provider === 'groq') return getGroqChatModel();
-  if (provider === 'xai') return getXaiChatModel();
-  if (provider === 'google_vertex') return getGoogleVertexChatModel();
-
-  const modelName = process.env.OPENAI_MODEL ?? DEFAULT_OPENAI_MODEL;
-  return {
-    model: openai(modelName),
-    provider,
-    modelName,
-  };
+  return getChatModelForProvider(getChatProviderName());
 }
 
 export function getFallbackChatModel() {
-  if (!isGoogleAiEnabled()) return null;
+  const primaryProvider = getChatProviderName();
+  const configuredFallbackProvider = getFallbackChatProviderName();
 
-  if (hasGoogleVertexCredentials()) {
+  if (
+    configuredFallbackProvider &&
+    configuredFallbackProvider !== primaryProvider &&
+    hasProviderCredentials(configuredFallbackProvider)
+  ) {
+    return getChatModelForProvider(configuredFallbackProvider);
+  }
+
+  if (
+    primaryProvider !== 'google_vertex' &&
+    isGoogleAiEnabled() &&
+    hasGoogleVertexCredentials()
+  ) {
     return getGoogleVertexChatModel();
+  }
+
+  if (primaryProvider !== 'openrouter' && hasOpenRouterCredentials()) {
+    return getOpenRouterChatModel();
   }
 
   return null;
@@ -86,6 +99,7 @@ export function hasChatModelCredentials() {
   if (provider === 'groq') return getGroqCredentials().length > 0;
   if (provider === 'xai') return Boolean(process.env.XAI_API_KEY);
   if (provider === 'google_vertex') return hasGoogleVertexCredentials();
+  if (provider === 'openrouter') return hasOpenRouterCredentials();
 
   return Boolean(process.env.OPENAI_API_KEY);
 }
@@ -96,9 +110,11 @@ export function getChatProviderName(): ChatProviderName {
   }
   if (process.env.ASKOOSU_AI_PROVIDER === 'groq') return 'groq';
   if (process.env.ASKOOSU_AI_PROVIDER === 'xai') return 'xai';
+  if (process.env.ASKOOSU_AI_PROVIDER === 'openrouter') return 'openrouter';
   if (process.env.ASKOOSU_AI_PROVIDER === 'openai') return 'openai';
   if (getGroqCredentials().length > 0) return 'groq';
   if (process.env.XAI_API_KEY) return 'xai';
+  if (hasOpenRouterCredentials()) return 'openrouter';
   if (hasGoogleVertexCredentials()) return 'google_vertex';
   return 'openai';
 }
@@ -208,12 +224,43 @@ function getXaiChatModel(): ChatModelSelection {
   return { model, provider: 'xai', modelName };
 }
 
+function getOpenRouterChatModel(): ChatModelSelection {
+  const apiKey = process.env.OPENROUTER_API_KEY;
+
+  if (!apiKey) {
+    throw new Error(
+      'OPENROUTER_API_KEY is required when ASKOOSU_AI_PROVIDER=openrouter.'
+    );
+  }
+
+  const openrouter = createOpenAI({
+    apiKey,
+    baseURL: process.env.OPENROUTER_BASE_URL ?? OPENROUTER_BASE_URL,
+    name: 'openrouter',
+    headers: {
+      'HTTP-Referer':
+        process.env.OPENROUTER_SITE_URL ??
+        process.env.NEXT_PUBLIC_APP_URL ??
+        'https://oosu.dev',
+      'X-Title': process.env.OPENROUTER_SITE_NAME ?? 'AskOosu',
+    },
+  });
+  const modelName = process.env.OPENROUTER_MODEL ?? DEFAULT_OPENROUTER_MODEL;
+
+  return {
+    model: openrouter.chat(modelName),
+    provider: 'openrouter',
+    modelName,
+  };
+}
+
 function getGoogleVertexChatModel(): ChatModelSelection {
   const apiKey = process.env.GOOGLE_VERTEX_API_KEY;
   const modelName =
     process.env.GOOGLE_VERTEX_MODEL ?? DEFAULT_GOOGLE_VERTEX_MODEL;
   const vertex = createVertex({
     ...(apiKey ? { apiKey } : {}),
+    ...getGoogleAuthOptions(),
     project: getGoogleVertexProject(),
     location:
       process.env.GOOGLE_VERTEX_LOCATION ?? DEFAULT_GOOGLE_VERTEX_LOCATION,
@@ -230,8 +277,9 @@ function hasGoogleVertexCredentials() {
   return Boolean(
     process.env.GOOGLE_VERTEX_API_KEY ||
       process.env.GOOGLE_APPLICATION_CREDENTIALS ||
-      getGoogleVertexProject() ||
-      hasApplicationDefaultCredentialsFile()
+      hasGoogleAuthEnvCredentials() ||
+      hasApplicationDefaultCredentialsFile() ||
+      process.env.GOOGLE_VERTEX_USE_METADATA_SERVER === 'true'
   );
 }
 
@@ -247,6 +295,61 @@ function getGoogleVertexProject() {
     process.env.GCLOUD_PROJECT ||
     getApplicationDefaultCredentialsProject()
   );
+}
+
+function getChatModelForProvider(provider: ChatProviderName): ChatModelSelection {
+  if (provider === 'groq') return getGroqChatModel();
+  if (provider === 'xai') return getXaiChatModel();
+  if (provider === 'google_vertex') return getGoogleVertexChatModel();
+  if (provider === 'openrouter') return getOpenRouterChatModel();
+
+  const modelName = process.env.OPENAI_MODEL ?? DEFAULT_OPENAI_MODEL;
+  return {
+    model: openai(modelName),
+    provider,
+    modelName,
+  };
+}
+
+function getFallbackChatProviderName(): ChatProviderName | null {
+  return parseProviderName(process.env.ASKOOSU_FALLBACK_AI_PROVIDER);
+}
+
+function parseProviderName(value: string | undefined): ChatProviderName | null {
+  if (isGoogleVertexProviderName(value)) return 'google_vertex';
+  if (value === 'groq' || value === 'xai' || value === 'openai') return value;
+  if (value === 'openrouter') return 'openrouter';
+  return null;
+}
+
+function hasProviderCredentials(provider: ChatProviderName) {
+  if (provider === 'groq') return getGroqCredentials().length > 0;
+  if (provider === 'xai') return Boolean(process.env.XAI_API_KEY);
+  if (provider === 'google_vertex') return hasGoogleVertexCredentials();
+  if (provider === 'openrouter') return hasOpenRouterCredentials();
+  return Boolean(process.env.OPENAI_API_KEY);
+}
+
+function hasOpenRouterCredentials() {
+  return Boolean(process.env.OPENROUTER_API_KEY);
+}
+
+function getGoogleAuthOptions() {
+  if (!hasGoogleAuthEnvCredentials()) return {};
+
+  return {
+    googleAuthOptions: {
+      credentials: {
+        client_email: process.env.GOOGLE_CLIENT_EMAIL,
+        private_key: process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+        private_key_id: process.env.GOOGLE_PRIVATE_KEY_ID,
+      },
+    },
+  };
+}
+
+function hasGoogleAuthEnvCredentials() {
+  return Boolean(process.env.GOOGLE_CLIENT_EMAIL && process.env.GOOGLE_PRIVATE_KEY);
 }
 
 function hasApplicationDefaultCredentialsFile() {
