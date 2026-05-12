@@ -45,6 +45,7 @@ import { Button } from '@/components/ui/button';
 import WelcomeModal from '@/components/welcome-modal';
 import { ArrowDown, Info, MailWarning, RefreshCcw } from 'lucide-react';
 import HelperBoost from './HelperBoost';
+import { buildVisibleAnswerPlan } from '@/lib/chat/visible-answer-plan';
 
 const MOTION_CONFIG = {
   initial: false,
@@ -403,6 +404,10 @@ const Chat = () => {
   const latestUserText =
     (latestUserMessage ? getMessageText(latestUserMessage) : '') ||
     lastSubmittedQuery;
+  const visibleLoadingSteps = useMemo(
+    () => buildVisibleAnswerPlan(latestUserText, language),
+    [language, latestUserText]
+  );
 
   const handleRetryChatError = useCallback(() => {
     setChatErrorNotice(null);
@@ -501,26 +506,43 @@ const Chat = () => {
               >
                 <ConversationAvatarHeader compact={hasActiveTool} />
 
-                {messages.map((message, index) =>
-                  message.role === 'user' ? (
-                    <UserQuestionBubble
-                      key={message.id}
-                      content={getMessageText(message)}
-                    />
-                  ) : message.role === 'assistant' ? (
-                    <SimplifiedChatView
-                      key={message.id}
-                      message={message}
-                      isLoading={
-                        isLoading && index === latestAssistantMessageIndex
-                      }
-                      regenerate={regenerate}
-                      sessionId={activeConversationId}
-                      question={getPreviousUserText(messages, index)}
-                      loadingLabel={loadingLabel}
-                    />
-                  ) : null
-                )}
+                {messages.map((message, index) => {
+                  if (message.role === 'user') {
+                    return (
+                      <UserQuestionBubble
+                        key={message.id}
+                        content={getMessageText(message)}
+                      />
+                    );
+                  }
+
+                  if (message.role === 'assistant') {
+                    const previousUserText = getPreviousUserText(
+                      messages,
+                      index
+                    );
+
+                    return (
+                      <SimplifiedChatView
+                        key={message.id}
+                        message={message}
+                        isLoading={
+                          isLoading && index === latestAssistantMessageIndex
+                        }
+                        regenerate={regenerate}
+                        sessionId={activeConversationId}
+                        question={previousUserText}
+                        loadingLabel={loadingLabel}
+                        loadingSteps={buildVisibleAnswerPlan(
+                          previousUserText,
+                          language
+                        )}
+                      />
+                    );
+                  }
+
+                  return null;
+                })}
 
                 {loadingSubmit &&
                 latestAssistantMessageIndex <
@@ -532,6 +554,7 @@ const Chat = () => {
                       <ChatBubbleMessage
                         isLoading
                         loadingLabel={loadingLabel}
+                        loadingSteps={visibleLoadingSteps}
                         className="bg-background/85 min-h-[5.75rem] w-full rounded-2xl border px-4 py-3 shadow-sm backdrop-blur-sm"
                       />
                     </ChatBubble>
@@ -837,7 +860,8 @@ function getChatErrorCopy(language: 'ko' | 'en') {
 
   return {
     title: 'Please try again soon.',
-    message: 'The answer engine is taking a short break. Please try again soon.',
+    message:
+      'The answer engine is taking a short break. Please try again soon.',
   };
 }
 

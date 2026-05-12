@@ -17,7 +17,7 @@ import {
   ThumbsDown,
   ThumbsUp,
 } from 'lucide-react';
-import { useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 
 type RagSource = {
   chunk_id: string;
@@ -84,6 +84,14 @@ type FeedbackContext = {
   answer?: string;
 };
 
+type DisplaySourceItem = {
+  key: string;
+  source: RagSource;
+  title: string;
+  sectionPath: string;
+  count: number;
+};
+
 const MAX_VISIBLE_SOURCES = 4;
 const MAX_CLIENT_TEXT_LENGTH = 4000;
 const MAX_CLIENT_QUESTION_LENGTH = 1000;
@@ -121,6 +129,31 @@ const FEEDBACK_REASON_OPTIONS: {
     },
   },
 ];
+
+function useSourceColumnCount() {
+  const [columnCount, setColumnCount] = useState(1);
+
+  useEffect(() => {
+    const updateColumnCount = () => {
+      const width = window.innerWidth;
+      if (width >= 1280) {
+        setColumnCount(4);
+      } else if (width >= 1024) {
+        setColumnCount(3);
+      } else if (width >= 640) {
+        setColumnCount(2);
+      } else {
+        setColumnCount(1);
+      }
+    };
+
+    updateColumnCount();
+    window.addEventListener('resize', updateColumnCount);
+    return () => window.removeEventListener('resize', updateColumnCount);
+  }, []);
+
+  return columnCount;
+}
 
 const PROJECT_CARDS: Record<string, ProjectCardInfo> = {
   askoosu: {
@@ -373,24 +406,41 @@ export function RagEvidencePanel({
   const [sourcesExpanded, setSourcesExpanded] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const isDebugMode = useMemo(isAskOosuDebugUiEnabled, []);
+  const sourceColumnCount = useSourceColumnCount();
 
   if (!ragMetadata) return null;
-  if (ragMetadata.showEvidence === false && !isDebugMode) return null;
-  if (!isDebugMode && ragMetadata.sources.length === 0) return null;
+  const displayLanguage = ragMetadata.language ?? 'en';
+  const shouldShowFeedbackOnly = shouldShowFeedbackForAnswerSource(
+    ragMetadata.answerSource
+  );
+  if (
+    ragMetadata.showEvidence === false &&
+    !isDebugMode &&
+    !shouldShowFeedbackOnly
+  ) {
+    return null;
+  }
+  if (
+    !isDebugMode &&
+    ragMetadata.sources.length === 0 &&
+    !shouldShowFeedbackOnly
+  ) {
+    return null;
+  }
 
-  const sourceCount = ragMetadata.sources.length;
-  const publicRemainingSourceCount = Math.max(0, sourceCount - 1);
-  const debugHiddenSourceCount = Math.max(0, sourceCount - MAX_VISIBLE_SOURCES);
-  const hiddenSourceCount = isDebugMode
-    ? debugHiddenSourceCount
-    : publicRemainingSourceCount;
-  const displayedSources = isDebugMode
-    ? sourcesExpanded
-      ? ragMetadata.sources
-      : ragMetadata.sources.slice(0, MAX_VISIBLE_SOURCES)
-    : sourcesExpanded
-      ? ragMetadata.sources
-      : ragMetadata.sources.slice(0, 1);
+  const sourceItems = buildDisplaySourceItems({
+    sources: ragMetadata.sources,
+    language: displayLanguage,
+    debug: isDebugMode,
+  });
+  const sourceCount = sourceItems.length;
+  const collapsedSourceCount = isDebugMode
+    ? MAX_VISIBLE_SOURCES
+    : sourceColumnCount;
+  const hiddenSourceCount = Math.max(0, sourceCount - collapsedSourceCount);
+  const displayedSources = sourcesExpanded
+    ? sourceItems
+    : sourceItems.slice(0, collapsedSourceCount);
   const hasReviewEvidence = ragMetadata.sources.some(
     (source) => source.visibility && source.visibility !== 'public'
   );
@@ -399,7 +449,6 @@ export function RagEvidencePanel({
     ragMetadata.sources.some((source) => source.has_todo);
   const hasWarnings = ragMetadata.warnings.length > 0;
   const projectCards = getProjectCards(ragMetadata);
-  const displayLanguage = ragMetadata.language ?? 'en';
   const confidenceTone = getConfidenceTone(
     ragMetadata.confidence,
     displayLanguage
@@ -584,12 +633,11 @@ export function RagEvidencePanel({
 
       {shouldShowSources && displayedSources.length > 0 && (
         <div className="space-y-2" aria-label="Portfolio sources">
-          <div className="grid grid-cols-1 gap-2">
-            {displayedSources.map((source, index) => (
+          <div className="grid grid-cols-1 items-stretch gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {displayedSources.map((sourceItem) => (
               <SourceEvidenceCard
-                key={source.chunk_id}
-                source={source}
-                index={index}
+                key={sourceItem.key}
+                sourceItem={sourceItem}
                 language={displayLanguage}
                 debug={isDebugMode}
               />
@@ -631,16 +679,12 @@ export function RagEvidencePanel({
 
       <div className="border-t pt-3">
         <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-          {(isFeedbackOpen ||
-            feedbackState !== 'idle' ||
-            feedbackRating !== null) && (
-            <span
-              className="text-muted-foreground min-w-0 text-xs"
-              aria-live="polite"
-            >
-              {feedbackStatusText}
-            </span>
-          )}
+          <span
+            className="text-muted-foreground min-w-0 text-xs"
+            aria-live="polite"
+          >
+            {feedbackStatusText}
+          </span>
           <Button
             type="button"
             size="sm"
@@ -817,25 +861,20 @@ export function RagEvidencePanel({
 }
 
 function SourceEvidenceCard({
-  source,
-  index,
+  sourceItem,
   language,
   debug,
 }: {
-  source: RagSource;
-  index: number;
+  sourceItem: DisplaySourceItem;
   language: 'ko' | 'en';
   debug: boolean;
 }) {
-  const sourceTitle = debug
-    ? `S${index + 1}. ${source.chunk_id}`
-    : formatPublicSourceTitle(source, language);
-  const sectionPath = formatSectionPathLabel(source, language);
+  const { source, title: sourceTitle, sectionPath, count } = sourceItem;
 
   return (
     <article
       title={debug ? formatSourceTitle(source) : undefined}
-      className="bg-background/70 min-w-0 rounded-lg border px-3 py-2"
+      className="bg-background/70 min-w-0 break-inside-avoid rounded-lg border px-3 py-2"
     >
       <div className="flex min-w-0 items-start gap-2">
         <BookOpenCheck className="text-foreground mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -847,6 +886,11 @@ function SourceEvidenceCard({
             </p>
           )}
         </div>
+        {count > 1 && !debug && (
+          <span className="bg-muted text-muted-foreground shrink-0 rounded-md border px-1.5 py-0.5 text-[10px]">
+            {language === 'ko' ? `${count}개` : `x${count}`}
+          </span>
+        )}
       </div>
 
       {debug && (
@@ -866,6 +910,62 @@ function SourceEvidenceCard({
       )}
     </article>
   );
+}
+
+function buildDisplaySourceItems({
+  sources,
+  language,
+  debug,
+}: {
+  sources: RagSource[];
+  language: 'ko' | 'en';
+  debug: boolean;
+}): DisplaySourceItem[] {
+  if (debug) {
+    return sources.map((source, index) => ({
+      key: source.chunk_id,
+      source,
+      title: `S${index + 1}. ${source.chunk_id}`,
+      sectionPath: formatSectionPathLabel(source, language),
+      count: 1,
+    }));
+  }
+
+  const sourceGroups = new Map<string, DisplaySourceItem>();
+
+  for (const source of sources) {
+    const title = formatPublicSourceTitle(source, language);
+    const rawSectionPath = formatSectionPathLabel(source, language);
+    const sectionPath = rawSectionPath === title ? '' : rawSectionPath;
+    const key = `${title}::${sectionPath}`;
+    const existingSource = sourceGroups.get(key);
+
+    if (existingSource) {
+      existingSource.count += 1;
+      continue;
+    }
+
+    sourceGroups.set(key, {
+      key,
+      source,
+      title,
+      sectionPath,
+      count: 1,
+    });
+  }
+
+  return Array.from(sourceGroups.values());
+}
+
+function shouldShowFeedbackForAnswerSource(answerSource?: string) {
+  return ![
+    undefined,
+    'smalltalk',
+    'off_topic_redirect',
+    'clarify',
+    'private_guardrail',
+    'prompt_guardrail',
+  ].includes(answerSource);
 }
 
 async function submitFeedback({
@@ -943,7 +1043,7 @@ function getFeedbackStatusText(
     if (rating === 'up') return '피드백 고마워요.';
     if (rating === 'down') return '고마워요. 이 답변은 개선할 수 있어요.';
 
-    return '이 답변이 도움이 되었나요?';
+    return '충분한 답변이 되었나요?';
   }
 
   if (state === 'saving') return 'Saving feedback...';
@@ -953,7 +1053,7 @@ function getFeedbackStatusText(
   if (rating === 'up') return 'Thanks for the feedback.';
   if (rating === 'down') return 'Thanks. This answer can be improved.';
 
-  return 'Was this answer helpful?';
+  return 'Was this answer useful enough?';
 }
 
 function buildDownFeedbackReason({

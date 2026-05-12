@@ -15,6 +15,7 @@ import {
   hasRichAnswerPayload,
   RichAnswerRenderer,
 } from './rich-answer-renderer';
+import { normalizeMarkdownSpacing } from '@/lib/chat/markdown-spacing';
 
 export type ChatMessageContentProps = {
   message: UIMessage;
@@ -144,20 +145,18 @@ export default function ChatMessageContent({
 
 function PlainMarkdownContent({ content }: { content: string }) {
   return (
-    <div className="prose dark:prose-invert w-full">
+    <div className="prose dark:prose-invert w-full whitespace-normal">
       <Markdown
         remarkPlugins={[remarkGfm]}
         components={{
-          p: ({ children }) => (
-            <p className="break-words whitespace-pre-wrap">{children}</p>
-          ),
+          p: ({ children }) => <p className="my-0 break-words">{children}</p>,
           ul: ({ children }) => (
-            <ul className="my-4 list-disc pl-6">{children}</ul>
+            <ul className="my-2 list-disc space-y-2 pl-5">{children}</ul>
           ),
           ol: ({ children }) => (
-            <ol className="my-4 list-decimal pl-6">{children}</ol>
+            <ol className="my-2 list-decimal space-y-2 pl-5">{children}</ol>
           ),
-          li: ({ children }) => <li className="my-1">{children}</li>,
+          li: ({ children }) => <li className="my-0 pl-0">{children}</li>,
           a: ({ href, children }) => (
             <a
               href={href}
@@ -170,7 +169,7 @@ function PlainMarkdownContent({ content }: { content: string }) {
           ),
         }}
       >
-        {content}
+        {normalizeMarkdownSpacing(content)}
       </Markdown>
     </div>
   );

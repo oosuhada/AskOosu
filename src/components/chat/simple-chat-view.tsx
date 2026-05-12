@@ -25,6 +25,7 @@ interface SimplifiedChatViewProps {
   sessionId?: string | null;
   question?: string | null;
   loadingLabel?: string;
+  loadingSteps?: string[];
 }
 
 const MOTION_CONFIG = {
@@ -44,6 +45,7 @@ export function SimplifiedChatView({
   sessionId,
   question,
   loadingLabel,
+  loadingSteps,
 }: SimplifiedChatViewProps) {
   if (message.role !== 'assistant') return null;
 
@@ -72,6 +74,7 @@ export function SimplifiedChatView({
               <ChatBubbleMessage
                 isLoading={!hasTextContent && isLoading}
                 loadingLabel={loadingLabel}
+                loadingSteps={loadingSteps}
                 className={cn(
                   'bg-background/85 w-full rounded-2xl border px-4 py-3 shadow-sm backdrop-blur-sm',
                   isLoading && 'min-h-[5.75rem]'
