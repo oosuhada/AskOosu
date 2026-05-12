@@ -106,7 +106,8 @@ export async function prepareChatOrchestration({
     messages,
   });
   const shouldBypassIntentDirectAnswer =
-    requestContext.source === 'quick_question' && Boolean(requestContext.triggerId);
+    requestContext.source === 'quick_question' &&
+    Boolean(requestContext.triggerId);
 
   if (
     !shouldBypassIntentDirectAnswer &&
@@ -149,7 +150,7 @@ export async function prepareChatOrchestration({
     const metadata = buildDirectMetadata({
       language,
       normalizedQuestion,
-      answerSource: 'faq_cache',
+      answerSource: faqAnswer.answerSource,
       matchedFaqId: faqAnswer.id,
       matchedEntityIds: faqAnswer.matchedEntityIds,
       sourceChunkIds: faqAnswer.sourceChunkIds,
@@ -177,12 +178,13 @@ export async function prepareChatOrchestration({
     };
   }
 
-  const cachedAnswer = !shouldBypassAnswerCache(conversationIntent) && normalizedQuestion
-    ? await getCachedAnswer({
-        normalizedQuestion,
-        language,
-      }).catch(() => null)
-    : null;
+  const cachedAnswer =
+    !shouldBypassAnswerCache(conversationIntent) && normalizedQuestion
+      ? await getCachedAnswer({
+          normalizedQuestion,
+          language,
+        }).catch(() => null)
+      : null;
 
   if (cachedAnswer) {
     const metadata = buildDirectMetadata({
@@ -412,7 +414,10 @@ function buildConversationRouteDecision({
     };
   }
 
-  if (intent === 'portfolio_ambiguous' || reason === 'follow_up_without_context') {
+  if (
+    intent === 'portfolio_ambiguous' ||
+    reason === 'follow_up_without_context'
+  ) {
     return {
       mode: 'portfolio_clarify',
       reason:
@@ -458,7 +463,10 @@ function getConversationAnswerSource({
   reason,
 }: ConversationIntentResult): ChatAnswerMetadata['answerSource'] {
   if (intent === 'greeting_smalltalk') return 'smalltalk';
-  if (intent === 'portfolio_ambiguous' || reason === 'follow_up_without_context') {
+  if (
+    intent === 'portfolio_ambiguous' ||
+    reason === 'follow_up_without_context'
+  ) {
     return 'clarify';
   }
   if (intent === 'private_or_unsafe') return 'private_guardrail';
@@ -639,6 +647,9 @@ function uniqueValues(values: string[]) {
 
 function toSourceTitle(answerSource: ChatAnswerMetadata['answerSource']) {
   if (answerSource === 'faq_cache') return 'Oosu Wiki';
+  if (answerSource === 'philosophy_docs') {
+    return 'oosu.dev Visionary Builder Docs';
+  }
   if (answerSource === 'faq_rewrite') return 'Portfolio answer';
   if (answerSource === 'answer_cache') return 'Portfolio answer cache';
   if (answerSource === 'deterministic_rule') return 'Portfolio policy';
@@ -660,6 +671,10 @@ function getAnswerSourceBadge(
     faq_cache: {
       ko: 'Oosu Wiki 기반',
       en: 'From Oosu Wiki',
+    },
+    philosophy_docs: {
+      ko: 'Visionary Builder Docs 기반',
+      en: 'From Visionary Builder Docs',
     },
     faq_rewrite: {
       ko: '포트폴리오 답변',
