@@ -196,13 +196,19 @@ export async function searchRagChunks(
         warnings.push(
           'Embedding retrieval returned no results; used lexical fallback ranking.'
         );
-        rows = await searchLexically(query, warnings);
+        rows = await searchLexically(
+          { ...query, limit: getExpandedLimit(query.limit) },
+          warnings
+        );
         resolvedSearchMode = getLexicalSearchMode(rows);
       }
     } else if (query.retrievalMode === 'hybrid') {
       rows = await searchWithHybridRetrieval(query, warnings);
     } else {
-      rows = await searchLexically(query, warnings);
+      rows = await searchLexically(
+        { ...query, limit: getExpandedLimit(query.limit) },
+        warnings
+      );
       resolvedSearchMode = getLexicalSearchMode(rows);
     }
   } catch (error) {
@@ -213,7 +219,7 @@ export async function searchRagChunks(
     warnings.push('No rag_chunks matched the search query.');
   }
 
-  rows = rankRowsWithSourceAwareBoosts(rows, query);
+  rows = rankRowsWithSourceAwareBoosts(rows, query).slice(0, query.limit);
 
   const results = rows.map((row) =>
     rowToSearchResult({
@@ -1211,7 +1217,6 @@ function getSourceAwareSearchTerms(value: string) {
 
   if (isOperatingSystemSearchQuery(value)) {
     terms.push(
-      'AI',
       'agent',
       'workflow',
       'code review',
