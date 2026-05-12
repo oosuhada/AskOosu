@@ -9,6 +9,7 @@ export type { AnswerConfidence };
 
 export type ChatAnswerSource =
   | 'faq_cache'
+  | 'philosophy_docs'
   | 'faq_rewrite'
   | 'answer_cache'
   | 'deterministic_rule'
@@ -64,7 +65,9 @@ export type AnswerRouteDecision =
   | {
       mode: 'portfolio_clarify';
       confidence: number;
-      reason: 'short_or_ambiguous_portfolio_input' | 'follow_up_without_context';
+      reason:
+        | 'short_or_ambiguous_portfolio_input'
+        | 'follow_up_without_context';
     }
   | {
       mode: 'private_guardrail';
