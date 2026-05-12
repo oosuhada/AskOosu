@@ -213,6 +213,8 @@ export async function searchRagChunks(
     warnings.push('No rag_chunks matched the search query.');
   }
 
+  rows = rankRowsWithSourceAwareBoosts(rows, query);
+
   const results = rows.map((row) =>
     rowToSearchResult({
       row,
@@ -288,6 +290,7 @@ function getLexicalSearchMode(rows: RagChunkSearchRow[]) {
 
 async function searchWithPostgresFullText(query: RagChunkSearchQuery) {
   const pool = await getPostgresPool();
+  const fullTextQuery = toFullTextQuery(query.q);
   const likePattern = toLikePattern(query.q);
   const result = await pool.query<RagChunkSearchRow>(
     `
@@ -307,10 +310,10 @@ async function searchWithPostgresFullText(query: RagChunkSearchQuery) {
             to_tsvector('simple', coalesce(c.title, '') || ' ' || array_to_string(c.section_path, ' ') || ' ' || c.content),
             websearch_to_tsquery('simple', $1)
           )::double precision AS text_rank,
-          CASE WHEN c.title ILIKE $1 ESCAPE '\\' THEN 8 ELSE 0 END::double precision AS title_score,
-          CASE WHEN array_to_string(c.section_path, ' ') ILIKE $1 ESCAPE '\\' THEN 5 ELSE 0 END::double precision AS section_path_score,
+          CASE WHEN c.title ILIKE $2 ESCAPE '\\' THEN 8 ELSE 0 END::double precision AS title_score,
+          CASE WHEN array_to_string(c.section_path, ' ') ILIKE $2 ESCAPE '\\' THEN 5 ELSE 0 END::double precision AS section_path_score,
           CASE WHEN $4::text IS NOT NULL AND c.entity_id = $4 THEN 7 ELSE 0 END::double precision AS entity_score,
-          CASE WHEN c.content ILIKE $1 ESCAPE '\\' THEN 2 ELSE 0 END::double precision AS content_score,
+          CASE WHEN c.content ILIKE $2 ESCAPE '\\' THEN 2 ELSE 0 END::double precision AS content_score,
           CASE WHEN c.visibility = 'public' THEN 1.5 ELSE 0 END::double precision AS visibility_score,
           CASE WHEN c.has_todo THEN -2 ELSE 0 END::double precision AS todo_penalty,
           c.updated_at
@@ -359,7 +362,7 @@ async function searchWithPostgresFullText(query: RagChunkSearchQuery) {
       LIMIT $3
     `,
     [
-      query.q,
+      fullTextQuery,
       likePattern,
       query.limit,
       query.includePrivate,
@@ -769,6 +772,26 @@ export function reciprocalRankFusion<T extends RagChunkSearchRow>(
     .slice(0, options.limit);
 }
 
+function rankRowsWithSourceAwareBoosts(
+  rows: RagChunkSearchRow[],
+  query: RagChunkSearchQuery
+) {
+  if (rows.length === 0 || !query.q) return rows;
+
+  return rows
+    .map((row) => {
+      const intentBoost = getIntentBoost(row, query.q, query.hybridWeights);
+      if (intentBoost <= 0) return row;
+
+      return {
+        ...row,
+        score: toNumber(row.score) + intentBoost * 10,
+        intent_boost: Math.max(toNumber(row.intent_boost ?? 0), intentBoost),
+      };
+    })
+    .sort((left, right) => toNumber(right.score) - toNumber(left.score));
+}
+
 function rowToSearchResult({
   row,
   q,
@@ -1150,6 +1173,122 @@ function trimPreview(value: string) {
 
 function toLikePattern(value: string) {
   return `%${value.replace(/[\\%_]/g, (match) => `\\${match}`)}%`;
+}
+
+function toFullTextQuery(value: string) {
+  const sourceAwareTerms = getSourceAwareSearchTerms(value);
+  if (sourceAwareTerms.length === 0) return value;
+
+  const normalizedTokens = normalizeAliasText(value)
+    .split(' ')
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 2);
+
+  return uniqueSearchTerms([...normalizedTokens, ...sourceAwareTerms])
+    .map(quoteWebsearchTerm)
+    .join(' OR ');
+}
+
+function getSourceAwareSearchTerms(value: string) {
+  const terms: string[] = [];
+
+  if (isVisionarySearchQuery(value)) {
+    terms.push(
+      'AI',
+      'team',
+      'future',
+      'PM',
+      'Product Owner',
+      'philosophy',
+      'agent',
+      'workflow',
+      '팀',
+      '미래',
+      '철학',
+      '관점'
+    );
+  }
+
+  if (isOperatingSystemSearchQuery(value)) {
+    terms.push(
+      'AI',
+      'agent',
+      'workflow',
+      'code review',
+      'definition of done',
+      'answer quality',
+      'review',
+      'done',
+      '검토',
+      '리뷰',
+      '완성',
+      '품질',
+      '워크플로'
+    );
+  }
+
+  if (isDecisionLogSearchQuery(value)) {
+    terms.push(
+      'RAG',
+      'FAQ',
+      'cache',
+      'cache first',
+      'static',
+      'Notion',
+      'source',
+      'confidence',
+      'badge',
+      'decision',
+      'overclaim',
+      'recruiter',
+      '정적',
+      '캐시',
+      '근거',
+      '출처',
+      '신뢰도',
+      '결정',
+      '판단',
+      '과장'
+    );
+  }
+
+  if (isPostmortemSearchQuery(value)) {
+    terms.push(
+      'postmortem',
+      'lesson',
+      'limitation',
+      'rebuild',
+      'AskOosu',
+      'Portfoli Oh',
+      'Flai',
+      'EZ Air',
+      'Instagram',
+      'Sticks',
+      '회고',
+      '배운',
+      '한계',
+      '교훈',
+      '다시'
+    );
+  }
+
+  return terms;
+}
+
+function uniqueSearchTerms(values: string[]) {
+  const seen = new Set<string>();
+
+  return values.filter((value) => {
+    const normalizedValue = value.trim();
+    const key = normalizedValue.toLowerCase();
+    if (!normalizedValue || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function quoteWebsearchTerm(value: string) {
+  return `"${value.replace(/["\\]/g, ' ')}"`;
 }
 
 function normalizeAliasText(value: string) {
