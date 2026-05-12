@@ -1,0 +1,278 @@
+[
+  {
+    "path": "operating_system_docs/ai-agent-workflow-ko.md",
+    "docId": "ops.ai-agent-workflow.ko",
+    "language": "ko",
+    "sourceType": "operating_system_doc"
+  },
+  {
+    "path": "operating_system_docs/ai-agent-workflow-en.md",
+    "docId": "ops.ai-agent-workflow.en",
+    "language": "en",
+    "sourceType": "operating_system_doc"
+  },
+  {
+    "path": "operating_system_docs/product-build-loop-ko.md",
+    "docId": "ops.product-build-loop.ko",
+    "language": "ko",
+    "sourceType": "operating_system_doc"
+  },
+  {
+    "path": "operating_system_docs/product-build-loop-en.md",
+    "docId": "ops.product-build-loop.en",
+    "language": "en",
+    "sourceType": "operating_system_doc"
+  },
+  {
+    "path": "operating_system_docs/code-review-with-ai-ko.md",
+    "docId": "ops.code-review-with-ai.ko",
+    "language": "ko",
+    "sourceType": "operating_system_doc"
+  },
+  {
+    "path": "operating_system_docs/code-review-with-ai-en.md",
+    "docId": "ops.code-review-with-ai.en",
+    "language": "en",
+    "sourceType": "operating_system_doc"
+  },
+  {
+    "path": "operating_system_docs/definition-of-done-ko.md",
+    "docId": "ops.definition-of-done.ko",
+    "language": "ko",
+    "sourceType": "operating_system_doc"
+  },
+  {
+    "path": "operating_system_docs/definition-of-done-en.md",
+    "docId": "ops.definition-of-done.en",
+    "language": "en",
+    "sourceType": "operating_system_doc"
+  },
+  {
+    "path": "operating_system_docs/rag-second-brain-operating-model-ko.md",
+    "docId": "ops.rag-second-brain-operating-model.ko",
+    "language": "ko",
+    "sourceType": "operating_system_doc"
+  },
+  {
+    "path": "operating_system_docs/rag-second-brain-operating-model-en.md",
+    "docId": "ops.rag-second-brain-operating-model.en",
+    "language": "en",
+    "sourceType": "operating_system_doc"
+  },
+  {
+    "path": "operating_system_docs/answer-quality-loop-ko.md",
+    "docId": "ops.answer-quality-loop.ko",
+    "language": "ko",
+    "sourceType": "operating_system_doc"
+  },
+  {
+    "path": "operating_system_docs/answer-quality-loop-en.md",
+    "docId": "ops.answer-quality-loop.en",
+    "language": "en",
+    "sourceType": "operating_system_doc"
+  },
+  {
+    "path": "operating_system_docs/collaboration-with-ai-and-humans-ko.md",
+    "docId": "ops.collaboration-with-ai-and-humans.ko",
+    "language": "ko",
+    "sourceType": "operating_system_doc"
+  },
+  {
+    "path": "operating_system_docs/collaboration-with-ai-and-humans-en.md",
+    "docId": "ops.collaboration-with-ai-and-humans.en",
+    "language": "en",
+    "sourceType": "operating_system_doc"
+  },
+  {
+    "path": "operating_system_docs/prompt-delegation-patterns-ko.md",
+    "docId": "ops.prompt-delegation-patterns.ko",
+    "language": "ko",
+    "sourceType": "operating_system_doc"
+  },
+  {
+    "path": "operating_system_docs/prompt-delegation-patterns-en.md",
+    "docId": "ops.prompt-delegation-patterns.en",
+    "language": "en",
+    "sourceType": "operating_system_doc"
+  },
+  {
+    "path": "decision_logs/why-rag-not-static-faq-ko.md",
+    "docId": "decision.why-rag-not-static-faq.ko",
+    "language": "ko",
+    "sourceType": "decision_log"
+  },
+  {
+    "path": "decision_logs/why-rag-not-static-faq-en.md",
+    "docId": "decision.why-rag-not-static-faq.en",
+    "language": "en",
+    "sourceType": "decision_log"
+  },
+  {
+    "path": "decision_logs/why-cache-first-rag-next-ko.md",
+    "docId": "decision.why-cache-first-rag-next.ko",
+    "language": "ko",
+    "sourceType": "decision_log"
+  },
+  {
+    "path": "decision_logs/why-cache-first-rag-next-en.md",
+    "docId": "decision.why-cache-first-rag-next.en",
+    "language": "en",
+    "sourceType": "decision_log"
+  },
+  {
+    "path": "decision_logs/why-notion-as-cms-postgres-as-retrieval-cache-ko.md",
+    "docId": "decision.why-notion-as-cms-postgres-as-retrieval-cache.ko",
+    "language": "ko",
+    "sourceType": "decision_log"
+  },
+  {
+    "path": "decision_logs/why-notion-as-cms-postgres-as-retrieval-cache-en.md",
+    "docId": "decision.why-notion-as-cms-postgres-as-retrieval-cache.en",
+    "language": "en",
+    "sourceType": "decision_log"
+  },
+  {
+    "path": "decision_logs/why-source-confidence-badges-ko.md",
+    "docId": "decision.why-source-confidence-badges.ko",
+    "language": "ko",
+    "sourceType": "decision_log"
+  },
+  {
+    "path": "decision_logs/why-source-confidence-badges-en.md",
+    "docId": "decision.why-source-confidence-badges.en",
+    "language": "en",
+    "sourceType": "decision_log"
+  },
+  {
+    "path": "decision_logs/why-recruiter-risk-routing-ko.md",
+    "docId": "decision.why-recruiter-risk-routing.ko",
+    "language": "ko",
+    "sourceType": "decision_log"
+  },
+  {
+    "path": "decision_logs/why-recruiter-risk-routing-en.md",
+    "docId": "decision.why-recruiter-risk-routing.en",
+    "language": "en",
+    "sourceType": "decision_log"
+  },
+  {
+    "path": "decision_logs/why-ai-native-working-thesis-ko.md",
+    "docId": "decision.why-ai-native-working-thesis.ko",
+    "language": "ko",
+    "sourceType": "decision_log"
+  },
+  {
+    "path": "decision_logs/why-ai-native-working-thesis-en.md",
+    "docId": "decision.why-ai-native-working-thesis.en",
+    "language": "en",
+    "sourceType": "decision_log"
+  },
+  {
+    "path": "decision_logs/why-not-overclaim-ai-era-ko.md",
+    "docId": "decision.why-not-overclaim-ai-era.ko",
+    "language": "ko",
+    "sourceType": "decision_log"
+  },
+  {
+    "path": "decision_logs/why-not-overclaim-ai-era-en.md",
+    "docId": "decision.why-not-overclaim-ai-era.en",
+    "language": "en",
+    "sourceType": "decision_log"
+  },
+  {
+    "path": "decision_logs/why-small-team-wide-ownership-positioning-ko.md",
+    "docId": "decision.why-small-team-wide-ownership-positioning.ko",
+    "language": "ko",
+    "sourceType": "decision_log"
+  },
+  {
+    "path": "decision_logs/why-small-team-wide-ownership-positioning-en.md",
+    "docId": "decision.why-small-team-wide-ownership-positioning.en",
+    "language": "en",
+    "sourceType": "decision_log"
+  },
+  {
+    "path": "postmortem_docs/portfoli-oh-json-chatbot-limitations-ko.md",
+    "docId": "postmortem.portfoli-oh-json-chatbot-limitations.ko",
+    "language": "ko",
+    "sourceType": "postmortem_doc"
+  },
+  {
+    "path": "postmortem_docs/portfoli-oh-json-chatbot-limitations-en.md",
+    "docId": "postmortem.portfoli-oh-json-chatbot-limitations.en",
+    "language": "en",
+    "sourceType": "postmortem_doc"
+  },
+  {
+    "path": "postmortem_docs/ask-oosu-rag-lessons-ko.md",
+    "docId": "postmortem.ask-oosu-rag-lessons.ko",
+    "language": "ko",
+    "sourceType": "postmortem_doc"
+  },
+  {
+    "path": "postmortem_docs/ask-oosu-rag-lessons-en.md",
+    "docId": "postmortem.ask-oosu-rag-lessons.en",
+    "language": "en",
+    "sourceType": "postmortem_doc"
+  },
+  {
+    "path": "postmortem_docs/flai-trust-clarity-lessons-ko.md",
+    "docId": "postmortem.flai-trust-clarity-lessons.ko",
+    "language": "ko",
+    "sourceType": "postmortem_doc"
+  },
+  {
+    "path": "postmortem_docs/flai-trust-clarity-lessons-en.md",
+    "docId": "postmortem.flai-trust-clarity-lessons.en",
+    "language": "en",
+    "sourceType": "postmortem_doc"
+  },
+  {
+    "path": "postmortem_docs/instagram-clone-fullstack-lessons-ko.md",
+    "docId": "postmortem.instagram-clone-fullstack-lessons.ko",
+    "language": "ko",
+    "sourceType": "postmortem_doc"
+  },
+  {
+    "path": "postmortem_docs/instagram-clone-fullstack-lessons-en.md",
+    "docId": "postmortem.instagram-clone-fullstack-lessons.en",
+    "language": "en",
+    "sourceType": "postmortem_doc"
+  },
+  {
+    "path": "postmortem_docs/sticks-and-stones-legacy-rebuild-lessons-ko.md",
+    "docId": "postmortem.sticks-and-stones-legacy-rebuild-lessons.ko",
+    "language": "ko",
+    "sourceType": "postmortem_doc"
+  },
+  {
+    "path": "postmortem_docs/sticks-and-stones-legacy-rebuild-lessons-en.md",
+    "docId": "postmortem.sticks-and-stones-legacy-rebuild-lessons.en",
+    "language": "en",
+    "sourceType": "postmortem_doc"
+  },
+  {
+    "path": "postmortem_docs/ez-air-ai-flight-search-lessons-ko.md",
+    "docId": "postmortem.ez-air-ai-flight-search-lessons.ko",
+    "language": "ko",
+    "sourceType": "postmortem_doc"
+  },
+  {
+    "path": "postmortem_docs/ez-air-ai-flight-search-lessons-en.md",
+    "docId": "postmortem.ez-air-ai-flight-search-lessons.en",
+    "language": "en",
+    "sourceType": "postmortem_doc"
+  },
+  {
+    "path": "postmortem_docs/ai-portfolio-overdocumentation-risk-ko.md",
+    "docId": "postmortem.ai-portfolio-overdocumentation-risk.ko",
+    "language": "ko",
+    "sourceType": "postmortem_doc"
+  },
+  {
+    "path": "postmortem_docs/ai-portfolio-overdocumentation-risk-en.md",
+    "docId": "postmortem.ai-portfolio-overdocumentation-risk.en",
+    "language": "en",
+    "sourceType": "postmortem_doc"
+  }
+]
