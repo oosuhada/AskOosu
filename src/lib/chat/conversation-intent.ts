@@ -153,9 +153,9 @@ const TECHNICAL_DEEP_DIVE_PATTERNS = [
 ];
 
 const RECRUITER_EVALUATION_PATTERNS = [
-  /(뽑|채용|포지션|주니어|시니어|실무|투입|강점|약점|협업|평가)/,
+  /(뽑|채용|포지션|주니어|시니어|실무|투입|강점|약점|협업|평가|혼자\s*(일|작업)|팀에서도|팀\s*(경험|워크|협업)|일하는\s*스타일)/,
   /(오래\s*(근무|다니|못\s*다니|머물|못\s*머물)|장기\s*근속|금방\s*(그만|퇴사)|퇴사\s*리스크|이직\s*리스크|배울\s*(것|거)?만|뽑아\s*먹|뽑아먹|창업\s*(쪽|생각|리스크)|회사에\s*집중|비전공|전환형|깊이가\s*부족|AI\s*(의존|없이|포장))/i,
-  /(hire|recruiter|position|junior|senior|strength|weakness|collaboration|fit|retention|leave quickly|learn and leave|founder mindset|startup risk|career changer depth|ai dependency)/i,
+  /(hire|recruiter|position|junior|senior|strength|weakness|collaboration|team\s*(fit|work|experience)|solo\s*builder|work\s+well\s+in\s+a\s+team|fit|retention|leave quickly|learn and leave|founder mindset|startup risk|career changer depth|ai dependency)/i,
 ];
 
 const METRIC_REQUEST_PATTERNS = [
@@ -210,19 +210,35 @@ export function classifyConversationIntent({
     .some((message) => message.role === 'assistant');
 
   if (matchesAny(trimmedQuestion, PROMPT_ATTACK_PATTERNS)) {
-    return { intent: 'prompt_attack', reason: 'prompt_or_internal_request', modifiers };
+    return {
+      intent: 'prompt_attack',
+      reason: 'prompt_or_internal_request',
+      modifiers,
+    };
   }
 
   if (matchesAny(trimmedQuestion, PRIVATE_OR_UNSAFE_PATTERNS)) {
-    return { intent: 'private_or_unsafe', reason: 'private_or_sensitive_request', modifiers };
+    return {
+      intent: 'private_or_unsafe',
+      reason: 'private_or_sensitive_request',
+      modifiers,
+    };
   }
 
   if (matchesAny(trimmedQuestion, GREETING_SMALLTALK_PATTERNS)) {
-    return { intent: 'greeting_smalltalk', reason: 'greeting_or_light_smalltalk', modifiers };
+    return {
+      intent: 'greeting_smalltalk',
+      reason: 'greeting_or_light_smalltalk',
+      modifiers,
+    };
   }
 
   if (matchesAny(trimmedQuestion, HOSTILE_FEEDBACK_PATTERNS)) {
-    return { intent: 'hostile_feedback', reason: 'hostile_or_sharp_feedback', modifiers };
+    return {
+      intent: 'hostile_feedback',
+      reason: 'hostile_or_sharp_feedback',
+      modifiers,
+    };
   }
 
   if (matchesAny(trimmedQuestion, PLAYFUL_PROBE_PATTERNS)) {
@@ -275,11 +291,19 @@ export function classifyConversationIntent({
       matchesAny(trimmedQuestion, PORTFOLIO_KEYWORD_PATTERNS) &&
       !containsQuestionShape(trimmedQuestion))
   ) {
-    return { intent: 'portfolio_ambiguous', reason: 'short_or_ambiguous_portfolio_input', modifiers };
+    return {
+      intent: 'portfolio_ambiguous',
+      reason: 'short_or_ambiguous_portfolio_input',
+      modifiers,
+    };
   }
 
   if (matchesAny(trimmedQuestion, OFF_TOPIC_PATTERNS)) {
-    return { intent: 'off_topic_redirect', reason: 'off_topic_light', modifiers };
+    return {
+      intent: 'off_topic_redirect',
+      reason: 'off_topic_light',
+      modifiers,
+    };
   }
 
   if (matchesAny(trimmedQuestion, FOLLOW_UP_PATTERNS)) {
@@ -312,26 +336,50 @@ export function classifyConversationIntent({
   }
 
   if (matchesAny(trimmedQuestion, CONTACT_OR_LINK_PATTERNS)) {
-    return { intent: 'contact_or_link_request', reason: 'contact_or_public_link_request', modifiers };
+    return {
+      intent: 'contact_or_link_request',
+      reason: 'contact_or_public_link_request',
+      modifiers,
+    };
   }
 
   if (matchesAny(trimmedQuestion, RECOMMENDATION_PATTERNS)) {
-    return { intent: 'portfolio_recommendation', reason: 'portfolio_recommendation_or_comparison', modifiers };
+    return {
+      intent: 'portfolio_recommendation',
+      reason: 'portfolio_recommendation_or_comparison',
+      modifiers,
+    };
   }
 
   if (matchesAny(trimmedQuestion, TECHNICAL_DEEP_DIVE_PATTERNS)) {
-    return { intent: 'technical_deep_dive', reason: 'technical_deep_dive', modifiers };
+    return {
+      intent: 'technical_deep_dive',
+      reason: 'technical_deep_dive',
+      modifiers,
+    };
   }
 
   if (matchesAny(trimmedQuestion, RECRUITER_EVALUATION_PATTERNS)) {
-    return { intent: 'recruiter_evaluation', reason: 'recruiter_or_collaboration_evaluation', modifiers };
+    return {
+      intent: 'recruiter_evaluation',
+      reason: 'recruiter_or_collaboration_evaluation',
+      modifiers,
+    };
   }
 
   if (matchesAny(trimmedQuestion, PORTFOLIO_KEYWORD_PATTERNS)) {
-    return { intent: 'portfolio_factual', reason: 'portfolio_keyword_match', modifiers };
+    return {
+      intent: 'portfolio_factual',
+      reason: 'portfolio_keyword_match',
+      modifiers,
+    };
   }
 
-  return { intent: 'off_topic_redirect', reason: 'no_portfolio_intent_detected', modifiers };
+  return {
+    intent: 'off_topic_redirect',
+    reason: 'no_portfolio_intent_detected',
+    modifiers,
+  };
 }
 
 export function shouldAnswerIntentDirectly(intent: ConversationIntent) {
@@ -376,7 +424,9 @@ export function getConversationEntityHints(question: string) {
     hints.push('project.askoosu');
   }
 
-  if (/(instagram\s*clone|aigram|인스타그램\s*클론|인스타\s*클론)/i.test(question)) {
+  if (
+    /(instagram\s*clone|aigram|인스타그램\s*클론|인스타\s*클론)/i.test(question)
+  ) {
     hints.push('project.instagram_clone');
   }
 
@@ -415,7 +465,9 @@ export function buildConversationIntentAnswer({
   const copy = isDirectAnswerIntent(intent)
     ? CONVERSATION_DIRECT_ANSWERS[intent]
     : undefined;
-  return copy?.[language] ?? CONVERSATION_DIRECT_ANSWERS.off_topic_redirect[language];
+  return (
+    copy?.[language] ?? CONVERSATION_DIRECT_ANSWERS.off_topic_redirect[language]
+  );
 }
 
 function isDirectAnswerIntent(
@@ -427,12 +479,16 @@ function isDirectAnswerIntent(
 function getConversationModifiers(question: string): ConversationModifier[] {
   const modifiers: ConversationModifier[] = [];
 
-  if (matchesAny(question, LANGUAGE_SWITCH_PATTERNS)) modifiers.push('language_switch');
+  if (matchesAny(question, LANGUAGE_SWITCH_PATTERNS))
+    modifiers.push('language_switch');
   if (matchesAny(question, FORMAT_PATTERNS)) modifiers.push('format_transform');
   if (matchesAny(question, CORRECTION_PATTERNS)) modifiers.push('correction');
-  if (question.split(/[?？]/).filter(Boolean).length > 1) modifiers.push('multi_intent');
-  if (matchesAny(question, ALIAS_OR_TYPO_PATTERNS)) modifiers.push('alias_or_typo');
-  if (matchesAny(question, METRIC_REQUEST_PATTERNS)) modifiers.push('metric_request');
+  if (question.split(/[?？]/).filter(Boolean).length > 1)
+    modifiers.push('multi_intent');
+  if (matchesAny(question, ALIAS_OR_TYPO_PATTERNS))
+    modifiers.push('alias_or_typo');
+  if (matchesAny(question, METRIC_REQUEST_PATTERNS))
+    modifiers.push('metric_request');
 
   return modifiers;
 }
@@ -485,12 +541,18 @@ function isBroadSkillRequest(normalizedQuestion: string) {
 }
 
 function isBroadContactRequest(normalizedQuestion: string) {
-  return ['연락', '연락처', 'contact', 'contacts'].includes(
-    normalizedQuestion
-  );
+  return ['연락', '연락처', 'contact', 'contacts'].includes(normalizedQuestion);
 }
 
 function isPublicLifeRequest(question: string) {
+  if (
+    /(팀|협업|채용|면접|리크루터|AI|에이전트|PM|PO|개발자|developer|team|collaboration|recruit|hire|hiring|product\s*owner)/i.test(
+      question
+    )
+  ) {
+    return false;
+  }
+
   return /(fun|취미|취향|작업\s*성향|일하는\s*스타일|라이프|개인적인|사람다운|oosu\s*salon|우수살롱)/i.test(
     question
   );
@@ -512,10 +574,12 @@ function buildOffTopicRedirectAnswer({
   if (/(우주|space|universe|cosmos|별|행성|은하|너머)/i.test(question)) {
     return language === 'ko'
       ? '좋은 샛길이에요. 우주 끝까지는 같이 못 가도 AskOosu 안쪽 우주는 꽤 잘 안내할 수 있어요. 프로젝트부터 보면 꽤 재밌습니다.'
-      : "Nice detour. I cannot guide us to the edge of space, but I can tour the little universe inside AskOosu. The projects are a fun place to start.";
+      : 'Nice detour. I cannot guide us to the edge of space, but I can tour the little universe inside AskOosu. The projects are a fun place to start.';
   }
 
-  if (/(날씨|기온|비\s*와|눈\s*와|weather|temperature|rain|snow)/i.test(question)) {
+  if (
+    /(날씨|기온|비\s*와|눈\s*와|weather|temperature|rain|snow)/i.test(question)
+  ) {
     return language === 'ko'
       ? '실시간 날씨는 제가 확인해드리기 어려워요. 대신 우수의 프로젝트 흐름은 꽤 맑게 정리해드릴 수 있습니다. 대표 프로젝트부터 볼까요?'
       : "I cannot check live weather here. I can give you a much clearer forecast of Oosu's project flow, though. Want the representative projects first?";
@@ -530,7 +594,7 @@ function buildOffTopicRedirectAnswer({
   if (/(점심|저녁|아침|먹|lunch|dinner|breakfast|eat)/i.test(question)) {
     return language === 'ko'
       ? '메뉴 추천은 잠깐만 맡길게요. 이 공간에서는 우수의 대표 프로젝트나 기술 스택을 고르는 쪽이 제 전문이에요.'
-      : "I will leave menu picks to someone hungrier. In this space, I am better at helping you choose which Oosu project or tech stack to inspect first.";
+      : 'I will leave menu picks to someone hungrier. In this space, I am better at helping you choose which Oosu project or tech stack to inspect first.';
   }
 
   const variants =
@@ -543,7 +607,7 @@ function buildOffTopicRedirectAnswer({
       : [
           "I can play along briefly, but AskOosu is here to keep the spotlight on Oosu's work. Want projects, tech stack, career story, or contact options?",
           "Fun detour, but I should keep us close to the portfolio. I can walk you through Oosu's projects, architecture, or working style.",
-          "I will keep that light and not drift too far. Back in AskOosu, the useful threads are projects, stack, career direction, and contact.",
+          'I will keep that light and not drift too far. Back in AskOosu, the useful threads are projects, stack, career direction, and contact.',
         ];
 
   return variants[stableIndex(question, variants.length)];
