@@ -506,6 +506,7 @@ async function searchWithSourceAwareRows(query: RagChunkSearchQuery) {
           CASE WHEN array_to_string(c.section_path, ' ') ILIKE ANY($1::text[]) THEN 8 ELSE 0 END::double precision AS section_path_score,
           CASE WHEN $4::text IS NOT NULL AND c.entity_id = $4 THEN 7 ELSE 0 END::double precision AS entity_score,
           CASE WHEN c.content ILIKE ANY($1::text[]) THEN 4 ELSE 0 END::double precision AS content_score,
+          CASE WHEN c.metadata->>'docId' ILIKE ANY($9::text[]) THEN 30 ELSE 0 END::double precision AS doc_id_score,
           CASE WHEN c.visibility = 'public' THEN 1.5 ELSE 0 END::double precision AS visibility_score,
           CASE WHEN c.has_todo THEN -2 ELSE 0 END::double precision AS todo_penalty,
           c.updated_at
@@ -544,6 +545,7 @@ async function searchWithSourceAwareRows(query: RagChunkSearchQuery) {
           + section_path_score
           + entity_score
           + content_score
+          + doc_id_score
           + visibility_score
           + todo_penalty
         )::double precision AS score
@@ -560,6 +562,7 @@ async function searchWithSourceAwareRows(query: RagChunkSearchQuery) {
       filters.sourceTypes,
       filters.sourceCategories,
       filters.surfaces,
+      toPreferredDocLikePatterns(query.q),
     ]
   );
 
@@ -1424,6 +1427,71 @@ function toSourceAwareLikePatterns(value: string) {
     ...normalizedTokens,
     ...getSourceAwareSearchTerms(value),
   ]).map(toLikePattern);
+}
+
+function toPreferredDocLikePatterns(value: string) {
+  const normalizedValue = normalizeAliasText(value);
+  const patterns: string[] = [];
+
+  if (/(코드.*(검토|리뷰)|리뷰.*코드|code\s*review)/i.test(value)) {
+    patterns.push('code-review-with-ai');
+  }
+  if (/definition\s+of\s+done|완성|done/i.test(value)) {
+    patterns.push('definition-of-done');
+  }
+  if (/answer\s+quality|답변\s*품질|품질/i.test(value)) {
+    patterns.push('answer-quality-loop');
+  }
+  if (/agent|에이전트|workflow|워크플로/i.test(value)) {
+    patterns.push('ai-agent-workflow');
+  }
+
+  if (/cache|캐시|cache\s*first/i.test(value)) {
+    patterns.push('why-cache-first-rag-next');
+  }
+  if (/static|정적|static\s*faq/i.test(value)) {
+    patterns.push('why-rag-not-static-faq');
+  }
+  if (/notion|노션/i.test(value)) {
+    patterns.push('why-notion-as-cms-postgres-as-retrieval-cache');
+  }
+  if (/source|confidence|badge|출처|근거|신뢰도|배지/i.test(value)) {
+    patterns.push('why-source-confidence-badges');
+  }
+  if (/recruiter|risk|리크루터|채용|리스크/i.test(value)) {
+    patterns.push('why-recruiter-risk-routing');
+  }
+  if (/overclaim|과장/i.test(value)) {
+    patterns.push('why-not-overclaim-ai-era');
+  }
+  if (/small\s*team|wide\s*ownership|작은\s*팀|넓은\s*책임/i.test(value)) {
+    patterns.push('why-small-team-wide-ownership-positioning');
+  }
+  if (/ai[-\s]?native|working\s*thesis|AI\s*시대/i.test(value)) {
+    patterns.push('why-ai-native-working-thesis');
+  }
+
+  if (/askoosu|ask\s*oosu|rag/.test(normalizedValue)) {
+    patterns.push('ask-oosu-rag-lessons');
+  }
+  if (/overdocumentation|문서.*과|너무\s*많은\s*문서/i.test(value)) {
+    patterns.push('ai-portfolio-overdocumentation-risk');
+  }
+  if (/flai/i.test(value)) patterns.push('flai-trust-clarity-lessons');
+  if (/ez\s*air|이지\s*에어/i.test(value)) {
+    patterns.push('ez-air-ai-flight-search-lessons');
+  }
+  if (/instagram|aigram|인스타/i.test(value)) {
+    patterns.push('instagram-clone-fullstack-lessons');
+  }
+  if (/portfoli.?oh|포트폴리오오/i.test(value)) {
+    patterns.push('portfoli-oh-json-chatbot-limitations');
+  }
+  if (/sticks|stones|스틱스/i.test(value)) {
+    patterns.push('sticks-and-stones-legacy-rebuild-lessons');
+  }
+
+  return uniqueSearchTerms(patterns).map(toLikePattern);
 }
 
 function uniqueSearchTerms(values: string[]) {
