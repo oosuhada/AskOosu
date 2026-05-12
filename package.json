@@ -10,6 +10,12 @@
     "faq:eval": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/eval-rag.ts --faq-only",
     "rag:eval": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/eval-rag.ts"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@tsparticles/engine",
+      "sharp"
+    ]
+  },
   "dependencies": {
     "@ai-sdk/google-vertex": "^4.0.118",
     "@ai-sdk/groq": "^3.0.38",
