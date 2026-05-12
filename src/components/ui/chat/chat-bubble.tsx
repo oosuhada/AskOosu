@@ -83,7 +83,7 @@ const chatBubbleMessageVariants = cva('', {
   variants: {
     variant: {
       received: 'text-secondary-foreground rounded-lg py-2',
-      sent: 'p-2 px-5 bg-[#007AFF] text-primary-foreground rounded-3xl',
+      sent: 'bg-[#0D9487] p-2 px-5 text-white rounded-3xl',
     },
     layout: {
       default: '',
@@ -101,6 +101,7 @@ interface ChatBubbleMessageProps
     VariantProps<typeof chatBubbleMessageVariants> {
   isLoading?: boolean;
   loadingLabel?: string;
+  loadingSteps?: string[];
 }
 
 const ChatBubbleMessage = React.forwardRef<
@@ -114,6 +115,7 @@ const ChatBubbleMessage = React.forwardRef<
       layout,
       isLoading = false,
       loadingLabel,
+      loadingSteps,
       children,
       ...props
     },
@@ -129,7 +131,7 @@ const ChatBubbleMessage = React.forwardRef<
     >
       {isLoading ? (
         <div className="flex w-full items-center">
-          <MessageLoading label={loadingLabel} />
+          <MessageLoading label={loadingLabel} steps={loadingSteps} />
         </div>
       ) : (
         children

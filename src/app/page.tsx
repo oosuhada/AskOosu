@@ -1,6 +1,7 @@
 'use client';
 
 import FluidCursor from '@/components/FluidCursor';
+import { TealCyanLottieButtonIcon } from '@/components/chat/teal-cyan-lottie-button-icon';
 import { OosuAvatar } from '@/components/oosu-avatar';
 import { PortfolioSidebar } from '@/components/portfolio-sidebar';
 import { Button } from '@/components/ui/button';
@@ -12,7 +13,6 @@ import { oosuProfile } from '@/lib/oosu-profile';
 import { useDisplayPreferences } from '@/lib/use-display-preferences';
 import { motion } from 'framer-motion';
 import {
-  ArrowRight,
   BriefcaseBusiness,
   ChevronDown,
   ChevronUp,
@@ -242,9 +242,9 @@ function HomeContent() {
               type="submit"
               disabled={!input.trim()}
               aria-label="Submit question"
-              className="flex items-center justify-center rounded-full bg-[#0171E3] p-2.5 text-white transition-colors hover:bg-blue-600 disabled:opacity-70 dark:bg-blue-600 dark:hover:bg-blue-700"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-transform hover:scale-[1.03] disabled:opacity-70"
             >
-              <ArrowRight className="h-5 w-5" />
+              <TealCyanLottieButtonIcon />
             </button>
           </div>
         </form>
