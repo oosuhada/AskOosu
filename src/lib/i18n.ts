@@ -21,10 +21,10 @@ export const localizedQuestions = {
 export const uiText = {
   ko: {
     askAnything: 'Oosu에게 무엇이든 물어보세요...',
-    thinking: '답변을 정리하는 중...',
+    thinking: '질문을 나눠 근거를 확인하는 중...',
     chatLoadingMessages: [
       'Wiki에서 관련 근거를 찾는 중...',
-      '답변을 정리하는 중...',
+      '질문을 나눠 근거를 확인하는 중...',
       '근거를 확인하고 있어요...',
     ],
     hideQuickQuestions: '빠른 질문 숨기기',
@@ -104,10 +104,10 @@ export const uiText = {
   },
   en: {
     askAnything: 'Ask Oosu anything...',
-    thinking: 'Drafting the answer...',
+    thinking: 'Splitting the question and checking evidence...',
     chatLoadingMessages: [
       'Looking up relevant Wiki evidence...',
-      'Drafting the answer...',
+      'Splitting the question and checking evidence...',
       'Checking the sources...',
     ],
     hideQuickQuestions: 'Hide quick questions',

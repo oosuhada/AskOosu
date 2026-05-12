@@ -47,7 +47,9 @@ export type FaqMediaRef = {
   assetKey: string;
   kind: 'profile' | 'project' | 'screenshot' | 'diagram' | 'gallery';
   src: string;
+  darkSrc?: string;
   mobileSrc?: string;
+  mobileDarkSrc?: string;
   alt: string;
   caption?: string;
   status: 'ready' | 'todo' | 'optional';
@@ -121,16 +123,16 @@ const mediaRefs: FaqMediaRef[] = [
   {
     assetKey: 'project.askoosu.cover',
     kind: 'project',
-    src: '/images/projects/askoosu-cover-desktop.webp',
-    mobileSrc: '/images/projects/askoosu-cover-mobile.webp',
+    src: '/images/projects/askoosu-cover-light-desktop.webp',
+    darkSrc: '/images/projects/askoosu-cover-dark-desktop.webp',
     alt: 'AskOosu project cover',
     status: 'ready',
   },
   {
     assetKey: 'project.aigram.cover',
     kind: 'project',
-    src: '/images/projects/aigram-cover-desktop.webp',
-    mobileSrc: '/images/projects/aigram-cover-mobile.webp',
+    src: '/images/projects/aigram-cover-light-desktop.webp',
+    darkSrc: '/images/projects/aigram-cover-dark-desktop.webp',
     alt: 'Aigram project cover',
     status: 'ready',
   },
@@ -1113,7 +1115,16 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
       '우수님은 Claude Code, Codex, Gemini 같은 AI 도구를 실제 개발에 어떻게 활용하나요?',
     patterns: [
       'AI 활용',
+      'AI 활용법',
+      'ai 활용법',
+      'AI 쓰는 법',
+      'AI 사용법',
+      '우수의 AI 활용법',
+      '우수 AI 활용법',
       'AI 도구를 어떻게 활용하나요?',
+      'AI를 어떻게 쓰나요?',
+      'AI를 어떻게 사용하나요?',
+      'AI로 어떻게 개발하나요?',
       '우수님은 Claude Code, Codex, Gemini 같은 AI 도구를 실제 개발에 어떻게 활용하나요?',
       'Claude Code Gemini CLI Codex',
       'ai 실제 개발 활용',
@@ -1124,6 +1135,15 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
       '우수는 AI를 단순 질문 도구가 아니라 개발 파트너에 가깝게 사용합니다.',
       '',
       'Claude Code, Gemini CLI, Codex 같은 도구로 요구사항을 쪼개고, 코드 구조를 탐색하고, 구현·검증·문서화를 반복합니다. 다만 AI 결과물을 그대로 믿기보다 코드 흐름을 직접 읽고, 타입 체크와 빌드, 로그, 공식 문서 대조로 검증하는 방식을 중요하게 봅니다.',
+    ].join('\n'),
+    detailedAnswer: [
+      '우수의 AI 활용은 “AI가 대신 만든다”보다 “AI와 함께 더 빠르게 구조화하고, 사람이 검증한다”에 가깝습니다.',
+      '',
+      '처음에는 요구사항을 작은 단위로 쪼개고, 답변 기준과 금지할 추측을 먼저 정리합니다. 이 단계에서 Claude Code, Codex, Gemini 같은 도구는 대안을 빠르게 펼쳐보는 역할을 합니다.',
+      '',
+      '구현 단계에서는 코드 초안, 리팩터링 방향, 디버깅 가설, 문서화 초안을 AI와 함께 만들지만, 결과물을 그대로 붙이는 방식으로 끝내지 않습니다. 코드 흐름을 직접 읽고 타입 체크, 빌드, 실행 로그, 공식 문서 대조로 실제 동작을 확인합니다.',
+      '',
+      'AskOosu 자체도 그 방식을 보여주는 프로젝트입니다. 단순 챗봇이 아니라 FAQ cache, Notion Wiki, RAG, source badge, feedback loop를 연결해 “AI 답변이 어디에 근거하는지”까지 제품 흐름 안에 넣고 있습니다.',
     ].join('\n'),
     renderSpec: {
       layout: 'ai_workflow',
@@ -1161,6 +1181,10 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
       'How does Oosu actually use tools like Claude Code, Codex, and Gemini in development?',
     patterns: [
       'AI workflow',
+      'AI usage',
+      'AI usage workflow',
+      'How does Oosu use AI?',
+      'How does Oosu use AI tools?',
       'How does Oosu actually use tools like Claude Code, Codex, and Gemini in development?',
       'How do you actually use AI in development?',
       'ai tools development',
@@ -1171,6 +1195,15 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
       'Oosu uses AI less like a search box and more like a development partner.',
       '',
       'Tools such as Claude Code, Gemini CLI, and Codex help break down requirements, inspect code structure, implement changes, verify behavior, and document decisions. The important habit is not trusting generated output automatically: Oosu still reads code flow, runs checks, compares logs, and verifies against documentation.',
+    ].join('\n'),
+    detailedAnswer: [
+      'Oosu’s AI workflow is closer to “structure faster, then verify harder” than “let AI build it for me.”',
+      '',
+      'At the planning stage, he breaks requirements into smaller units and defines the quality bar before asking AI tools for options. Claude Code, Codex, and Gemini are useful because they expose implementation paths quickly.',
+      '',
+      'During implementation, AI can draft code, suggest refactors, form debugging hypotheses, and help with documentation. But the final responsibility stays human: Oosu reads the code flow, runs type checks and builds, compares logs, and checks official docs when behavior is uncertain.',
+      '',
+      'AskOosu is the concrete proof of that workflow. It is not only a chat UI; it connects FAQ cache, Notion Wiki, RAG retrieval, source badges, and feedback loops so the answer experience remains grounded instead of becoming free-form AI copy.',
     ].join('\n'),
     renderSpec: {
       layout: 'ai_workflow',
@@ -2166,11 +2199,13 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
         items: [
           {
             image: 'life.oosu_salon.cover',
-            caption: 'OOSU SALON 운영 경험은 고객 경험과 서비스 감각으로 이어집니다.',
+            caption:
+              'OOSU SALON 운영 경험은 고객 경험과 서비스 감각으로 이어집니다.',
           },
           {
             image: 'life.sensory_interests.cover',
-            caption: '감각적인 인터페이스와 도구 실험을 프로젝트 맥락으로 연결합니다.',
+            caption:
+              '감각적인 인터페이스와 도구 실험을 프로젝트 맥락으로 연결합니다.',
           },
         ],
       },
@@ -3371,9 +3406,15 @@ export function buildAnswerParts(
   const leadBlockContainsAnswerCopy = leadBlock
     ? componentNameForBlock(leadBlock) === 'ProfileHeroCard'
     : false;
+  const shouldSkipRepeatedLeadVisual =
+    answerVariant === 'detailed' && leadBlock
+      ? componentNameForBlock(leadBlock) === 'AIWorkflowSteps'
+      : false;
 
   return [
-    ...(leadBlock ? [componentPartForBlock(leadBlock)] : []),
+    ...(leadBlock && !shouldSkipRepeatedLeadVisual
+      ? [componentPartForBlock(leadBlock)]
+      : []),
     ...(leadBlockContainsAnswerCopy
       ? []
       : [
