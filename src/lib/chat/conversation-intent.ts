@@ -152,6 +152,18 @@ const TECHNICAL_DEEP_DIVE_PATTERNS = [
   /(아키텍처|구조|캐시|라우팅|검색|하이브리드|임베딩|벡터|배포|서버|기술적으로|자세히)/,
 ];
 
+const AI_USAGE_REQUEST_PATTERNS = [
+  /(ai|AI).*(활용|사용|쓰는\s*법|사용법|활용법|도구|워크플로|개발)/i,
+  /(활용법|사용법).*(ai|AI)/i,
+  /(Claude|Codex|Gemini|Claude Code|Gemini CLI).*(활용|사용|workflow|워크플로)/i,
+];
+
+const COLLABORATION_REQUEST_PATTERNS = [
+  /^(협업|협업\s*스타일|협업\s*방식|팀워크|teamwork|collaboration)$/i,
+  /(협업|팀워크).*(가능|어떻게|스타일|방식|괜찮|맞|잘|열어|제안)/,
+  /(collaboration|teamwork).*(fit|style|work|open|available|how|well)/i,
+];
+
 const RECRUITER_EVALUATION_PATTERNS = [
   /(뽑|채용|포지션|주니어|시니어|실무|투입|강점|약점|협업|평가|혼자\s*(일|작업)|팀에서도|팀\s*(경험|워크|협업)|일하는\s*스타일)/,
   /(오래\s*(근무|다니|못\s*다니|머물|못\s*머물)|장기\s*근속|금방\s*(그만|퇴사)|퇴사\s*리스크|이직\s*리스크|배울\s*(것|거)?만|뽑아\s*먹|뽑아먹|창업\s*(쪽|생각|리스크)|회사에\s*집중|비전공|전환형|깊이가\s*부족|AI\s*(의존|없이|포장))/i,
@@ -164,8 +176,8 @@ const METRIC_REQUEST_PATTERNS = [
 ];
 
 const FOLLOW_UP_PATTERNS = [
-  /^(그|그거|거기|그럼|방금|아까|이어서|왜|어떻게|링크는|백엔드는|프론트는)/,
-  /^(what about|then|why|how about|and the|that project)/i,
+  /^(그|그거|거기|그럼|방금|아까|이어서|왜|어떻게|링크는|백엔드는|프론트는|더\s*(자세히|상세히|알려|설명)|자세히)/,
+  /^(what about|then|why|how about|and the|that project|more detail|tell me more|details?)/i,
 ];
 
 const PORTFOLIO_KEYWORD_PATTERNS = [
@@ -281,6 +293,22 @@ export function classifyConversationIntent({
     return {
       intent: 'portfolio_factual',
       reason: 'profile_intro_request',
+      modifiers,
+    };
+  }
+
+  if (matchesAny(trimmedQuestion, AI_USAGE_REQUEST_PATTERNS)) {
+    return {
+      intent: 'technical_deep_dive',
+      reason: 'ai_usage_request',
+      modifiers,
+    };
+  }
+
+  if (matchesAny(trimmedQuestion, COLLABORATION_REQUEST_PATTERNS)) {
+    return {
+      intent: 'contact_or_link_request',
+      reason: 'collaboration_request',
       modifiers,
     };
   }
@@ -402,8 +430,12 @@ export function shouldFallbackWhenNoEvidence({
 
 export function shouldBypassFaqDirectAnswer({
   reason,
+  modifiers,
 }: ConversationIntentResult) {
-  return reason === 'metric_or_usage_claim_request';
+  return (
+    reason === 'metric_or_usage_claim_request' ||
+    modifiers.includes('multi_intent')
+  );
 }
 
 export function shouldBypassAnswerCache({
@@ -413,6 +445,7 @@ export function shouldBypassAnswerCache({
   return (
     reason === 'metric_or_usage_claim_request' ||
     reason === 'unavailable_resume_link_request' ||
+    modifiers.includes('multi_intent') ||
     modifiers.includes('alias_or_typo')
   );
 }
@@ -483,14 +516,36 @@ function getConversationModifiers(question: string): ConversationModifier[] {
     modifiers.push('language_switch');
   if (matchesAny(question, FORMAT_PATTERNS)) modifiers.push('format_transform');
   if (matchesAny(question, CORRECTION_PATTERNS)) modifiers.push('correction');
-  if (question.split(/[?？]/).filter(Boolean).length > 1)
+  if (
+    question.split(/[?？]/).filter(Boolean).length > 1 ||
+    hasMultiplePortfolioTopicSignals(question) ||
+    (question.length >= 80 &&
+      /(그리고|또\s*다른\s*질문|추가로|마지막으로|한\s*가지는|두\s*번째|첫\s*번째|first|second|also|lastly)/i.test(
+        question
+      ))
+  ) {
     modifiers.push('multi_intent');
+  }
   if (matchesAny(question, ALIAS_OR_TYPO_PATTERNS))
     modifiers.push('alias_or_typo');
   if (matchesAny(question, METRIC_REQUEST_PATTERNS))
     modifiers.push('metric_request');
 
   return modifiers;
+}
+
+function hasMultiplePortfolioTopicSignals(question: string) {
+  if (question.length < 45) return false;
+
+  const topicSignals = [
+    /(AI|ai|Claude|Codex|Gemini|활용|사용|워크플로|workflow)/i,
+    /(협업|팀워크|팀|collaboration|teamwork|team fit)/i,
+    /(PM|PO|Product Owner|개발자|developer|역할|포지션|role|position)/i,
+    /(프로젝트|대표|포트폴리오|AskOosu|Aigram|project|portfolio)/i,
+    /(연락|이메일|깃허브|링크드인|contact|email|github|linkedin)/i,
+  ].filter((pattern) => pattern.test(question)).length;
+
+  return topicSignals >= 2;
 }
 
 function addModifier(
