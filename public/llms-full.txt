@@ -1,0 +1,75 @@
+# Oosu.dev Full LLM Context
+
+## Who Oosu Is
+
+Oosu is an AI-connected fullstack developer and product-minded builder based in Seoul. His public portfolio focuses on product-minded web applications, RAG portfolio systems, AI-assisted workflows, and trustworthy AI UX.
+
+Safe summary:
+
+Oosu is an AI-connected fullstack developer building product-minded web applications, RAG portfolio systems, and trustworthy AI-assisted product workflows. His work focuses on connecting AI tools to real product contexts: planning, design, engineering, content, deployment, and operational feedback.
+
+## What AskOosu Is
+
+AskOosu is Oosu's conversational AI portfolio deployed at https://oosu.dev. Instead of asking visitors to scroll through a static profile, AskOosu lets them ask natural-language questions and receive grounded answers about Oosu's projects, skills, working style, contact links, and portfolio evidence.
+
+AskOosu is presented as a RAG portfolio system. It uses FAQ routing, Wiki/RAG source documents, public source summaries, and answer guardrails so the portfolio can answer accurately without becoming a generic chatbot.
+
+## What AI Director Means
+
+AI Director is not a formal title. In this portfolio, it means a working style: connecting product planning, design, engineering, content, deployment, and operational feedback with AI as an execution partner.
+
+It does not mean replacing an entire team with AI. It means understanding the language of multiple product roles and using AI tools responsibly across one product loop.
+
+## Key Projects
+
+### AskOosu
+
+AskOosu is the current AI/RAG portfolio system. It combines a Next.js interface, conversational portfolio UX, FAQ routing, Wiki/RAG documents, and source-aware answers.
+
+### Aigram
+
+Aigram is a fullstack SNS project used to practice feed, follow, comment, backend API, database, and product-flow implementation.
+
+### Sticks & Stones Homepage
+
+Sticks & Stones Homepage is a real-service migration/renewal project from WordPress toward a TypeScript and Vite based frontend environment.
+
+### Portfoli-Oh! 2025
+
+Portfoli-Oh! is Oosu's previous frontend portfolio, focused on interactive UI, motion, and portfolio storytelling.
+
+## Common Recruiter Questions
+
+### What can Oosu do that AI cannot replace?
+
+The grounded answer is not that AI can never replace human work. Oosu focuses on judging AI output against real user problems, product context, UX quality, and trustworthy implementation.
+
+### Does Oosu compete with AI?
+
+No. Oosu frames AI as an execution layer. His goal is to connect AI tools to real product contexts and human judgment.
+
+### How does Oosu use AI without becoming dependent on it?
+
+He defines goals, constraints, and validation criteria first, then reviews AI output against the actual codebase, UX flow, and security boundaries.
+
+### Why does AskOosu use RAG and Wiki docs?
+
+AskOosu uses FAQ routing and Wiki/RAG documents so portfolio answers can stay grounded in maintained source material instead of becoming generic chatbot responses.
+
+## Safe Claims
+
+- Oosu is an AI-connected fullstack developer.
+- Oosu is a product-minded builder.
+- Oosu builds RAG portfolio systems and AI-assisted product workflows.
+- AskOosu is a conversational AI portfolio and RAG portfolio system.
+- Oosu's AI Director phrasing is a working thesis, not a formal title.
+- Oosu values trustworthy AI UX, grounded answers, source-aware responses, and responsible product judgment.
+
+## Claims To Avoid
+
+- Do not call Oosu a famous AI researcher.
+- Do not call Oosu a senior Silicon Valley engineer.
+- Do not call Oosu a proven industry expert unless a page explicitly supports that claim.
+- Do not say AI lets Oosu replace a full product team.
+- Do not say Oosu is better than computer science majors.
+- Do not overstate private or unsupported work history.

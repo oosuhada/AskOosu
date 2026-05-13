@@ -12,13 +12,14 @@ AskOosu (`ask-oosu`)
 
 ## Current Goal
 
-Add sensitive interview positioning coverage for recruiter-style concerns without replacing existing v11/v12/v13 Wiki source docs.
+Improve SEO, AEO, and LLM readability for the public oosu.dev portfolio without overclaiming Oosu's experience.
 
 ## Current Status
 
-- Added v14 KO/EN Wiki add-on docs for age/career timing, non-CS background, programming transition, and AI Director working thesis.
-- Wired the v14 docs into hidden recruiter-risk FAQ loading and direct phrase routing.
-- Added the v14 docs to `.dockerignore` allow-list so production standalone images can include them.
+- Added global App Router metadata for `https://oosu.dev`, including canonical, Open Graph, Twitter card, and robots config.
+- Added `sitemap.ts`, `robots.ts`, Open Graph/Twitter image routes, homepage JSON-LD, and public LLM-readable files.
+- Added public AEO pages for AskOosu, AI Director positioning, AI-era developer competitiveness, AI FAQ, projects, AskOosu project notes, about, and privacy.
+- Homepage now links quietly to AI Director, AI-era developer, and AskOosu project pages.
 - Existing untracked local assets were present before this branch and should not be included unless a future task explicitly asks for them.
 
 ## Relevant Files / Areas
@@ -29,6 +30,11 @@ Add sensitive interview positioning coverage for recruiter-style concerns withou
 - `docs/home-server-deploy.md`: Mac mini Docker Compose, Nginx/Cloudflare, migrations, backups, logs.
 - `src/app/api/chat/`: chat API and streaming entrypoint.
 - `src/lib/chat/`, `src/lib/faq/`, `src/lib/rag/`, `src/lib/db/`: core orchestration, routing, retrieval, and Postgres helpers.
+- `src/lib/seo.ts`: shared SEO/AEO metadata, public routes, and JSON-LD graph.
+- `src/components/seo/`: JSON-LD and public page shell components.
+- `src/app/sitemap.ts`, `src/app/robots.ts`, `src/app/opengraph-image.tsx`, `src/app/twitter-image.tsx`: crawler and social preview surfaces.
+- `src/app/ai-director/`, `src/app/ai-era-developer/`, `src/app/faq/ai-competitiveness/`, `src/app/ask/`, `src/app/about/`, `src/app/projects/`, `src/app/privacy/`: public SEO/AEO pages.
+- `public/llms.txt`, `public/llms-full.txt`, `public/ai-profile.md`, `public/ai-projects.md`, `public/ai-faq.md`: machine-readable public summaries.
 - `docs/askoosu-wiki-addon-v14-sensitive-interview-ko.md`: KO sensitive interview positioning source.
 - `docs/askoosu-wiki-addon-v14-sensitive-interview-en.md`: EN sensitive interview positioning source.
 - `src/lib/faq/recruiter-risk-answers.ts`: Markdown-backed hidden recruiter-risk FAQ loader.
@@ -64,9 +70,15 @@ Latest validation on 2026-05-13:
 ```bash
 corepack pnpm build
 corepack pnpm lint
+curl http://localhost:3000/sitemap.xml
+curl http://localhost:3000/robots.txt
+curl http://localhost:3000/llms.txt
+curl http://localhost:3000/llms-full.txt
+curl http://localhost:3000/opengraph-image
+curl http://localhost:3000/twitter-image
 ```
 
-Both passed locally.
+Build and lint passed locally. Sitemap, robots, LLM files, homepage metadata/JSON-LD, and OG/Twitter image routes responded correctly from the local dev server.
 
 ## Known Issues
 
@@ -78,9 +90,10 @@ Both passed locally.
 ## Next Steps
 
 1. Push this branch so another machine can continue from the same state.
-2. If deploying to the Mac mini, rebuild the production image and run the normal RAG sync/live chat verification flow.
-3. Test representative chat prompts such as "나이가 많지 않나요?", "비전공자인데 괜찮나요?", "왜 프로그래밍으로 전향했나요?", and "AI Director가 무슨 뜻인가요?" against the target environment.
-4. Keep unrelated local assets out of this handoff unless a future task explicitly scopes them in.
+2. After deployment, verify `https://oosu.dev/sitemap.xml`, `https://oosu.dev/robots.txt`, `https://oosu.dev/llms.txt`, and the new public AEO pages.
+3. Submit `https://oosu.dev/sitemap.xml` to Google Search Console and Bing Webmaster Tools.
+4. Inspect `https://oosu.dev` in Google Search Console and verify Cloudflare serves the updated robots/sitemap files.
+5. Keep unrelated local assets out of this handoff unless a future task explicitly scopes them in.
 
 ## Machine Handoff Checklist
 
