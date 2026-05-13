@@ -86,6 +86,24 @@ curl http://localhost:3000/twitter-image
 
 Build and lint passed locally. Sitemap, robots, LLM files, homepage metadata/JSON-LD, and OG/Twitter image routes responded correctly from the local dev server.
 
+Latest live-chat quality pass on 2026-05-13 13:27 KST:
+
+```bash
+pnpm lint
+pnpm build
+pnpm exec tsc --noEmit
+```
+
+All three checks passed after the AskOosu chat routing/rendering polish. Local `/api/chat` HTTP verification confirmed direct FAQ routing and Wiki source IDs for:
+
+- `이 지원자는 어떤 지원자지?` -> `faq.profile.intro.default`
+- `뭘 제일 잘하지?` -> `faq.recruiter.role_ambiguity.default`
+- `나이가 너무 많지 않나?` -> `faq.recruiter.age_career_timing.default`
+- `나이가 많아서 조직 적응이 힘들지 않겠냐고` -> repeated age concern with context prefix
+- `와인바는 왜 그만뒀지?` -> `faq.career.oosu_salon_closed.default`
+
+The same local conversation returned five unique quote lines. Local browser verification through the in-app browser was blocked by `ERR_BLOCKED_BY_CLIENT` for localhost, so verify final rendering on the deployed `https://oosu.dev` surface.
+
 ## Known Issues
 
 - `pnpm lint` may be noisy because the project script uses `next lint`, which is not supported by newer Next.js CLI behavior. If it fails, record the exact output.
