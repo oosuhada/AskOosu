@@ -710,6 +710,7 @@ const contactActionsKo = [
   { label: 'Email', href: `mailto:${oosuProfile.email}`, kind: 'email' },
   { label: 'GitHub', href: oosuProfile.github, kind: 'github' },
   { label: 'LinkedIn', href: oosuProfile.linkedin, kind: 'linkedin' },
+  { label: 'Instagram', href: oosuProfile.instagram, kind: 'instagram' },
   {
     label: 'Portfolio',
     href: oosuProfile.currentPortfolioUrl,
@@ -1017,13 +1018,14 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
       'github',
     ],
     shortAnswer:
-      '우수에게 연락하려면 이메일, LinkedIn, GitHub를 사용할 수 있습니다.',
+      '우수에게 연락하려면 이메일, LinkedIn, GitHub, Instagram을 사용할 수 있습니다.',
     defaultAnswer: [
-      '우수에게 연락하려면 이메일, LinkedIn, GitHub가 가장 깔끔합니다. AI를 붙인 웹 제품, RAG/검색 UX, 풀스택 프로토타입처럼 “아이디어를 실제로 만져지는 화면까지 끌고 가는” 협업에 특히 잘 맞습니다.',
+      '우수에게 연락하려면 이메일, LinkedIn, GitHub, Instagram이 가장 깔끔합니다. AI를 붙인 웹 제품, RAG/검색 UX, 풀스택 프로토타입처럼 “아이디어를 실제로 만져지는 화면까지 끌고 가는” 협업에 특히 잘 맞습니다.',
       '',
       `- Email: ${oosuProfile.email}`,
       `- GitHub: ${oosuProfile.github}`,
       `- LinkedIn: ${oosuProfile.linkedin}`,
+      `- Instagram: ${oosuProfile.instagram}`,
       `- Portfolio: ${oosuProfile.currentPortfolioUrl}`,
     ].join('\n'),
     renderSpec: {
@@ -1069,13 +1071,15 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
       'contact oosu',
       'github link',
     ],
-    shortAnswer: 'You can reach Oosu by email, LinkedIn, or GitHub.',
+    shortAnswer:
+      'You can reach Oosu by email, LinkedIn, GitHub, or Instagram.',
     defaultAnswer: [
-      'Email, LinkedIn, and GitHub are the clearest ways to reach Oosu. He is a good fit for AI-connected web products, RAG/search UX, and fullstack prototypes where an idea needs to become a working screen.',
+      'Email, LinkedIn, GitHub, and Instagram are the clearest ways to reach Oosu. He is a good fit for AI-connected web products, RAG/search UX, and fullstack prototypes where an idea needs to become a working screen.',
       '',
       `- Email: ${oosuProfile.email}`,
       `- GitHub: ${oosuProfile.github}`,
       `- LinkedIn: ${oosuProfile.linkedin}`,
+      `- Instagram: ${oosuProfile.instagram}`,
       `- Portfolio: ${oosuProfile.currentPortfolioUrl}`,
     ].join('\n'),
     renderSpec: {

@@ -47,8 +47,6 @@ export default function HelperBoost({
     5,
     activeSurface
   );
-  const shouldCenterQuestionRow = visibleQuestions.length <= 4;
-
   useEffect(() => {
     setIsVisible(true);
   }, [activeSurface]);
@@ -58,9 +56,7 @@ export default function HelperBoost({
       {isVisible && (
         <div
           id="quick-question-starters"
-          className={`-mx-2 mb-2 flex snap-x gap-2 overflow-x-auto px-2 pb-1 md:mx-0 md:flex-wrap md:justify-center md:gap-3 md:overflow-visible md:px-0 md:pb-0 ${
-            shouldCenterQuestionRow ? 'justify-center' : 'justify-start'
-          }`}
+          className="-mx-2 mb-2 flex snap-x justify-start gap-2 overflow-x-auto px-2 pb-1 sm:justify-center md:mx-0 md:flex-wrap md:gap-3 md:overflow-visible md:px-0 md:pb-0"
         >
           {visibleQuestions.map((question) => {
             const { color, icon: Icon } = questionConfig[question.id] ?? {
