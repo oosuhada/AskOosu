@@ -114,6 +114,11 @@ export async function prepareChatOrchestration({
   const shouldBypassIntentDirectAnswer =
     requestContext.source === 'quick_question' &&
     Boolean(requestContext.triggerId);
+  const repeatedQuestion = getRepeatedQuestionSignal({
+    messages,
+    normalizedQuestion,
+    requestContext,
+  });
   const collaborationFollowUpClarifier = buildCollaborationFollowUpClarifier({
     question,
     messages,
@@ -125,6 +130,16 @@ export async function prepareChatOrchestration({
 
   if (collaborationFollowUpClarifier) {
     return collaborationFollowUpClarifier;
+  }
+
+  if (repeatedQuestion) {
+    return buildRepeatedQuestionOrchestration({
+      question,
+      language,
+      normalizedQuestion,
+      requestContext,
+      repeatedQuestion,
+    });
   }
 
   if (
@@ -352,6 +367,151 @@ function shouldBypassCurrentFaqDirectAnswer({
   if (!shouldBypassFaqDirectAnswer(conversationIntent)) return false;
 
   return faqRoute.routeDecision.router !== 'quick_question';
+}
+
+type RepeatedQuestionSignal = {
+  kind: 'quick_question' | 'same_question';
+  count: number;
+  label: string | null;
+};
+
+function getRepeatedQuestionSignal({
+  messages,
+  normalizedQuestion,
+  requestContext,
+}: {
+  messages: UIMessage[];
+  normalizedQuestion: string;
+  requestContext: RequestContext;
+}): RepeatedQuestionSignal | null {
+  const previousUserMessages = getPreviousUserMessages(messages);
+  if (previousUserMessages.length === 0) return null;
+
+  const label =
+    requestContext.originalQuickLabel ??
+    requestContext.displayQuestion ??
+    requestContext.triggerId;
+
+  if (requestContext.source === 'quick_question' && requestContext.triggerId) {
+    const sameQuickQuestionCount = previousUserMessages.filter((message) =>
+      hasMatchingQuestionText(message, [
+        requestContext.displayQuestion,
+        requestContext.originalQuickLabel,
+      ])
+    ).length;
+
+    if (sameQuickQuestionCount > 0) {
+      return {
+        kind: 'quick_question',
+        count: sameQuickQuestionCount,
+        label,
+      };
+    }
+  }
+
+  if (!normalizedQuestion) return null;
+
+  const sameQuestionCount = previousUserMessages.filter(
+    (message) => normalizeQuestion(getMessageText(message)) === normalizedQuestion
+  ).length;
+
+  if (sameQuestionCount === 0) return null;
+
+  return {
+    kind: 'same_question',
+    count: sameQuestionCount,
+    label,
+  };
+}
+
+function getPreviousUserMessages(messages: UIMessage[]) {
+  const latestUserIndex = messages.findLastIndex(
+    (message) => message.role === 'user'
+  );
+  if (latestUserIndex <= 0) return [];
+
+  return messages
+    .slice(0, latestUserIndex)
+    .filter((message) => message.role === 'user');
+}
+
+function hasMatchingQuestionText(
+  message: UIMessage,
+  candidateTexts: Array<string | null>
+) {
+  const normalizedMessage = normalizeQuestion(getMessageText(message));
+  return candidateTexts.some((text) => {
+    if (!text) return false;
+    return normalizeQuestion(text) === normalizedMessage;
+  });
+}
+
+function buildRepeatedQuestionOrchestration({
+  question,
+  language,
+  normalizedQuestion,
+  requestContext,
+  repeatedQuestion,
+}: {
+  question: string;
+  language: ChatLanguage;
+  normalizedQuestion: string;
+  requestContext: RequestContext;
+  repeatedQuestion: RepeatedQuestionSignal;
+}): Extract<ChatOrchestration, { mode: 'direct' }> {
+  const routeDecision: AnswerRouteDecision = {
+    mode: 'portfolio_clarify',
+    confidence: 0.9,
+    reason: 'follow_up_without_context',
+  };
+  const metadata = buildDirectMetadata({
+    language,
+    normalizedQuestion,
+    answerSource: 'clarify',
+    matchedEntityIds: [],
+    sourceChunkIds: [],
+    confidence: 0.9,
+    routeDecision,
+    showEvidence: false,
+    requestContext: {
+      ...requestContext,
+      answerVariant: 'short',
+      renderSpec: null,
+    },
+  });
+
+  return {
+    mode: 'direct',
+    question,
+    language,
+    routeDecision,
+    directAnswer: {
+      answer: buildRepeatedQuestionAnswer({
+        language,
+        repeatedQuestion,
+      }),
+      metadata,
+    },
+  };
+}
+
+function buildRepeatedQuestionAnswer({
+  language,
+  repeatedQuestion,
+}: {
+  language: ChatLanguage;
+  repeatedQuestion: RepeatedQuestionSignal;
+}) {
+  const label =
+    repeatedQuestion.label && repeatedQuestion.label.length <= 30
+      ? ` "${repeatedQuestion.label}"`
+      : '';
+
+  if (language === 'ko') {
+    return `이 대화 안에서는${label} 질문을 이미 다뤘어요. 같은 카드를 다시 반복하기보다, 이번엔 다른 각도로 이어가볼게요.\n\n더 자연스럽게 보려면 이렇게 물어보면 좋아요:\n- 이 내용을 프로젝트 사례와 연결해서 설명해줘\n- 기술 스택 근거 중심으로 다시 정리해줘\n- 채용/협업 관점에서 더 날카롭게 말해줘`;
+  }
+
+  return `We already covered${label} in this conversation, so I will avoid repeating the same card again.\n\nA better next angle would be:\n- connect this to project examples\n- reframe it around technical evidence\n- make it sharper for hiring or collaboration context`;
 }
 
 function buildConversationDirectOrchestration({
