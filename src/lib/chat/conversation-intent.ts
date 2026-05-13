@@ -101,6 +101,8 @@ const PROFILE_INTRO_PATTERNS = [
   /^(소개|자기소개|우수\s*소개|우수님?\s*소개|장우수\s*소개|about\s*oosu|introduce\s*oosu)$/i,
   /(우수|우수님|장우수|oosu).*(소개|자기소개|누구|어떤\s*(사람|개발자))/i,
   /(소개|자기소개).*(우수|우수님|장우수|oosu)/i,
+  /(이\s*)?(지원자|후보자|candidate).*(어떤|누구|무슨|뭐\s*하는|정체|소개|사람)/i,
+  /(어떤|무슨)\s*(지원자|후보자|candidate)/i,
   /^(너|당신|이\s*사람)\s*누구/,
   /who\s+is\s+oosu/i,
   /what\s+kind\s+of\s+developer\s+is\s+oosu/i,
@@ -182,7 +184,7 @@ const COLLABORATION_REQUEST_PATTERNS = [
 
 const RECRUITER_EVALUATION_PATTERNS = [
   /(뽑|채용|지원자|포지션|주니어|신입|시니어|실무|투입|강점|약점|전문\s*분야|전문분야|분야.*(다양|많|모르|애매)|뭘\s*제일\s*잘|뭐를\s*제일\s*잘|가장\s*잘하|제일\s*잘하|협업|평가|혼자\s*(일|작업)|팀에서도|팀\s*(경험|워크|협업)|일하는\s*스타일)/,
-  /(오래\s*(근무|다니|못\s*다니|머물|못\s*머물)|장기\s*근속|금방\s*(그만|퇴사)|퇴사\s*리스크|이직\s*리스크|배울\s*(것|거)?만|뽑아\s*먹|뽑아먹|창업\s*(쪽|생각|리스크)|회사에\s*집중|비전공|전환형|깊이가\s*부족|나이\s*(많|우려|리스크)|신입.*나이|나이.*신입|적응.*힘들|AI\s*(의존|없이|포장))/i,
+  /(오래\s*(근무|다니|못\s*다니|머물|못\s*머물)|장기\s*근속|금방\s*(그만|퇴사)|퇴사\s*리스크|이직\s*리스크|배울\s*(것|거)?만|뽑아\s*먹|뽑아먹|창업\s*(쪽|생각|리스크)|회사에\s*집중|비전공|전환형|깊이가\s*부족|나이(?:가|는|도)?\s*(너무\s*)?(많|높|우려|리스크|걸리)|나이.*많|신입.*나이|나이.*신입|적응.*힘들|AI\s*(의존|없이|포장))/i,
   /(hire|recruiter|candidate|position|junior|senior|strength|weakness|specialty|specialist|generalist|focus\s+area|what\s+is\s+oosu\s+best\s+at|collaboration|team\s*(fit|work|experience)|solo\s*builder|work\s+well\s+in\s+a\s+team|fit|retention|leave quickly|learn and leave|founder mindset|startup risk|career changer depth|ai dependency|too\s+old\s+for\s+(a\s+)?junior)/i,
 ];
 
@@ -197,8 +199,8 @@ const FOLLOW_UP_PATTERNS = [
 ];
 
 const PORTFOLIO_KEYWORD_PATTERNS = [
-  /(askoosu|oosu|장우수|우수|portfolio|portfoli|project|aigram|instagram clone|sticks|stones|pylingo|javalingo|nomad|onjung)/i,
-  /(포트폴리오|프로젝트|개발자|기술|스택|경력|커리어|작업|협업|연락|이력서|레주메|위키|노션|사이트|서비스|페이지)/,
+  /(askoosu|oosu|oosu\s*salon|장우수|우수|portfolio|portfoli|project|aigram|instagram clone|sticks|stones|pylingo|javalingo|nomad|onjung)/i,
+  /(포트폴리오|프로젝트|개발자|기술|스택|경력|커리어|작업|협업|연락|이력서|레주메|위키|노션|사이트|서비스|페이지|와인바|우수살롱)/,
   /(react|typescript|spring|flutter|dart|java|python|node|backend|frontend|fullstack|ai|notion|wiki)/i,
 ];
 
@@ -510,10 +512,12 @@ export function buildConversationIntentAnswer({
   intent,
   language,
   question,
+  avoidText,
 }: {
   intent: ConversationIntent;
   language: ChatLanguage;
   question: string;
+  avoidText?: string;
 }) {
   if (intent === 'off_topic_redirect') {
     return appendContextualQuote({
@@ -521,6 +525,7 @@ export function buildConversationIntentAnswer({
       category: getOffTopicQuoteCategory(question),
       language,
       seed: question,
+      avoidText,
     });
   }
 
@@ -540,6 +545,7 @@ export function buildConversationIntentAnswer({
       category: intent === 'portfolio_ambiguous' ? 'product' : 'ai_era',
       language,
       seed: `${intent}:${question}`,
+      avoidText,
     });
   }
 
@@ -652,7 +658,7 @@ function isPublicLifeRequest(question: string) {
     return false;
   }
 
-  return /(fun|취미|취향|작업\s*성향|일하는\s*스타일|라이프|개인적인|사람다운|oosu\s*salon|우수살롱)/i.test(
+  return /(fun|취미|취향|작업\s*성향|일하는\s*스타일|라이프|개인적인|사람다운|oosu\s*salon|우수살롱|와인바)/i.test(
     question
   );
 }
@@ -735,13 +741,15 @@ function appendContextualQuote({
   category,
   language,
   seed,
+  avoidText,
 }: {
   answer: string;
   category: ContextualQuoteCategory;
   language: ChatLanguage;
   seed: string;
+  avoidText?: string;
 }) {
-  const quote = getContextualQuote({ category, language, seed });
+  const quote = getContextualQuote({ category, language, seed, avoidText });
   return `${answer}\n\n---\n> ${quote}`;
 }
 

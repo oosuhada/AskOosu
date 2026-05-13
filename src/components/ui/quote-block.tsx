@@ -17,26 +17,28 @@ export function QuoteBlock({
   return (
     <blockquote
       className={cn(
-        'border-primary/45 bg-muted/45 text-foreground/80 relative my-3 rounded-md border-l-2 py-4 pr-7 pl-7 text-sm leading-relaxed italic',
+        'border-primary/40 bg-muted/45 text-foreground/80 my-3 rounded-md border px-4 py-3 text-sm leading-relaxed italic',
         variant === 'subtle' && 'border-primary/35 bg-muted/30',
-        variant === 'highlight' && 'border-primary bg-muted/60 border-l-4'
+        variant === 'highlight' && 'border-primary bg-muted/60'
       )}
     >
-      <span
-        aria-hidden
-        className="text-primary/35 absolute top-2 left-2 select-none text-2xl leading-none"
-      >
-        &quot;
-      </span>
-      <span
-        aria-hidden
-        className="text-primary/35 absolute right-3 bottom-6 select-none text-2xl leading-none"
-      >
-        &quot;
-      </span>
-      <div className="[&>p]:my-0">{children}</div>
+      <div className="flex items-start justify-center gap-1.5 text-center">
+        <span
+          aria-hidden
+          className="text-primary/40 mt-0.5 shrink-0 select-none text-lg leading-none"
+        >
+          &quot;
+        </span>
+        <div className="min-w-0 [&>p]:my-0">{children}</div>
+        <span
+          aria-hidden
+          className="text-primary/40 mt-0.5 shrink-0 select-none text-lg leading-none"
+        >
+          &quot;
+        </span>
+      </div>
       {attribution && (
-        <footer className="text-muted-foreground mt-3 text-right text-xs not-italic">
+        <footer className="text-muted-foreground mt-1.5 text-center text-[11px] not-italic">
           - {attribution} -
         </footer>
       )}

@@ -146,11 +146,15 @@ export default function ChatMessageContent({
 
 function PlainMarkdownContent({ content }: { content: string }) {
   return (
-    <div className="prose dark:prose-invert w-full whitespace-normal">
+    <div className="prose dark:prose-invert w-full whitespace-normal leading-7">
       <Markdown
         remarkPlugins={[remarkGfm]}
         components={{
-          p: ({ children }) => <p className="my-0 break-words">{children}</p>,
+          p: ({ children }) => (
+            <p className="my-2 break-words first:mt-0 last:mb-0">
+              {children}
+            </p>
+          ),
           ul: ({ children }) => (
             <ul className="my-2 list-disc space-y-2 pl-5">{children}</ul>
           ),
