@@ -21,6 +21,8 @@ docs/*
 !docs/askoosu_second_brain_docs/**
 !docs/askoosu-wiki-addon-v13-en.md
 !docs/askoosu-wiki-addon-v13-ko.md
+!docs/askoosu-wiki-addon-v14-sensitive-interview-en.md
+!docs/askoosu-wiki-addon-v14-sensitive-interview-ko.md
 !docs/notion-wiki-draft-v12-en-add-claude.md
 !docs/notion-wiki-draft-v12-en-add-recruiter-risk-gpt.md
 !docs/notion-wiki-draft-v12-en-add-visionary-claude.md

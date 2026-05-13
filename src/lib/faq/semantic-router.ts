@@ -281,6 +281,22 @@ function getHiddenRecruiterRiskMatch({
     /(ai\s*(의존|없이|못|포장|wrapper)|프롬프트만|prompting|code\s+without\s+ai|rely\s+too\s+much\s+on\s+ai)/i.test(
       question
     );
+  const hasAgeTimingConcern =
+    /(나이\s*(많|리스크|우려)|늦게\s*(전환|시작)|주니어\s*치고\s*나이|상대적으로\s*늦|older\s+(than\s+)?(typical\s+)?junior|age\s+(concern|risk)|late\s+career\s+(switch|transition)|transitioned\s+.*later)/i.test(
+      question
+    );
+  const hasNonCsConcern =
+    /(비전공|컴퓨터\s*공학\s*전공.*아니|cs\s*전공.*아니|non[-\s]?cs|no\s+cs\s+degree|not\s+a\s+cs\s+major|not\s+having\s+a\s+cs\s+degree|non\s+traditional\s+background)/i.test(
+      question
+    );
+  const hasProgrammingTransitionConcern =
+    /(왜\s*(프로그래밍|개발자?|소프트웨어).*(전향|선택|시작)|개발\s*전향\s*이유|커리어\s*전환\s*이유|why\s+(programming|software\s+development)|why\s+transition\s+into\s+programming|why\s+become\s+a\s+developer|why\s+did\s+oosu\s+switch\s+careers)/i.test(
+      question
+    );
+  const hasAiDirectorQuestion =
+    /(ai\s*director|ai\s*디렉터|ai\s*director형|ai\s*product\s*(builder|loop)|ai\s*working\s*style|ai와\s*제품\s*루프|ai\s*시대\s*작업\s*방식)/i.test(
+      question
+    );
   const hasDepthConcern =
     /(비전공|전환형|개발\s*깊이|깊이가\s*부족|cs\s*fundamental|non[-\s]?cs|career\s+changer\s+depth)/i.test(
       question
@@ -314,6 +330,34 @@ function getHiddenRecruiterRiskMatch({
 
   if (hasAiDependencyConcern) {
     return findFaqAnswerById('faq.recruiter.ai_dependency.default', language);
+  }
+
+  if (hasAgeTimingConcern) {
+    return findFaqAnswerById(
+      'faq.recruiter.age_career_timing.default',
+      language
+    );
+  }
+
+  if (hasNonCsConcern) {
+    return findFaqAnswerById(
+      'faq.recruiter.non_cs_background.default',
+      language
+    );
+  }
+
+  if (hasProgrammingTransitionConcern) {
+    return findFaqAnswerById(
+      'faq.recruiter.programming_transition.default',
+      language
+    );
+  }
+
+  if (hasAiDirectorQuestion) {
+    return findFaqAnswerById(
+      'faq.ai_working_style.ai_director.default',
+      language
+    );
   }
 
   if (hasDepthConcern) {

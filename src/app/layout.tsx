@@ -1,10 +1,19 @@
 import { PreferenceSync } from '@/components/preference-sync';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
+import {
+  defaultDescription,
+  defaultTitle,
+  seoKeywords,
+  siteName,
+  siteUrl,
+} from '@/lib/seo';
 import { cn } from '@/lib/utils';
 import { Analytics } from '@vercel/analytics/react';
 import type { Metadata } from 'next';
+import type { Viewport } from 'next';
 import { Inter } from 'next/font/google';
+import Script from 'next/script';
 import { Suspense } from 'react';
 import './globals.css';
 
@@ -62,23 +71,13 @@ const preferenceInitScript = `
 `;
 
 export const metadata: Metadata = {
-  title: 'AskOosu | Oosu Jang',
-  description:
-    'AI-connected portfolio for Oosu Jang, an AI-connected Fullstack Developer building conversational portfolio and Notion wiki workflows.',
-  keywords: [
-    'AskOosu',
-    'Oosu Jang',
-    'oosuhada',
-    'Portfolio',
-    'AI',
-    'Fullstack Developer',
-    'Interactive',
-    'Notion API',
-    'Vercel AI SDK',
-    'Web Development',
-    'Next.js',
-    'React',
-  ],
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: defaultTitle,
+    template: '%s | Oosu',
+  },
+  description: defaultDescription,
+  keywords: seoKeywords,
   authors: [
     {
       name: 'Oosu Jang',
@@ -86,20 +85,43 @@ export const metadata: Metadata = {
     },
   ],
   creator: 'Oosu Jang',
+  publisher: 'Oosu Jang',
+  alternates: {
+    canonical: '/',
+  },
   openGraph: {
     type: 'website',
     locale: 'ko_KR',
-    url: 'https://github.com/oosuhada/AskOosu',
-    title: 'AskOosu | Oosu Jang',
-    description:
-      'AskOosu is Oosu Jang’s 2026 AI-connected conversational portfolio.',
-    siteName: 'AskOosu',
+    url: siteUrl,
+    title: defaultTitle,
+    description: defaultDescription,
+    siteName,
+    images: [
+      {
+        url: '/opengraph-image',
+        width: 1200,
+        height: 630,
+        alt: defaultTitle,
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'AskOosu | Oosu Jang',
-    description: 'AI-connected portfolio for Oosu Jang.',
+    title: defaultTitle,
+    description: defaultDescription,
     creator: '@oosuhada',
+    images: ['/twitter-image'],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+      'max-video-preview': -1,
+    },
   },
   icons: {
     icon: [
@@ -113,9 +135,18 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 const shouldLoadVercelAnalytics =
   process.env.VERCEL === '1' ||
   process.env.NEXT_PUBLIC_ENABLE_VERCEL_ANALYTICS === 'true';
+const cloudflareAnalyticsToken =
+  process.env.NEXT_PUBLIC_CLOUDFLARE_ANALYTICS_TOKEN;
 
 export default function RootLayout({
   children,
@@ -125,10 +156,6 @@ export default function RootLayout({
   return (
     <html lang="ko" suppressHydrationWarning>
       <head>
-        <meta
-          name="viewport"
-          content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-        />
         <link rel="icon" href="/favicon.svg" sizes="any" />
         <script dangerouslySetInnerHTML={{ __html: preferenceInitScript }} />
       </head>
@@ -150,6 +177,16 @@ export default function RootLayout({
           </Suspense>
           <main className="flex min-h-screen flex-col">{children}</main>
           <Toaster />
+          {cloudflareAnalyticsToken ? (
+            <Script
+              src="https://static.cloudflareinsights.com/beacon.min.js"
+              strategy="afterInteractive"
+              defer
+              data-cf-beacon={JSON.stringify({
+                token: cloudflareAnalyticsToken,
+              })}
+            />
+          ) : null}
           {shouldLoadVercelAnalytics ? <Analytics /> : null}
         </ThemeProvider>
       </body>
