@@ -1,5 +1,8 @@
 export function normalizeMarkdownSpacing(content: string) {
-  const lines = content.replace(/\r\n/g, '\n').split('\n');
+  const lines = content
+    .replace(/\r\n/g, '\n')
+    .replace(/\s+---\s+>\s+/g, '\n\n---\n> ')
+    .split('\n');
   const normalizedLines: string[] = [];
   let blankLineCount = 0;
   let isInCodeFence = false;
