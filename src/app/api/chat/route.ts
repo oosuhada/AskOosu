@@ -54,6 +54,12 @@ import {
   checkRateLimitForKey,
   rateLimitHeaders,
 } from '@/lib/rate-limit';
+import {
+  createAskEvent,
+  getAnswerModeFromMetadata,
+  getNormalizedIntentFromMetadata,
+  parseRequestEventContext,
+} from '@/lib/analytics/ask-events';
 
 export const runtime = 'nodejs';
 export const maxDuration = 30;
@@ -72,6 +78,12 @@ type ChatRequestBody = {
   renderSpec?: string | null;
   source?: string | null;
   conversationId?: string | null;
+  sessionId?: string | null;
+  pagePath?: string | null;
+  referrer?: string | null;
+  utmSource?: string | null;
+  utmMedium?: string | null;
+  utmCampaign?: string | null;
 };
 
 type ValidatedChatRequestBody = Omit<
@@ -96,6 +108,7 @@ const MAX_CONVERSATION_ID_LENGTH = 160;
 const SAFE_IDENTIFIER_PATTERN = /^[A-Za-z0-9_.:-]+$/;
 
 export async function POST(req: Request) {
+  const requestStartedAt = Date.now();
   const requestId = crypto.randomUUID();
   let messages: UIMessage[] = [];
   let body: ValidatedChatRequestBody | null = null;
@@ -239,6 +252,14 @@ export async function POST(req: Request) {
         });
       });
 
+      scheduleAskEventLog({
+        req,
+        body,
+        question: orchestration.question,
+        metadata: directMetadata,
+        latencyMs: Date.now() - requestStartedAt,
+      });
+
       return createDirectAnswerResponse({
         messages,
         answer: directAnswer.answer,
@@ -344,6 +365,14 @@ export async function POST(req: Request) {
         ...getRouteDecisionLogData(responseMetadata),
       });
 
+      scheduleAskEventLog({
+        req,
+        body,
+        question: orchestration.question,
+        metadata: responseMetadata,
+        latencyMs: Date.now() - requestStartedAt,
+      });
+
       return createDirectAnswerResponse({
         messages,
         answer: safeAnswer,
@@ -388,6 +417,14 @@ export async function POST(req: Request) {
         });
       });
     }
+
+    scheduleAskEventLog({
+      req,
+      body,
+      question: orchestration.question,
+      metadata: responseMetadata,
+      latencyMs: Date.now() - requestStartedAt,
+    });
 
     return createDirectAnswerResponse({
       messages,
@@ -435,6 +472,14 @@ export async function POST(req: Request) {
       route: CHAT_ROUTE,
       errorCode,
       ...getRouteDecisionLogData(fallbackMetadata),
+    });
+
+    scheduleAskEventLog({
+      req,
+      body,
+      question: getLatestUserText(messages),
+      metadata: fallbackMetadata,
+      latencyMs: Date.now() - requestStartedAt,
     });
 
     return createDirectAnswerResponse({
@@ -508,6 +553,57 @@ function toUsageMetadata(metadata: unknown): Record<string, unknown> {
   );
 }
 
+function scheduleAskEventLog({
+  req,
+  body,
+  question,
+  metadata,
+  latencyMs,
+}: {
+  req: Request;
+  body: ValidatedChatRequestBody | null;
+  question: string;
+  metadata: ChatAnswerMetadata;
+  latencyMs: number;
+}) {
+  if (!body) return;
+
+  const requestEventContext = parseRequestEventContext(req, {
+    pagePath: body.pagePath,
+    referrer: body.referrer,
+    utmSource: body.utmSource,
+    utmMedium: body.utmMedium,
+    utmCampaign: body.utmCampaign,
+  });
+
+  void createAskEvent({
+    sessionId: body.sessionId ?? body.conversationId,
+    language: metadata.language,
+    question,
+    normalizedIntent: getNormalizedIntentFromMetadata(metadata),
+    answerMode: getAnswerModeFromMetadata(metadata),
+    confidence: metadata.confidence,
+    sourceDocIds: uniqueTextValues([
+      ...metadata.sourceChunkIds,
+      ...metadata.sources.map((source) => source.chunk_id),
+    ]),
+    modelProvider: metadata.provider ?? metadata.model ?? metadata.answerSource,
+    latencyMs,
+    ...requestEventContext,
+  }).catch((error) => {
+    logWarn('chat.ask_event_write_failed', {
+      requestId: metadata.requestId,
+      route: CHAT_ROUTE,
+      answerSource: metadata.answerSource,
+      error: toLogError(error),
+    });
+  });
+}
+
+function uniqueTextValues(values: string[]) {
+  return Array.from(new Set(values.filter(Boolean)));
+}
+
 const RAG_CHAT_SYSTEM_PROMPT = `
 ## Wiki Grounding Rules
 - Answer from the portfolio evidence whenever it is available.
@@ -551,6 +647,12 @@ const chatRequestBodySchema = z
     conversationId: optionalSafeIdentifierSchema(
       MAX_CONVERSATION_ID_LENGTH
     ).optional(),
+    sessionId: optionalSafeIdentifierSchema(MAX_CONVERSATION_ID_LENGTH).optional(),
+    pagePath: optionalTrimmedStringSchema(500).optional(),
+    referrer: optionalTrimmedStringSchema(500).optional(),
+    utmSource: optionalTrimmedStringSchema(500).optional(),
+    utmMedium: optionalTrimmedStringSchema(500).optional(),
+    utmCampaign: optionalTrimmedStringSchema(500).optional(),
     displayQuestion: optionalTrimmedStringSchema(
       MAX_DISPLAY_TEXT_LENGTH
     ).optional(),
@@ -622,6 +724,12 @@ function validateChatRequestBody(
     messages,
     preferredLanguage,
     requestByteSize,
+    sessionId: body.sessionId ?? null,
+    pagePath: body.pagePath ?? null,
+    referrer: body.referrer ?? null,
+    utmSource: body.utmSource ?? null,
+    utmMedium: body.utmMedium ?? null,
+    utmCampaign: body.utmCampaign ?? null,
     conversationId: body.conversationId ?? null,
     ...routing,
   };

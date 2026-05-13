@@ -24,6 +24,14 @@ const RECRUITER_RISK_SOURCE_DOCUMENTS: RecruiterRiskSourceDocument[] = [
     path: 'docs/notion-wiki-draft-v12-en-add-claude.md',
     language: 'en',
   },
+  {
+    path: 'docs/askoosu-wiki-addon-v14-sensitive-interview-ko.md',
+    language: 'ko',
+  },
+  {
+    path: 'docs/askoosu-wiki-addon-v14-sensitive-interview-en.md',
+    language: 'en',
+  },
 ];
 
 export const RECRUITER_RISK_FAQ_ANSWERS: FaqAnswer[] = [
@@ -364,11 +372,15 @@ function getQuickLabel(intentId: string, language: 'ko' | 'en') {
     weaknesses_risks: '단점과 리스크',
     role_recommendation: '역할 추천',
     career_switcher_value: '전환형 가치',
+    age_career_timing: '커리어 시점',
+    non_cs_background: '비전공 배경',
+    programming_transition: '전향 이유',
     ambiguity_handling: '모호함 처리',
     growth_potential: '성장 가능성',
     business_in_code: '비즈니스 감각',
     ideal_environment: '이상적 환경',
     onboarding_questions: '첫 질문',
+    ai_director: 'AI Director',
   };
 
   return labels[label.replaceAll(' ', '_')] ?? label;

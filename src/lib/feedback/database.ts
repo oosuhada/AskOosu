@@ -1,4 +1,5 @@
 import { getPostgresPool, hasPostgresDatabaseUrl } from '@/lib/db/postgres';
+import { redactSensitiveText } from '@/lib/privacy/redact';
 
 const MAX_SESSION_ID_LENGTH = 128;
 const MAX_MESSAGE_ID_LENGTH = 128;
@@ -126,10 +127,10 @@ function normalizeAnswerFeedback(input: AnswerFeedbackInput) {
   return {
     sessionId: truncateText(input.sessionId ?? '', MAX_SESSION_ID_LENGTH),
     messageId,
-    question: truncateText(input.question ?? '', MAX_QUESTION_LENGTH),
-    answer: truncateText(input.answer ?? '', MAX_TEXT_LENGTH),
+    question: redactSensitiveText(input.question ?? '', MAX_QUESTION_LENGTH),
+    answer: redactSensitiveText(input.answer ?? '', MAX_TEXT_LENGTH),
     rating: input.rating,
-    reason: normalizeOptionalText(input.reason, MAX_REASON_LENGTH),
+    reason: normalizeOptionalRedactedText(input.reason, MAX_REASON_LENGTH),
     matchedEntityIds: normalizeIds(input.matchedEntityIds),
     sourceChunkIds: normalizeIds(input.sourceChunkIds),
     confidence: normalizeConfidence(input.confidence),
@@ -148,8 +149,11 @@ function normalizeIds(value: string[] | undefined) {
   ).slice(0, MAX_IDS);
 }
 
-function normalizeOptionalText(value: string | null | undefined, max: number) {
-  const text = truncateText(value ?? '', max);
+function normalizeOptionalRedactedText(
+  value: string | null | undefined,
+  max: number
+) {
+  const text = redactSensitiveText(value ?? '', max);
   return text || null;
 }
 
