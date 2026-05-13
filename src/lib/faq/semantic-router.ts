@@ -181,6 +181,26 @@ export async function routeFaqIntent({
     };
   }
 
+  const askOosuArchitectureMatch = getAskOosuArchitectureMatch({
+    question: normalizedQuestion,
+    language,
+  });
+
+  if (askOosuArchitectureMatch) {
+    return {
+      answer: askOosuArchitectureMatch,
+      matchedFaqId: askOosuArchitectureMatch.id,
+      intentScore: 0.99,
+      intentSecondScore: 0,
+      intentMargin: 0.99,
+      routeDecision: {
+        mode: 'direct',
+        reason: 'askoosu_architecture_phrase_match',
+        router: 'token_fallback',
+      },
+    };
+  }
+
   const quickQuestionMatch =
     source === 'quick_question'
       ? getTrustedQuickQuestionMatch({ starterQuestionId, language })
@@ -292,6 +312,27 @@ function getTrustedQuickQuestionMatch({
   if (!suggestedQuestion?.faqId) return null;
 
   return findFaqAnswerById(suggestedQuestion.faqId, language);
+}
+
+function getAskOosuArchitectureMatch({
+  question,
+  language,
+}: {
+  question: string;
+  language: ChatLanguage;
+}) {
+  const asksSiteArchitecture =
+    /(웹\s*사이트|사이트|홈페이지|포트폴리오|oosu\.dev|askoosu|ask\s*oosu).*(구조|구성|작동|동작|아키텍처|architecture|stack|flow|흐름)|(?:구조|구성|아키텍처).*(웹\s*사이트|사이트|홈페이지|포트폴리오|oosu\.dev|askoosu|ask\s*oosu)|how\s+(does|is).*(site|website|askoosu).*(work|structured|built)|website\s+(structure|architecture)|site\s+(structure|architecture)/i.test(
+      question
+    );
+  const asksBareArchitecture =
+    /^(웹\s*사이트의?\s*)?구조(?:는|가|를|도)?\s*(뭐|무엇|어떻게|알려|설명)?/.test(
+      question
+    );
+
+  if (!asksSiteArchitecture && !asksBareArchitecture) return null;
+
+  return findFaqAnswerById('faq.project.askoosu.rag.default', language);
 }
 
 function routeWithTokenFallback({

@@ -1073,8 +1073,7 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
       'contact oosu',
       'github link',
     ],
-    shortAnswer:
-      'You can reach Oosu by email, LinkedIn, GitHub, or Instagram.',
+    shortAnswer: 'You can reach Oosu by email, LinkedIn, GitHub, or Instagram.',
     defaultAnswer: [
       'Email, LinkedIn, GitHub, and Instagram are the clearest ways to reach Oosu. He is a good fit for AI-connected web products, RAG/search UX, and fullstack prototypes where an idea needs to become a working screen.',
       '',
@@ -1246,17 +1245,29 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
       'AskOosu 안에서 Notion, RAG, Groq, PostgreSQL은 어떻게 연결되나요?',
     patterns: [
       'RAG 구조',
+      '웹사이트의 구조는?',
+      '웹사이트 구조',
+      '사이트 구조',
+      '이 사이트 구조',
+      '이 웹사이트는 어떻게 작동하나요?',
+      'oosu.dev 구조',
+      'AskOosu 구조',
+      'AskOosu 아키텍처',
       'AskOosu 안에서 Notion, RAG, Groq, PostgreSQL은 어떻게 연결되나요?',
       'AskOosu RAG',
       'Notion RAG Groq PostgreSQL',
       '포트폴리오를 왜 대화형으로 만들었어요?',
     ],
     shortAnswer:
-      'AskOosu는 채팅 UI, FAQ 캐시, Notion Wiki/RAG, PostgreSQL 검색 캐시, Groq 생성 모델을 질문 성격에 따라 연결합니다.',
+      'AskOosu는 Cloudflare 뒤의 Mac mini Docker Compose에서 Next.js 채팅 UI, FAQ 캐시, RAG/PostgreSQL, 모델 생성을 연결합니다.',
     defaultAnswer: [
-      'AskOosu는 방문자의 질문을 먼저 FAQ Answer Cache로 확인하고, 반복 질문이면 Groq 호출 없이 바로 답변합니다.',
+      'AskOosu는 `oosu.dev`로 들어온 요청을 Cloudflare와 Mac mini 홈서버의 Nginx/local proxy가 Docker Compose의 Next.js 앱으로 전달하는 구조입니다. 앱 컨테이너는 `127.0.0.1:3010`에서 실행되고, PostgreSQL/pgvector 컨테이너가 RAG chunk와 답변 관련 데이터를 저장합니다.',
       '',
-      'FAQ로 충분하지 않은 질문은 Notion Wiki 기반 chunk와 PostgreSQL 검색 캐시를 통해 근거를 찾고, 필요한 경우에만 Groq 같은 모델 생성으로 넘어갑니다. 답변에는 source chunk id, confidence, TODO 여부 같은 메타데이터를 붙여 UI에서 근거와 fallback 상태를 확인할 수 있게 합니다.',
+      '애플리케이션 내부에서는 Next.js App Router 기반의 채팅 UI와 `/api/chat` route handler가 중심입니다.',
+      '',
+      '질문이 들어오면 먼저 FAQ Answer Cache와 의도 라우터가 검증된 답변을 찾고, 반복 질문이면 모델 호출 없이 바로 답합니다. FAQ로 충분하지 않은 질문은 Notion Wiki와 로컬 문서에서 동기화된 RAG chunk를 PostgreSQL에서 검색한 뒤, 필요한 경우에만 Groq 또는 설정된 fallback 모델로 답변을 생성합니다.',
+      '',
+      'Vercel AI SDK는 이 흐름에서 모델 스트리밍과 provider 호출을 다루는 라이브러리이며, 현재 `oosu.dev`의 호스팅 계층은 Vercel이 아니라 Cloudflare 앞단과 Mac mini 홈서버입니다.',
     ].join('\n'),
     renderSpec: {
       layout: 'ai_workflow',
@@ -1294,17 +1305,30 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
       'How do Notion, RAG, Groq, and PostgreSQL work together inside AskOosu?',
     patterns: [
       'RAG system',
+      'website structure',
+      'site structure',
+      'website architecture',
+      'site architecture',
+      'How is this website structured?',
+      'How does this website work?',
+      'How is oosu.dev built?',
+      'AskOosu structure',
+      'AskOosu architecture',
       'How do Notion, RAG, Groq, and PostgreSQL work together inside AskOosu?',
       'AskOosu RAG',
       'Notion RAG Groq PostgreSQL',
       'Why build this portfolio as a conversation?',
     ],
     shortAnswer:
-      'AskOosu connects chat UI, FAQ cache, Notion Wiki/RAG, PostgreSQL retrieval cache, and Groq generation depending on the question type.',
+      'AskOosu runs behind Cloudflare on a Mac mini Docker Compose stack and connects the Next.js chat UI, FAQ cache, RAG/PostgreSQL, and model generation.',
     defaultAnswer: [
-      'AskOosu checks the FAQ Answer Cache first, so repeated questions can return a grounded answer without calling Groq.',
+      'AskOosu receives `oosu.dev` traffic through Cloudflare and routes it through Nginx/local proxying on the Mac mini home server into the Docker Compose Next.js app. The app container runs on `127.0.0.1:3010`, and a PostgreSQL/pgvector container stores RAG chunks and answer-related data.',
       '',
-      'When the FAQ is not enough, it searches Notion Wiki chunks through a PostgreSQL-backed retrieval cache and only then uses a model such as Groq when generation is needed. The answer carries metadata such as source chunk IDs, confidence, and TODO state so the UI can show evidence and fallback status.',
+      'Inside the app, the main runtime is a Next.js App Router chat UI and the `/api/chat` route handler.',
+      '',
+      'When a question arrives, FAQ Answer Cache and intent routing check whether a verified answer already exists. Repeated questions can return directly without a model call. When FAQ is not enough, AskOosu searches RAG chunks synced from the Notion Wiki and local docs into PostgreSQL, then uses Groq or the configured fallback model only when generation is needed.',
+      '',
+      'Vercel AI SDK is used here as the model streaming/provider library. It is not the current hosting layer for `oosu.dev`; production hosting is the Cloudflare-fronted Mac mini home-server path.',
     ].join('\n'),
     renderSpec: {
       layout: 'ai_workflow',
@@ -2749,18 +2773,18 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
       'home server 배포',
     ],
     shortAnswer:
-      'AskOosu는 oosu.dev를 canonical live URL로 두고, Notion Wiki 원본과 Next.js 앱, RAG 캐시, 답변 생성을 연결하는 구조를 지향합니다.',
+      'AskOosu는 oosu.dev를 canonical live URL로 두고, Cloudflare 앞단과 Mac mini Docker Compose에서 Next.js 앱, PostgreSQL, RAG 캐시, 답변 생성을 운영합니다.',
     defaultAnswer: [
-      'AskOosu는 `https://oosu.dev`를 canonical live URL로 두고 운영하는 방향입니다.',
+      'AskOosu는 `https://oosu.dev`를 canonical live URL로 두고, Cloudflare 앞단 뒤의 Mac mini 홈서버에서 운영합니다.',
       '',
-      '콘텐츠 원본은 Notion Wiki이고, 서비스 레이어에서는 Next.js 기반 프론트엔드와 API route handler, RAG 검색 캐시용 데이터 저장소, Groq 기반 답변 생성을 연결합니다. 운영 관점에서는 Notion 내용을 주기적으로 sync해 chunk를 갱신하고, 자주 묻는 질문은 FAQ cache로 먼저 처리해 API 비용과 응답 지연을 줄입니다.',
+      '서비스 레이어에서는 Docker Compose로 Next.js 앱과 PostgreSQL/pgvector 컨테이너를 띄우고, Nginx/Cloudflare가 `oosu.dev` 요청을 앱 컨테이너의 `127.0.0.1:3010`으로 전달합니다. 콘텐츠 원본은 Notion-oriented Wiki 문서와 로컬 source docs이고, RAG sync/search가 검색 chunk를 PostgreSQL에 저장합니다. 자주 묻는 질문은 FAQ cache로 먼저 처리해 API 비용과 응답 지연을 줄입니다.',
     ].join('\n'),
     detailedAnswer: [
       'AskOosu의 배포/운영 구조는 네 층으로 볼 수 있습니다.',
       '',
       '첫째, Notion Wiki를 편집 가능한 콘텐츠 원본으로 둡니다. 둘째, Next.js 앱이 채팅 UI, 추천 질문, 시각 답변 블록, API route handler를 담당합니다.',
       '',
-      '셋째, `/api/rag/sync`, `/api/rag/search`, `/api/chat`이 FAQ cache, RAG, Groq 흐름을 조립합니다. 넷째, 외부에는 `oosu.dev` 같은 canonical URL을 우선 노출하고 홈서버와 Cloudflare Tunnel 구조를 기준으로 접근성을 확보합니다.',
+      '셋째, `/api/rag/sync`, `/api/rag/search`, `/api/chat`이 FAQ cache, RAG, provider fallback 흐름을 조립합니다. 넷째, 외부에는 `oosu.dev` canonical URL을 노출하고 Cloudflare/Nginx가 Mac mini의 Docker 앱으로 라우팅합니다.',
     ].join('\n'),
     renderSpec: {
       layout: 'ai_workflow',
@@ -2790,7 +2814,7 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
           {
             title: 'Domain / Infra',
             description:
-              'oosu.dev canonical URL과 홈서버 운영 원칙을 따릅니다.',
+              'Cloudflare/Nginx가 oosu.dev를 Mac mini Docker 앱으로 연결합니다.',
           },
         ],
       },
@@ -2824,18 +2848,18 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
       'home server deployment',
     ],
     shortAnswer:
-      'AskOosu uses oosu.dev as the canonical public URL and connects Notion Wiki, the Next.js app, retrieval cache, and answer generation around it.',
+      'AskOosu uses oosu.dev as the canonical public URL and runs behind Cloudflare on a Mac mini Docker Compose stack with Next.js, PostgreSQL, RAG cache, and answer generation.',
     defaultAnswer: [
-      'AskOosu is intended to run with `https://oosu.dev` as the canonical live URL.',
+      'AskOosu runs with `https://oosu.dev` as the canonical live URL, behind Cloudflare on a Mac mini home server.',
       '',
-      'The original content lives in Notion Wiki, while the service layer connects a Next.js frontend, route handlers, a retrieval/cache data layer, and Groq-based answer generation. Operationally, Notion content should be synced into chunks, and frequently asked questions should be handled by the FAQ cache first to reduce cost and latency.',
+      'The service layer uses Docker Compose to run the Next.js app and PostgreSQL/pgvector. Nginx/Cloudflare forwards `oosu.dev` traffic to the app container on `127.0.0.1:3010`. Portfolio knowledge comes from Notion-oriented Wiki docs and local source docs; RAG sync/search stores searchable chunks in PostgreSQL. Frequently asked questions are handled by FAQ cache first to reduce cost and latency.',
     ].join('\n'),
     detailedAnswer: [
       'The deployment and operations model of AskOosu can be understood in four layers.',
       '',
       'First, Notion Wiki is the editable source of truth. Second, the Next.js app handles chat UI, suggested questions, visual answer blocks, and route handlers.',
       '',
-      'Third, `/api/rag/sync`, `/api/rag/search`, and `/api/chat` assemble FAQ cache, RAG, and Groq. Fourth, the public experience should prioritize a canonical domain such as `oosu.dev`, with a home-server and Cloudflare Tunnel style approach for clean access.',
+      'Third, `/api/rag/sync`, `/api/rag/search`, and `/api/chat` assemble FAQ cache, RAG, and provider fallback. Fourth, Cloudflare/Nginx routes the canonical `oosu.dev` domain to the Mac mini Docker app.',
     ].join('\n'),
     renderSpec: {
       layout: 'ai_workflow',
@@ -2865,7 +2889,7 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
           {
             title: 'Domain / Infra',
             description:
-              'The public experience centers on the oosu.dev canonical URL.',
+              'Cloudflare/Nginx connects oosu.dev to the Mac mini Docker app.',
           },
         ],
       },
@@ -3063,7 +3087,7 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
       '',
       '이 프로젝트에서 Spring Boot 백엔드와 PostgreSQL을 기반으로 사용자, 게시글, 댓글, 팔로우, 검색 같은 SNS의 관계형 데이터 흐름을 설계하고 구현했습니다.',
       '',
-      'PostgreSQL은 AskOosu에서도 중요합니다. AskOosu에서는 Notion Wiki에서 가져온 chunk를 저장하고 검색하는 RAG 캐시 구조를 PostgreSQL/pgvector 확장 가능 구조로 연결하는 방향을 보고 있습니다.',
+      'PostgreSQL은 AskOosu에서도 중요합니다. AskOosu에서는 Wiki/RAG chunk, source metadata, answer cache, provider usage, feedback, sanitized ask events를 PostgreSQL에 저장하고 검색합니다.',
     ].join('\n'),
     detailedAnswer: [
       'Spring Boot와 PostgreSQL은 우수의 백엔드 성장 흐름을 보여주는 기술 조합입니다.',

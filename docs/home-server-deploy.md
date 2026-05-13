@@ -4,12 +4,15 @@ AskOosu production target:
 
 ```text
 Browser
--> Cloudflare DNS / Tunnel
--> cloudflared on Mac mini
--> Homebrew Nginx :8080
+-> Cloudflare for oosu.dev
+-> Mac mini home server
+-> Homebrew Nginx / local proxy
 -> Docker app 127.0.0.1:3010
 -> Next.js production server
+-> PostgreSQL / pgvector Docker service
 ```
+
+This is a home-server deployment. Vercel AI SDK is used inside the Next.js runtime as an AI/model streaming library; it does not imply Vercel hosting for `oosu.dev`.
 
 ## Paths
 
