@@ -27,6 +27,7 @@ export const publicRoutes = [
   '/about',
   '/projects',
   '/projects/askoosu',
+  '/blog',
   '/ai-director',
   '/ai-era-developer',
   '/faq/ai-competitiveness',
