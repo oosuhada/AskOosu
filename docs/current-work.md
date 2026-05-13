@@ -12,12 +12,13 @@ AskOosu (`ask-oosu`)
 
 ## Current Goal
 
-Set up lightweight GitHub-based handoff notes so work can move between MacBook Pro, MacBook Air, Mac mini, and Codex Cloud without depending on local Codex cache or machine-specific logs.
+Add sensitive interview positioning coverage for recruiter-style concerns without replacing existing v11/v12/v13 Wiki source docs.
 
 ## Current Status
 
-- Handoff documentation is being added under `docs/`.
-- No production source code changes are part of this work.
+- Added v14 KO/EN Wiki add-on docs for age/career timing, non-CS background, programming transition, and AI Director working thesis.
+- Wired the v14 docs into hidden recruiter-risk FAQ loading and direct phrase routing.
+- Added the v14 docs to `.dockerignore` allow-list so production standalone images can include them.
 - Existing untracked local assets were present before this branch and should not be included unless a future task explicitly asks for them.
 
 ## Relevant Files / Areas
@@ -28,6 +29,10 @@ Set up lightweight GitHub-based handoff notes so work can move between MacBook P
 - `docs/home-server-deploy.md`: Mac mini Docker Compose, Nginx/Cloudflare, migrations, backups, logs.
 - `src/app/api/chat/`: chat API and streaming entrypoint.
 - `src/lib/chat/`, `src/lib/faq/`, `src/lib/rag/`, `src/lib/db/`: core orchestration, routing, retrieval, and Postgres helpers.
+- `docs/askoosu-wiki-addon-v14-sensitive-interview-ko.md`: KO sensitive interview positioning source.
+- `docs/askoosu-wiki-addon-v14-sensitive-interview-en.md`: EN sensitive interview positioning source.
+- `src/lib/faq/recruiter-risk-answers.ts`: Markdown-backed hidden recruiter-risk FAQ loader.
+- `src/lib/faq/semantic-router.ts`: direct phrase routing for recruiter-risk/sensitive interview questions.
 - `db/migrations/`: raw SQL migrations for RAG, feedback, cache, provider usage, and rate limiting.
 - `ops/`: deployment templates and production helper scripts.
 
@@ -54,6 +59,15 @@ pnpm rag:eval
 
 For docs-only changes, `pnpm lint` is usually enough unless source code or config changed.
 
+Latest validation on 2026-05-13:
+
+```bash
+corepack pnpm build
+corepack pnpm lint
+```
+
+Both passed locally.
+
 ## Known Issues
 
 - `pnpm lint` may be noisy because the project script uses `next lint`, which is not supported by newer Next.js CLI behavior. If it fails, record the exact output.
@@ -63,10 +77,10 @@ For docs-only changes, `pnpm lint` is usually enough unless source code or confi
 
 ## Next Steps
 
-1. Keep this branch pushed to GitHub so another machine can continue from the same state.
-2. Open or update a Draft PR titled `Add Codex handoff workflow docs`.
-3. For future feature work, update this file with branch, goal, files touched, validation, known issues, and next steps before switching machines.
-4. If a future task changes RAG, chat routing, deployment, or source-doc conventions, update `docs/codex-notes.md` and `docs/implementation-notes.md` as part of the same PR.
+1. Push this branch so another machine can continue from the same state.
+2. If deploying to the Mac mini, rebuild the production image and run the normal RAG sync/live chat verification flow.
+3. Test representative chat prompts such as "나이가 많지 않나요?", "비전공자인데 괜찮나요?", "왜 프로그래밍으로 전향했나요?", and "AI Director가 무슨 뜻인가요?" against the target environment.
+4. Keep unrelated local assets out of this handoff unless a future task explicitly scopes them in.
 
 ## Machine Handoff Checklist
 
