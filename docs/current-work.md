@@ -104,6 +104,23 @@ All three checks passed after the AskOosu chat routing/rendering polish. Local `
 
 The same local conversation returned five unique quote lines. Local browser verification through the in-app browser was blocked by `ERR_BLOCKED_BY_CLIENT` for localhost, so verify final rendering on the deployed `https://oosu.dev` surface.
 
+Latest evidence fallback / quote UI pass on 2026-05-13 14:21 KST:
+
+```bash
+pnpm lint
+pnpm exec tsc --noEmit
+pnpm build
+```
+
+All checks passed. Local `/api/chat` verification for `신입으로 회사에 적응할 수 있을까?` confirmed the response can remain in `rag_google` generation mode while promoting nearby FAQ source chunks into the evidence panel:
+
+- `showEvidence: true`
+- `warnings: []`
+- `sourceCount: 8`
+- `confidence: 0.94`
+
+Quote rendering was changed to the Minimal Top Rule style: no surrounding quote card border/background, centered quote text, and a single subtle top rule.
+
 ## Known Issues
 
 - `pnpm lint` may be noisy because the project script uses `next lint`, which is not supported by newer Next.js CLI behavior. If it fails, record the exact output.
