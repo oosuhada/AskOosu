@@ -101,6 +101,26 @@ export async function routeFaqIntent({
     return emptyRouteResult('empty_question', 'token_fallback');
   }
 
+  const specialtyPositioningMatch = getSpecialtyPositioningMatch({
+    question: normalizedQuestion,
+    language,
+  });
+
+  if (specialtyPositioningMatch) {
+    return {
+      answer: specialtyPositioningMatch,
+      matchedFaqId: specialtyPositioningMatch.id,
+      intentScore: 0.98,
+      intentSecondScore: 0,
+      intentMargin: 0.98,
+      routeDecision: {
+        mode: 'direct',
+        reason: 'specialty_positioning_phrase_match',
+        router: 'token_fallback',
+      },
+    };
+  }
+
   const aiEraCompetitivenessMatch = getAiEraCompetitivenessMatch({
     question: normalizedQuestion,
     language,
@@ -282,7 +302,7 @@ function getHiddenRecruiterRiskMatch({
       question
     );
   const hasAgeTimingConcern =
-    /(나이\s*(많|리스크|우려)|늦게\s*(전환|시작)|주니어\s*치고\s*나이|상대적으로\s*늦|older\s+(than\s+)?(typical\s+)?junior|age\s+(concern|risk)|late\s+career\s+(switch|transition)|transitioned\s+.*later)/i.test(
+    /(나이\s*(많|리스크|우려)|늦게\s*(전환|시작)|주니어\s*치고\s*나이|상대적으로\s*늦|신입.*나이|나이.*신입|지원자.*나이|나이.*지원자|나이.*적응|적응.*나이|신입.*적응.*힘들|older\s+(than\s+)?(typical\s+)?junior|age\s+(concern|risk)|too\s+old\s+for\s+(a\s+)?junior|late\s+career\s+(switch|transition)|transitioned\s+.*later)/i.test(
       question
     );
   const hasNonCsConcern =
@@ -307,6 +327,10 @@ function getHiddenRecruiterRiskMatch({
     );
   const hasRoleConcern =
     /(포지션\s*(애매|모호|불명확)|역할\s*(애매|모호)|pm\s*인지|개발자\s*인지|product\s*owner|role\s*(ambiguity|unclear)|pm\s+or\s+developer)/i.test(
+      question
+    );
+  const hasSpecialtyPositioningConcern =
+    /(전문\s*분야|전문분야|분야.*(다양|많|모르|애매)|다양.*분야|뭘\s*제일\s*잘|뭐를\s*제일\s*잘|무엇을\s*제일\s*잘|가장\s*잘하|제일\s*잘하|강점.*(모르|뭐|무엇)|뭐가\s*강점|specialty|specialist|generalist|what\s+is\s+oosu\s+best\s+at|what\s+does\s+oosu\s+do\s+best|too\s+many\s+fields|focus\s+area)/i.test(
       question
     );
 
@@ -372,6 +396,20 @@ function getHiddenRecruiterRiskMatch({
   }
 
   if (
+    hasSpecialtyPositioningConcern &&
+    /(채용|면접|리크루터|지원자|분야|전문|강점|잘하|recruit|hire|hiring|specialty|specialist|generalist|strength|best|focus)/i.test(
+      question
+    )
+  ) {
+    return findFaqAnswerById(
+      /맡기|역할|포지션|채용|hire|role|position/i.test(question)
+        ? 'faq.recruiter.role_recommendation.default'
+        : 'faq.recruiter.role_ambiguity.default',
+      language
+    );
+  }
+
+  if (
     hasRoleConcern &&
     /채용|면접|리크루터|recruit|hire|hiring|risk|concern|리스크|우려/i.test(
       question
@@ -381,6 +419,29 @@ function getHiddenRecruiterRiskMatch({
   }
 
   return null;
+}
+
+function getSpecialtyPositioningMatch({
+  question,
+  language,
+}: {
+  question: string;
+  language: ChatLanguage;
+}) {
+  if (
+    !/(전문\s*분야|전문분야|분야.*(다양|많|모르|애매)|다양.*분야|뭘\s*제일\s*잘|뭐를\s*제일\s*잘|무엇을\s*제일\s*잘|가장\s*잘하|제일\s*잘하|강점.*(모르|뭐|무엇)|뭐가\s*강점|specialty|specialist|generalist|what\s+is\s+oosu\s+best\s+at|what\s+does\s+oosu\s+do\s+best|too\s+many\s+fields|focus\s+area)/i.test(
+      question
+    )
+  ) {
+    return null;
+  }
+
+  return findFaqAnswerById(
+    /맡기|역할|포지션|채용|hire|role|position/i.test(question)
+      ? 'faq.recruiter.role_recommendation.default'
+      : 'faq.recruiter.role_ambiguity.default',
+    language
+  );
 }
 
 function getAiEraCompetitivenessMatch({
