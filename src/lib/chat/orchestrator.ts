@@ -9,7 +9,11 @@ import {
   buildRagChatContext,
   type RagChatContext,
 } from '@/lib/rag/chat-context';
-import { buildAnswerParts, type FaqAnswer } from '@/lib/faq/answers';
+import {
+  buildAnswerParts,
+  findFaqAnswerById,
+  type FaqAnswer,
+} from '@/lib/faq/answers';
 import type { AnswerVariant } from '@/data/question-surfaces.shared';
 import {
   routeFaqIntent,
@@ -60,6 +64,15 @@ type RequestContext = {
   renderSpec: string | null;
   source: string | null;
 };
+
+type FaqEvidenceFallback = {
+  primaryFaqId: string;
+  sourceChunkIds: string[];
+  matchedEntityIds: string[];
+  confidence: number;
+};
+
+const MAX_FAQ_EVIDENCE_FALLBACK_SOURCES = 8;
 
 export type ChatOrchestration =
   | {
@@ -310,9 +323,24 @@ export async function prepareChatOrchestration({
 
   const ragContext = await buildRagChatContext(routingQuestion, language);
   const conversationEntityHints = getConversationEntityHints(routingQuestion);
+  const faqEvidenceFallback = getFaqEvidenceFallback({
+    faqRoute,
+    conversationIntent: effectiveConversationIntent,
+    question: routingQuestion,
+    language,
+    hasRagSources: ragContext.metadata.sources.length > 0,
+  });
+  const effectiveSources =
+    ragContext.metadata.sources.length > 0
+      ? ragContext.metadata.sources
+      : buildFaqEvidenceFallbackSources(faqEvidenceFallback);
+  const effectiveWarnings =
+    effectiveSources.length > 0 && ragContext.metadata.sources.length === 0
+      ? []
+      : ragContext.metadata.warnings;
 
   if (
-    ragContext.metadata.sources.length === 0 &&
+    effectiveSources.length === 0 &&
     shouldFallbackWhenNoEvidence(effectiveConversationIntent)
   ) {
     const routeDecision: AnswerRouteDecision = {
@@ -347,17 +375,21 @@ export async function prepareChatOrchestration({
   }
 
   const confidenceSignals = buildAnswerConfidenceSignals({
-    sources: ragContext.metadata.sources,
-    warnings: ragContext.metadata.warnings,
-    intent: getIntentConfidenceSignal(faqRoute),
-    usesGroundedSources: ragContext.metadata.sources.length > 0,
+    sources: effectiveSources,
+    warnings: effectiveWarnings,
+    intent:
+      faqEvidenceFallback?.confidence ?? getIntentConfidenceSignal(faqRoute),
+    usesGroundedSources: effectiveSources.length > 0,
   });
 
   const metadata: ChatAnswerMetadata = {
     ...ragContext.metadata,
+    sources: effectiveSources,
+    warnings: effectiveWarnings,
     matchedEntityIds: uniqueValues([
       ...ragContext.metadata.matchedEntityIds,
       ...conversationEntityHints,
+      ...(faqEvidenceFallback?.matchedEntityIds ?? []),
     ]),
     confidence: confidenceSignals.final,
     confidenceSignals,
@@ -366,11 +398,9 @@ export async function prepareChatOrchestration({
     answerSource: 'fallback',
     conversationIntent: effectiveConversationIntent.intent,
     conversationModifiers: effectiveConversationIntent.modifiers,
-    showEvidence: ragContext.metadata.sources.length > 0,
+    showEvidence: effectiveSources.length > 0,
     skippedGroq: false,
-    sourceChunkIds: ragContext.metadata.sources.map(
-      (source) => source.chunk_id
-    ),
+    sourceChunkIds: effectiveSources.map((source) => source.chunk_id),
     requestId: requestContext.requestId ?? undefined,
     faqId: requestContext.faqId ?? undefined,
     intentId: requestContext.intentId ?? undefined,
@@ -378,7 +408,7 @@ export async function prepareChatOrchestration({
     displayQuestion: requestContext.displayQuestion ?? undefined,
     answerVariant: requestContext.answerVariant ?? undefined,
     renderSpecKey: requestContext.renderSpec ?? undefined,
-    matchedFaqId: faqRoute.matchedFaqId,
+    matchedFaqId: faqRoute.matchedFaqId ?? faqEvidenceFallback?.primaryFaqId,
     intentScore: faqRoute.intentScore,
     intentSecondScore: faqRoute.intentSecondScore,
     intentMargin: faqRoute.intentMargin,
@@ -400,6 +430,115 @@ export async function prepareChatOrchestration({
     ragContext,
     metadata,
   };
+}
+
+function getFaqEvidenceFallback({
+  faqRoute,
+  conversationIntent,
+  question,
+  language,
+  hasRagSources,
+}: {
+  faqRoute: FaqIntentRouteResult;
+  conversationIntent: ConversationIntentResult;
+  question: string;
+  language: ChatLanguage;
+  hasRagSources: boolean;
+}): FaqEvidenceFallback | null {
+  if (hasRagSources) return null;
+  if (
+    conversationIntent.intent !== 'recruiter_evaluation' &&
+    conversationIntent.intent !== 'portfolio_factual'
+  ) {
+    return null;
+  }
+
+  const candidateAnswers = getFaqEvidenceCandidateAnswers({
+    faqRoute,
+    question,
+    language,
+  });
+  if (candidateAnswers.length === 0) return null;
+
+  const sourceChunkIds = uniqueValues(
+    candidateAnswers.flatMap((answer) => answer.sourceChunkIds)
+  ).slice(0, MAX_FAQ_EVIDENCE_FALLBACK_SOURCES);
+  if (sourceChunkIds.length === 0) return null;
+
+  return {
+    primaryFaqId: candidateAnswers[0].id,
+    sourceChunkIds,
+    matchedEntityIds: uniqueValues(
+      candidateAnswers.flatMap((answer) => answer.matchedEntityIds)
+    ),
+    confidence: Math.max(...candidateAnswers.map((answer) => answer.confidence)),
+  };
+}
+
+function getFaqEvidenceCandidateAnswers({
+  faqRoute,
+  question,
+  language,
+}: {
+  faqRoute: FaqIntentRouteResult;
+  question: string;
+  language: ChatLanguage;
+}) {
+  const candidateIds = getAdaptationEvidenceFaqIds(question);
+  const faqRouteAnswer = faqRoute.answer;
+  const answers = [
+    ...candidateIds
+      .map((id) => findFaqAnswerById(id, language))
+      .filter((answer): answer is FaqAnswer => Boolean(answer)),
+    ...(faqRouteAnswer ? [faqRouteAnswer] : []),
+  ];
+
+  return uniqueFaqAnswers(answers).filter(
+    (answer) => answer.sourceChunkIds.length > 0
+  );
+}
+
+function getAdaptationEvidenceFaqIds(question: string) {
+  if (
+    /(신입|주니어|입사|회사|팀|조직|온보딩|적응|합류|첫\s*(달|30일|90일)|new\s+hire|junior|onboard|adapt|first\s+(30|90)\s+days|fit\s+into\s+(the\s+)?team)/i.test(
+      question
+    )
+  ) {
+    return [
+      'faq.recruiter.first_30_days.default',
+      'faq.recruiter.onboarding_questions.default',
+      'faq.recruiter.collaboration_experience.default',
+      'faq.recruiter.age_career_timing.default',
+    ];
+  }
+
+  return [];
+}
+
+function uniqueFaqAnswers(answers: FaqAnswer[]) {
+  const seen = new Set<string>();
+  return answers.filter((answer) => {
+    if (seen.has(`${answer.language}:${answer.id}`)) return false;
+    seen.add(`${answer.language}:${answer.id}`);
+    return true;
+  });
+}
+
+function buildFaqEvidenceFallbackSources(
+  fallback: FaqEvidenceFallback | null
+): RagChatContext['metadata']['sources'] {
+  if (!fallback) return [];
+
+  return fallback.sourceChunkIds.map((chunkId) => ({
+    chunk_id: chunkId,
+    entity_id: fallback.matchedEntityIds[0] ?? null,
+    title: 'Oosu Wiki',
+    section_path: ['Oosu Wiki'],
+    score: fallback.confidence * 100,
+    visibility: 'public',
+    freshness: 'current',
+    has_todo: false,
+  }));
 }
 
 function shouldBypassCurrentFaqDirectAnswer({
