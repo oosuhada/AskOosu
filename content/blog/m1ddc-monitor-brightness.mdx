@@ -1,0 +1,231 @@
+---
+title: "한성 TFX173T 모니터 밝기 초기화 문제, m1ddc와 Swift로 완전 자동화하기"
+date: 2025-05-13
+tags: ["macOS", "m1ddc", "DDC/CI", "LaunchAgent", "Swift", "한성TFX173T", "모니터"]
+description: "한성 포터블 모니터를 연결할 때마다 백라이트 밝기가 1로 초기화되는 문제를 터미널 명령어로 해결하고, Swift 이벤트 기반 데몬으로 자동화한 과정을 기록한다."
+slug: "m1ddc-monitor-brightness"
+published: true
+---
+
+## TL;DR
+
+- 한성 TFX173T는 보조전원 없이 Type-C만 연결하면 OSD 설정이 초기화되도록 설계되어 있다.
+- `m1ddc` 툴로 DDC/CI를 통해 밝기를 소프트웨어로 제어할 수 있었다.
+- 폴링 방식 대신 `NSApplication.didChangeScreenParametersNotification` 이벤트를 감지하는 Swift 데몬과 LaunchAgent로 완전 자동화했다.
+
+## 한성 TFX173T 밝기가 매번 1로 초기화되는 문제
+
+한성 TFX173T 17인치 포터블 모니터를 맥북 프로에 Type-C로 연결해서 쓰고 있다. 화면 크기나 휴대성은 괜찮은데, 케이블을 뽑았다가 다시 꽂을 때마다 백라이트 밝기가 1로 초기화되는 문제가 있었다.
+
+처음에는 별일 아니라고 생각했는데, 매번 OSD 버튼을 눌러 밝기를 10까지 올리는 일이 반복되니까 꽤 귀찮았다. 그래서 공식 FAQ부터 찾아봤다.
+
+> TFX173T는 보조전원 없이 Type-C to C로 연결할 경우 OSD 설정 데이터가 초기화되도록 설계되어 있다. 이유는 보조전원 없이 연결 시 연결 기기에서 모니터가 출력될 수 있는 최소한의 전력만 사용하기 때문이다.
+
+공식 해결법은 보조전원을 먼저 연결한 뒤 화면 케이블을 연결하는 것이다. 분리할 때는 반대 순서로 해야 한다. 맞는 말이긴 한데, 매번 순서를 신경 써야 한다면 내가 해결하고 싶은 귀찮음이 그대로 남는다.
+
+그래서 방향을 바꿨다. 하드웨어 설정이 초기화된다면, 연결 직후 소프트웨어로 밝기를 다시 올리면 되지 않을까?
+
+## DDC/CI로 모니터 밝기를 제어할 수 있을까?
+
+모니터 밝기를 소프트웨어로 제어하는 표준 프로토콜로 DDC/CI가 있다. macOS에서 DDC/CI를 다루는 도구로 `ddcctl`이 많이 보였고, 먼저 이걸 시도했다.
+
+```bash title="terminal"
+brew install ddcctl
+ddcctl -d 1 -b 10
+```
+
+결과는 여기서 막혔다.
+
+```text title="ddcctl-output.txt"
+D: CGDisplay 67A24AAD-... (1080x1920 90°)
+D: CGDisplay 2FFCCCE9-... (1920x1080 0°)
+I: found 2 external displays
+E: Failed to parse WindowServer's preferences!
+E: Failed to acquire framebuffer device for display
+```
+
+디스플레이 자체는 인식됐다. 그런데 `Failed to acquire framebuffer device` 에러가 났다. macOS 최신 버전에서 SIP, 그러니까 시스템 무결성 보호가 강화되면서 `ddcctl`이 framebuffer에 직접 접근하는 방식이 막힌 것으로 보였다.
+
+여기서 `ddcctl`은 포기했다. 이 방향은 너무 낮은 레벨에서 막힌 느낌이었다.
+
+## m1ddc set luminance가 안 되는 것처럼 보인 이유
+
+다음으로 시도한 도구는 `m1ddc`였다. `m1ddc`는 `ddcctl`과 달리 framebuffer 접근 없이 I2C로 직접 DDC 통신을 하는 도구라 SIP 문제를 우회할 수 있다. 특히 Apple Silicon Mac과 USB-C DisplayPort Alt Mode 환경에 맞춰져 있다.
+
+```bash title="terminal"
+brew install m1ddc
+m1ddc get luminance
+# 110
+m1ddc set luminance 80
+# 80
+m1ddc get luminance
+# 110
+```
+
+이상했다. `set` 명령은 전달되는 것처럼 보이는데, 다시 `get`으로 확인하면 110으로 돌아왔다. 처음에는 이 모니터가 luminance VCP 코드, 즉 `0x10`을 외부에서 쓰는 걸 무시하는 줄 알았다.
+
+그런데 문제는 모니터가 아니라 내가 보고 있던 디스플레이 번호였다.
+
+## m1ddc display list detailed로 디스플레이 번호 확인하기
+
+연결된 디스플레이 목록을 자세히 확인했다.
+
+```bash title="terminal"
+m1ddc display list detailed
+```
+
+```text title="display-list.txt"
+[1] (null) (37D8832A-...)       ← 맥북 내장 디스플레이
+[2] TFX173T (67A24AAD-...)      ← 한성 모니터
+[3] LG IPS FULLHD (2FFCCCE9-)  ← LG 모니터
+```
+
+여기서 중요한 사실을 발견했다. 맥북 프로의 외장 디스플레이로 연결되어 있다 보니, 내가 생각한 `display 1`과 실제 제어 대상이 엇갈리고 있었다. 디스플레이 번호를 명시하지 않으면 `display list`의 첫 번째 외장 디스플레이처럼 동작하는 구간도 있어서 더 헷갈렸다.
+
+또 하나 확인한 점은 LG 모니터였다. LG 모니터는 HDMI로 연결되어 있었고, `m1ddc`가 제어하지 못했다. `m1ddc` 공식 문서에도 내장 HDMI 포트로 연결된 디스플레이는 지원하지 않는다고 되어 있다. 내 환경에서는 DDC/CI 제어가 USB-C DisplayPort Alt Mode로 연결된 한성 모니터에서만 동작했다.
+
+디스플레이 번호를 정확히 지정해서 다시 시도했다.
+
+```bash title="terminal"
+m1ddc display 2 set luminance 100
+m1ddc display 2 get luminance
+# 100
+```
+
+됐다. 이번에는 진짜로 반영됐다.
+
+최대 밝기도 확인했다.
+
+```bash title="terminal"
+m1ddc display 2 max luminance
+# 100
+```
+
+결론은 간단했다. 한성 TFX173T는 `m1ddc display 2 set luminance 100`으로 제어하면 된다.
+
+## LaunchAgent 폴링 방식은 왜 별로였나?
+
+이제 남은 일은 자동화였다. 케이블을 연결할 때마다 내가 직접 명령을 치면 해결이라고 부르기 민망하다. 처음에는 LaunchAgent의 `StartInterval`로 주기 실행하는 방식을 시도했다.
+
+```xml title="com.user.monitor-brightness.plist"
+<key>StartInterval</key>
+<integer>30</integer>
+```
+
+30초마다 아래 명령을 실행하는 방식이다.
+
+```bash title="terminal"
+m1ddc display 2 set luminance 100
+```
+
+작동은 했다. 하지만 바로 마음에 안 드는 점들이 보였다.
+
+1. 지연 시간이 들쑥날쑥하다. 케이블 연결 직후 타이머가 거의 끝나 있으면 금방 적용되지만, 타이머가 막 리셋됐으면 최대 30초 이상 기다려야 한다.
+2. 모니터가 연결되어 있든 없든 30초마다 프로세스를 실행한다.
+3. 이벤트가 분명히 있는 작업을 폴링으로 처리하는 느낌이 지저분했다.
+
+`sleep`도 줄여봤다. `sleep 3`은 괜찮았는데 `sleep 2`로 줄이면 DDC 통신이 준비되기 전에 명령이 날아가서 적용이 안 됐다. 내 환경에서는 연결 후 약 3초가 현실적인 최솟값이었다.
+
+## Swift 이벤트 기반 데몬으로 바꾸기
+
+macOS는 디스플레이가 연결되거나 해제될 때 `NSApplication.didChangeScreenParametersNotification` 노티피케이션을 발생시킨다. 이걸 감지하면 폴링 없이 이벤트 기반으로 밝기 명령을 실행할 수 있다.
+
+다음 Swift 스크립트를 작성했다.
+
+```swift title="monitor-brightness.swift"
+import Cocoa
+
+func setMonitorBrightness() {
+    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+        let task = Process()
+        task.launchPath = "/bin/sh"
+        task.arguments = ["-c", "/opt/homebrew/bin/m1ddc display 2 set luminance 100"]
+        try? task.run()
+    }
+}
+
+NotificationCenter.default.addObserver(
+    forName: NSApplication.didChangeScreenParametersNotification,
+    object: nil,
+    queue: .main
+) { _ in
+    setMonitorBrightness()
+}
+
+setMonitorBrightness()
+NSApplication.shared.run()
+```
+
+컴파일은 이렇게 했다.
+
+```bash title="terminal"
+swiftc ~/monitor-brightness.swift -o ~/monitor-brightness
+```
+
+테스트는 단순했다. 케이블을 뽑았다가 다시 꽂았다. 약 3~4초 후 밝기가 자동으로 100까지 올라왔다. 됐다. 이벤트가 없을 때는 아무것도 하지 않고, 연결 이벤트가 생겼을 때만 반응한다.
+
+## LaunchAgent로 부팅 시 자동 실행하기
+
+마지막으로 Swift 데몬을 macOS 로그인 시 자동 실행되도록 LaunchAgent에 등록했다.
+
+기존 폴링 방식 LaunchAgent를 먼저 제거했다.
+
+```bash title="terminal"
+launchctl unload ~/Library/LaunchAgents/com.user.monitor-brightness.plist
+rm ~/Library/LaunchAgents/com.user.monitor-brightness.plist
+```
+
+새 LaunchAgent를 만들었다.
+
+```bash title="terminal"
+cat > ~/Library/LaunchAgents/com.user.monitor-brightness.plist << 'EOF'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.user.monitor-brightness</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/gabriel/monitor-brightness</string>
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+</dict>
+</plist>
+EOF
+
+launchctl load ~/Library/LaunchAgents/com.user.monitor-brightness.plist
+```
+
+설정 의미는 이렇다.
+
+- `RunAtLoad: true`: 로그인 시 자동 실행
+- `KeepAlive: true`: 데몬이 종료되면 자동 재시작
+- `StartInterval` 없음: 폴링 없이 이벤트 기반으로만 동작
+
+등록 상태도 확인했다.
+
+```bash title="terminal"
+launchctl list | grep monitor-brightness
+# - 0 com.user.monitor-brightness
+```
+
+여기서 `0`은 에러 없이 정상 실행 중이라는 뜻이다.
+
+## 정리: Type-C만 꽂아도 5초 안에 밝기 복구
+
+결과적으로 보조전원 없이 Type-C만 꽂아도 5초 이내에 자동으로 밝기 100으로 올라오게 됐다. 처음에 원했던 "연결하면 알아서 밝아지는" 동작이 완성됐다.
+
+이번 삽질을 정리하면 이렇다.
+
+- `ddcctl`은 SIP 때문에 framebuffer 접근에서 실패했다.
+- `m1ddc`는 동작했지만, 디스플레이 번호를 잘못 이해해서 처음에는 반영이 안 되는 것처럼 보였다.
+- `m1ddc display list detailed`로 TFX173T가 `display 2`임을 확인했다.
+- LG 모니터는 HDMI 연결이라 이 환경에서는 `m1ddc` 제어 대상이 아니었다.
+- LaunchAgent 폴링 방식은 작동했지만 지연과 낭비가 있었다.
+- Swift 이벤트 기반 데몬으로 바꾸니 연결 직후 일정하게 밝기가 복구됐다.
+
+<BlogCTA />
