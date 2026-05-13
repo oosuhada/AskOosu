@@ -2,7 +2,23 @@
 
 AskOosu is intentionally chat-first. The first screen should feel like a usable portfolio conversation, not a landing page with a chatbot attached.
 
-## Stage A: Frontend UX and Static Prompt
+## Current Production Contract
+
+`https://oosu.dev` is not hosted by Vercel. The current public path is:
+
+```text
+Visitor browser
+-> Cloudflare for oosu.dev
+-> Mac mini home server
+-> Homebrew Nginx / local proxy
+-> Docker app on 127.0.0.1:3010
+-> Next.js App Router runtime
+-> PostgreSQL / pgvector container
+```
+
+Vercel AI SDK is a runtime library used by the Next.js app for model streaming/provider calls. It does not mean the site is deployed on Vercel.
+
+## Frontend UX and Prompt Layer
 
 - Keep the portfolio centered on one conversational surface.
 - Show five curated questions at a time from an eight-question pool.
@@ -11,7 +27,7 @@ AskOosu is intentionally chat-first. The first screen should feel like a usable 
 - Store language and theme preferences locally and mirror them into the URL.
 - Keep the resume link visible but disabled until the Notion resume is ready.
 
-## Stage B: Grok API and Streaming
+## Chat API, FAQ Routing, and Streaming
 
 The chat API uses AI SDK 6 `streamText` and returns `toUIMessageStreamResponse()`, so the client receives streamed UI message parts that match the current `useChat` transport API.
 
@@ -26,7 +42,7 @@ Rate limits use `src/lib/rate-limit.ts` with the same `checkRateLimit` and `chec
 
 `answer_cache` rows carry `matched_entity_ids` and `source_chunk_ids` so RAG sync can invalidate stale generated answers after Wiki changes. Cache reads require a fresh `created_at` within `ASKOOSU_ANSWER_CACHE_TTL_HOURS`, `invalidated_at IS NULL`, confidence >= `0.7`, and a non-fallback answer source. Cache writes are skipped for TODO evidence, warnings, safe fallbacks, insufficient-evidence answers, prompt-leakage guardrails, smalltalk, off-topic redirects, clarification answers, private guardrails, and low-confidence answers.
 
-Safe fallback behavior is explicit in `routeDecision`. If an explicit high-risk link request, such as a missing resume URL, needs evidence but no public Wiki evidence is available, `/api/chat` returns a low-confidence `safe_fallback`/`insufficient_evidence` style answer instead of guessing. Other factual portfolio questions may still reach generation with stable profile facts, but the prompt requires the model to say the Wiki evidence is not enough when the requested fact is unsupported. Prompt leakage and private-data requests are handled before RAG through dedicated guardrail routes. Prompt leakage checks block raw prompt, hidden context, chunk id, entity id, and section path markers from reaching the visitor answer.
+Safe fallback behavior is explicit in `routeDecision`. If an explicit high-risk link request, such as a missing resume URL, needs evidence but no public Wiki evidence is available, `/api/chat` returns a low-confidence `safe_fallback`/`insufficient_evidence` style answer instead of guessing. Short architecture questions such as `웹사이트의 구조는?` are intentionally routed to `faq.project.askoosu.rag.default` so they return grounded FAQ evidence instead of falling through to empty RAG generation. Other factual portfolio questions may still reach generation with stable profile facts, but the prompt requires the model to say the Wiki evidence is not enough when the requested fact is unsupported. Prompt leakage and private-data requests are handled before RAG through dedicated guardrail routes. Prompt leakage checks block raw prompt, hidden context, chunk id, entity id, and section path markers from reaching the visitor answer.
 
 Conversation intent routing happens before FAQ/RAG for inputs that should not hit retrieval:
 
@@ -84,9 +100,9 @@ Routing modes:
 
 Quick-question requests are trusted only when `source=quick_question` and `starterQuestionId` resolves to a known server-side suggested question. The API does not directly trust client-sent `faqId`; it re-derives the FAQ id from `src/lib/suggested-questions.ts`.
 
-## Stage C: Notion and RAG
+## Notion-Oriented Wiki and RAG
 
-Notion is now treated as the source candidate for portfolio facts. The app can fetch Notion pages, legacy databases, and current data sources, chunk their text, rank the chunks against the visitor's question, and inject the retrieved context into the system prompt.
+Notion-oriented Wiki docs and local source documents are treated as portfolio fact sources. The app can fetch Notion pages, legacy databases, and current data sources, chunk their text, rank the chunks against the visitor's question, and inject the retrieved context into the system prompt.
 
 Current behavior:
 
@@ -99,7 +115,7 @@ Current behavior:
 7. `/api/rag/sync` recursively fetches the configured Notion wiki page or direct KO/EN child page ids, returns aggregate sync stats with per-source details, and persists chunks into `rag_sources`, `rag_chunks`, and `rag_sync_runs` when `DATABASE_URL` is configured. Successful syncs track inserted, updated, and deleted chunks, derive changed entity ids, and soft-invalidate matching `answer_cache` rows by entity. If entity ids are unavailable, sync falls back to source chunk invalidation when possible and relies on the answer-cache TTL as the final safety net. `/api/rag/search` exposes an admin-protected search/debug API.
 8. `/api/feedback` stores answer-level up/down feedback in `answer_feedback` with truncated question/answer text, matched entity ids, source chunk ids, confidence, and an optional visitor note. Feedback write failures are isolated from chat streaming so the core chat UX remains usable.
 
-The next Mac mini/home-server step is to run sync on a schedule, keep Postgres + pgvector warm, and eventually add incremental sync based on Notion edit timestamps.
+The Mac mini production path already runs the Next.js app with Postgres available. A future operations improvement is to make RAG sync scheduled/incremental instead of manually triggered.
 
 ## Suggested Notion Shape
 
