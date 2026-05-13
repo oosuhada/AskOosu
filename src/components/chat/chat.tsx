@@ -49,6 +49,10 @@ import WelcomeModal from '@/components/welcome-modal';
 import { ArrowDown, Info, MailWarning, RefreshCcw } from 'lucide-react';
 import HelperBoost from './HelperBoost';
 import { buildVisibleAnswerPlan } from '@/lib/chat/visible-answer-plan';
+import {
+  getClientEventContext,
+  getOrCreateAnonymousSessionId,
+} from '@/lib/analytics/client';
 
 const MOTION_CONFIG = {
   initial: false,
@@ -87,6 +91,9 @@ const Chat = () => {
   const [activeConversationId, setActiveConversationId] = useState<
     string | null
   >(null);
+  const [anonymousSessionId, setAnonymousSessionId] = useState<string | null>(
+    null
+  );
   const [lastSubmittedQuery, setLastSubmittedQuery] = useState<string | null>(
     null
   );
@@ -375,6 +382,10 @@ const Chat = () => {
         undefined;
       const conversationId = activeConversationId ?? createConversationId();
       if (!activeConversationId) setActiveConversationId(conversationId);
+      const sessionId =
+        anonymousSessionId ?? getOrCreateAnonymousSessionId() ?? conversationId;
+      if (!anonymousSessionId && sessionId) setAnonymousSessionId(sessionId);
+      const eventContext = getClientEventContext();
 
       setLastSubmittedQuery(trimmedQuery);
       setChatErrorNotice(null);
@@ -393,6 +404,8 @@ const Chat = () => {
           body: {
             message: trimmedQuery,
             conversationId,
+            sessionId,
+            ...eventContext,
             locale: language,
             language,
             starterQuestionId: exactSuggestedQuestion?.id ?? null,
@@ -410,6 +423,7 @@ const Chat = () => {
     },
     [
       activeConversationId,
+      anonymousSessionId,
       clearError,
       language,
       markQuestionAsked,
@@ -455,6 +469,10 @@ const Chat = () => {
       markQueryAsked,
     ]
   );
+
+  useEffect(() => {
+    setAnonymousSessionId(getOrCreateAnonymousSessionId());
+  }, []);
 
   useEffect(() => {
     if (isGeneratingAnswer || pendingQueries.length === 0) return;
@@ -723,7 +741,7 @@ const Chat = () => {
                           isLoading && index === latestAssistantMessageIndex
                         }
                         regenerate={regenerate}
-                        sessionId={activeConversationId}
+                        sessionId={anonymousSessionId}
                         question={previousUserText}
                         loadingLabel={loadingLabel}
                         loadingSteps={buildVisibleAnswerPlan(
