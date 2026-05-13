@@ -1259,13 +1259,15 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
       '포트폴리오를 왜 대화형으로 만들었어요?',
     ],
     shortAnswer:
-      'AskOosu는 채팅 UI, FAQ 캐시, Notion Wiki/RAG, PostgreSQL 검색 캐시, Groq 생성 모델을 질문 성격에 따라 연결합니다.',
+      'AskOosu는 Cloudflare 뒤의 Mac mini Docker Compose에서 Next.js 채팅 UI, FAQ 캐시, RAG/PostgreSQL, 모델 생성을 연결합니다.',
     defaultAnswer: [
-      'AskOosu는 Next.js App Router 기반의 채팅 UI와 `/api/chat` route handler를 중심으로 작동합니다.',
+      'AskOosu는 `oosu.dev`로 들어온 요청을 Cloudflare와 Mac mini 홈서버의 Nginx/local proxy가 Docker Compose의 Next.js 앱으로 전달하는 구조입니다. 앱 컨테이너는 `127.0.0.1:3010`에서 실행되고, PostgreSQL/pgvector 컨테이너가 RAG chunk와 답변 관련 데이터를 저장합니다.',
+      '',
+      '애플리케이션 내부에서는 Next.js App Router 기반의 채팅 UI와 `/api/chat` route handler가 중심입니다.',
       '',
       '질문이 들어오면 먼저 FAQ Answer Cache와 의도 라우터가 검증된 답변을 찾고, 반복 질문이면 모델 호출 없이 바로 답합니다. FAQ로 충분하지 않은 질문은 Notion Wiki와 로컬 문서에서 동기화된 RAG chunk를 PostgreSQL에서 검색한 뒤, 필요한 경우에만 Groq 또는 설정된 fallback 모델로 답변을 생성합니다.',
       '',
-      '답변에는 source chunk id, confidence, TODO 여부 같은 메타데이터가 붙어 UI의 source/confidence badge와 피드백 저장 흐름으로 이어집니다.',
+      'Vercel AI SDK는 이 흐름에서 모델 스트리밍과 provider 호출을 다루는 라이브러리이며, 현재 `oosu.dev`의 호스팅 계층은 Vercel이 아니라 Cloudflare 앞단과 Mac mini 홈서버입니다.',
     ].join('\n'),
     renderSpec: {
       layout: 'ai_workflow',
@@ -1318,13 +1320,15 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
       'Why build this portfolio as a conversation?',
     ],
     shortAnswer:
-      'AskOosu connects chat UI, FAQ cache, Notion Wiki/RAG, PostgreSQL retrieval cache, and Groq generation depending on the question type.',
+      'AskOosu runs behind Cloudflare on a Mac mini Docker Compose stack and connects the Next.js chat UI, FAQ cache, RAG/PostgreSQL, and model generation.',
     defaultAnswer: [
-      'AskOosu runs around a Next.js App Router chat UI and the `/api/chat` route handler.',
+      'AskOosu receives `oosu.dev` traffic through Cloudflare and routes it through Nginx/local proxying on the Mac mini home server into the Docker Compose Next.js app. The app container runs on `127.0.0.1:3010`, and a PostgreSQL/pgvector container stores RAG chunks and answer-related data.',
+      '',
+      'Inside the app, the main runtime is a Next.js App Router chat UI and the `/api/chat` route handler.',
       '',
       'When a question arrives, FAQ Answer Cache and intent routing check whether a verified answer already exists. Repeated questions can return directly without a model call. When FAQ is not enough, AskOosu searches RAG chunks synced from the Notion Wiki and local docs into PostgreSQL, then uses Groq or the configured fallback model only when generation is needed.',
       '',
-      'Each answer carries metadata such as source chunk IDs, confidence, and TODO state, which powers the public source/confidence badges and feedback logging flow.',
+      'Vercel AI SDK is used here as the model streaming/provider library. It is not the current hosting layer for `oosu.dev`; production hosting is the Cloudflare-fronted Mac mini home-server path.',
     ].join('\n'),
     renderSpec: {
       layout: 'ai_workflow',
