@@ -10,18 +10,20 @@ High-level flow:
 
 ```text
 Visitor
--> Next.js chat UI
+-> Cloudflare for oosu.dev
+-> Mac mini Docker Compose / Next.js chat UI
 -> /api/chat SSE endpoint
 -> deterministic policies / FAQ routing / answer cache
 -> optional RAG context and model generation
 -> public answer with guarded source summaries
 ```
 
-Knowledge sources include static profile/project data, local Markdown wiki docs, optional Notion sync, and optional Postgres-backed RAG chunks. Production deployment is documented as a Mac mini home-server setup using Docker Compose, Postgres, Nginx, and Cloudflare.
+Knowledge sources include static profile/project data, local Markdown wiki docs, Notion-oriented source material, and Postgres-backed RAG chunks. Production deployment is a Cloudflare-fronted Mac mini home-server setup using Docker Compose, Postgres/pgvector, Nginx/local proxying, and the Next.js runtime. Vercel AI SDK is used as an AI streaming/provider library, not as the hosting layer for `oosu.dev`.
 
 ## Important Implementation Decisions
 
 - Chat orchestration is cache-first and routes deterministic/FAQ answers before expensive model calls.
+- Short site-architecture questions such as `웹사이트의 구조는?` route directly to the grounded AskOosu RAG/architecture FAQ instead of empty RAG generation.
 - AI provider selection is isolated in `src/lib/ai/` and supports OpenAI, xAI/Grok, Groq, and optional Google Vertex fallback depending on env.
 - FAQ routing has semantic and token-overlap paths, with direct and rewrite modes.
 - Public UI separates human-readable evidence summaries from debug-only metadata.

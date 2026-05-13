@@ -423,7 +423,9 @@ export function PortfolioSidebar({
                           conversation={conversation}
                           isActive={activeConversationId === conversation.id}
                           isSelectionMode={selectionMode}
-                          isSelected={selectedConversationId === conversation.id}
+                          isSelected={
+                            selectedConversationId === conversation.id
+                          }
                           language={language}
                           text={text}
                           onSelect={handleSelectConversation}
@@ -438,7 +440,7 @@ export function PortfolioSidebar({
                       data-archive-all-action="true"
                       onClick={handleArchiveAllConversations}
                       className={cn(
-                        'text-muted-foreground hover:text-primary flex w-full items-center justify-center gap-2 rounded-lg border border-transparent px-4 py-2.5 text-sm font-medium transition-colors hover:bg-primary/10',
+                        'text-muted-foreground hover:text-primary hover:bg-primary/10 flex w-full items-center justify-center gap-2 rounded-lg border border-transparent px-4 py-2.5 text-sm font-medium transition-colors',
                         confirmArchiveAll &&
                           'bg-primary/10 text-primary hover:bg-primary/15'
                       )}
@@ -625,7 +627,7 @@ function ConversationHistoryItem({
   return (
     <div
       data-testid={`conversation-row-${conversation.id}`}
-      className="group rounded-xl select-none touch-pan-y"
+      className="group touch-pan-y rounded-xl select-none"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerEnd}
@@ -638,12 +640,12 @@ function ConversationHistoryItem({
         data-testid={`conversation-select-${conversation.id}`}
         onClick={() => onSelect(conversation)}
         className={cn(
-          'relative flex w-full flex-col rounded-xl bg-background/88 px-4 py-3 text-left shadow-[0_1px_0_rgba(255,255,255,0.2),0_10px_26px_rgba(15,23,42,0.04)] transition-[background-color,box-shadow] hover:bg-white/65 dark:bg-background/82 dark:hover:bg-white/[0.08]',
+          'bg-background/88 dark:bg-background/82 relative flex w-full flex-col rounded-xl px-4 py-3 text-left shadow-[0_1px_0_rgba(255,255,255,0.2),0_10px_26px_rgba(15,23,42,0.04)] transition-[background-color,box-shadow] hover:bg-white/65 dark:hover:bg-white/[0.08]',
           isSelectionMode && 'pr-12',
           isActive &&
             'text-foreground bg-white/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.16)] dark:bg-white/[0.1]',
           isSelected &&
-            'bg-primary/10 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.55),0_10px_28px_hsl(var(--primary)/0.08)] dark:bg-primary/15'
+            'bg-primary/10 dark:bg-primary/15 shadow-[inset_0_0_0_1px_hsl(var(--primary)/0.55),0_10px_28px_hsl(var(--primary)/0.08)]'
         )}
       >
         <span className="line-clamp-2 text-sm font-medium">
@@ -658,7 +660,7 @@ function ConversationHistoryItem({
           </span>
         )}
       </button>
-      {isSelectionMode && isSelected && (
+      {isSelectionMode && (
         <div
           data-selection-action="true"
           onPointerDown={(event) => event.stopPropagation()}
@@ -667,7 +669,7 @@ function ConversationHistoryItem({
           <button
             type="button"
             onClick={() => onArchive(conversation.id)}
-            className="text-primary hover:bg-primary/15 flex h-10 items-center justify-center gap-2 rounded-lg bg-primary/10 text-sm font-semibold transition-colors"
+            className="text-primary hover:bg-primary/15 bg-primary/10 flex h-10 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors"
           >
             <Archive className="h-4 w-4" />
             {text.archive}
@@ -675,7 +677,7 @@ function ConversationHistoryItem({
           <button
             type="button"
             onClick={() => onDelete(conversation.id)}
-            className="text-destructive hover:bg-destructive/15 flex h-10 items-center justify-center gap-2 rounded-lg bg-destructive/10 text-sm font-semibold transition-colors"
+            className="text-destructive hover:bg-destructive/15 bg-destructive/10 flex h-10 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors"
           >
             <Trash2 className="h-4 w-4" />
             {language === 'ko' ? '삭제' : 'Delete'}

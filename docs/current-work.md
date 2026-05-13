@@ -1,6 +1,6 @@
 # AskOosu Current Work
 
-Last updated: 2026-05-11
+Last updated: 2026-05-13
 
 ## Project Name
 
@@ -8,20 +8,21 @@ AskOosu (`ask-oosu`)
 
 ## Current Branch
 
-`docs/codex-handoff-workflow`
+`codex/fix-askoosu-architecture-routing`
 
 ## Current Goal
 
-Implement privacy-conscious analytics and sanitized AskOosu question logging.
+Fix AskOosu architecture-question routing, align docs with the live Mac mini deployment contract, and restore chat history/sidebar usability.
 
 ## Current Status
 
-- Added global App Router metadata for `https://oosu.dev`, including canonical, Open Graph, Twitter card, and robots config.
-- Added `sitemap.ts`, `robots.ts`, Open Graph/Twitter image routes, homepage JSON-LD, and public LLM-readable files.
-- Added public AEO pages for AskOosu, AI Director positioning, AI-era developer competitiveness, AI FAQ, projects, AskOosu project notes, about, and privacy.
-- Homepage now links quietly to AI Director, AI-era developer, and AskOosu project pages.
-- Added Postgres-backed `ask_events` schema and privacy-first custom question event logging.
-- Added client-side anonymous `askOosuSessionId`, Cloudflare Web Analytics env support, expanded privacy policy, and analytics retention/query docs.
+- `웹사이트의 구조는?` now routes to `faq.project.askoosu.rag.default` as a grounded direct FAQ answer instead of falling through to empty RAG generation.
+- Local `/api/chat` verification returned `faq_direct`, `sourceCount=3`, `confidence=0.88`, and `showEvidence=true` for that question.
+- Architecture docs now state the current production contract: Cloudflare fronts `oosu.dev`, and the Next.js/Postgres app runs on the Mac mini Docker Compose stack.
+- Vercel AI SDK is documented as a runtime/model streaming library, not the hosting layer for `oosu.dev`.
+- Chat history selection preserves the selected `conversationId` in the URL and scrolls the selected conversation into view.
+- Chat history edit mode now shows per-row archive/delete actions immediately.
+- The chat scroll container now spans the viewport area, so the scrollbar sits at the browser-window edge rather than the narrow centered chat column.
 - Existing untracked local assets were present before this branch and should not be included unless a future task explicitly asks for them.
 
 ## Relevant Files / Areas
@@ -120,6 +121,24 @@ All checks passed. Local `/api/chat` verification for `신입으로 회사에 �
 - `confidence: 0.94`
 
 Quote rendering was changed to the Minimal Top Rule style: no surrounding quote card border/background, centered quote text, and a single subtle top rule.
+
+Latest architecture-routing and chat-shell pass on 2026-05-13:
+
+```bash
+PATH=/opt/homebrew/bin:/usr/local/bin:$PATH corepack pnpm exec tsc --noEmit
+PATH=/opt/homebrew/bin:/usr/local/bin:$PATH corepack pnpm lint
+PATH=/opt/homebrew/bin:/usr/local/bin:$PATH corepack pnpm build
+```
+
+Local `/api/chat` verification for `웹사이트의 구조는?` confirmed:
+
+- `routeMode: faq_direct`
+- `matchedFaqId: faq.project.askoosu.rag.default`
+- `sourceCount: 3`
+- `confidence: 0.88`
+- `showEvidence: true`
+
+`faq:eval` passes the new `site-architecture-ko` case. Two unrelated pre-existing eval cases still fail: `typo-ko` and `paraphrase-en`.
 
 ## Known Issues
 

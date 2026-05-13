@@ -24,7 +24,7 @@ Instead of asking visitors to scroll through a static profile, AskOosu lets them
 - Visitor-facing concept question: `포트폴리오를 왜 대화형으로 만들었어요?`
 - Project cards for AskOosu 2026, Instagram Clone, Sticks & Stones Homepage, Portfoli-Oh! 2025, Pylingo, Javalingo, Onjung, Nomad Market, and Notion Knowledge Wiki
 - Notion RAG retrieval path for Korean/English resume pages, study notes, GitHub activity summaries, and wiki-based answers
-- RAG sync/search API routes with memory storage by default and optional Postgres + pgvector storage
+- RAG sync/search API routes backed by the production Postgres/pgvector store, with memory mode kept only as a local fallback
 - Optional Grok/xAI provider mode through AI SDK 6, using xAI Responses by default
 - Optional Groq provider mode with multiple API keys, lazy cooldown, and automatic reactivation after failures or quota/rate-limit errors
 - Cache-first chat orchestration with FAQ/deterministic answers, answer cache, RAG context, and optional Google Vertex fallback
@@ -33,13 +33,13 @@ Instead of asking visitors to scroll through a static profile, AskOosu lets them
 
 AskOosu treats project information as retrievable portfolio evidence. The public portfolio currently highlights a small set of representative projects instead of presenting every learning repository as equal weight.
 
-| Project | Role in Portfolio | Live / Source |
-| --- | --- | --- |
-| AskOosu 2026 | Current AI/RAG portfolio and answer-quality system | [Live](https://oosu.dev) / [GitHub](https://github.com/oosuhada/AskOosu) |
-| Aigram | Fullstack SNS practice with React, Spring Boot, PostgreSQL, search, auth, and media flows | [Live](https://aigram.oosu.dev) |
-| Sticks & Stones Homepage | Real-client website renewal and frontend migration case | [Live](https://stks.oosu.dev) |
-| Portfoli-Oh! 2025 | Vanilla HTML/CSS/JavaScript interaction archive and previous portfolio | [Live](https://portfoli-oh.oosu.dev) / [GitHub](https://github.com/oosuhada/portfoli-oh) |
-| Pylingo / Javalingo | Smaller learning-app references for education UX and study flow | [Pylingo](https://oosuhada.github.io/pylingo/) / [Javalingo](https://oosuhada.github.io/javalingo/) |
+| Project                  | Role in Portfolio                                                                         | Live / Source                                                                                       |
+| ------------------------ | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| AskOosu 2026             | Current AI/RAG portfolio and answer-quality system                                        | [Live](https://oosu.dev) / [GitHub](https://github.com/oosuhada/AskOosu)                            |
+| Aigram                   | Fullstack SNS practice with React, Spring Boot, PostgreSQL, search, auth, and media flows | [Live](https://aigram.oosu.dev)                                                                     |
+| Sticks & Stones Homepage | Real-client website renewal and frontend migration case                                   | [Live](https://stks.oosu.dev)                                                                       |
+| Portfoli-Oh! 2025        | Vanilla HTML/CSS/JavaScript interaction archive and previous portfolio                    | [Live](https://portfoli-oh.oosu.dev) / [GitHub](https://github.com/oosuhada/portfoli-oh)            |
+| Pylingo / Javalingo      | Smaller learning-app references for education UX and study flow                           | [Pylingo](https://oosuhada.github.io/pylingo/) / [Javalingo](https://oosuhada.github.io/javalingo/) |
 
 ![Aigram desktop preview](public/images/projects/aigram-cover-desktop.webp)
 
@@ -74,11 +74,13 @@ Portfolio knowledge layer
   |-- hybrid lexical/vector/entity scoring
   |
   v
-Home-server deployment
-  |-- Mac mini
-  |-- Docker Compose
-  |-- PostgreSQL
-  |-- Nginx / Cloudflare front door
+Cloudflare front door
+  |
+  v
+Mac mini home server
+  |-- Homebrew Nginx / local proxy
+  |-- Docker Compose app on 127.0.0.1:3010
+  |-- PostgreSQL / pgvector container
 ```
 
 ## GitHub Portfolio Curation
@@ -98,7 +100,7 @@ The GitHub profile is intentionally curated around public evidence:
 - Model providers: xAI/Grok, Groq, optional Google Vertex fallback
 - Knowledge sources: Notion API, local markdown docs, Postgres-backed RAG chunks
 - Data layer: raw SQL with `pg`, optional pgvector search
-- Deployment: Mac mini home server, Docker Compose, PostgreSQL, Nginx/Cloudflare
+- Deployment: Cloudflare front door to a Mac mini home server running Docker Compose, Next.js, PostgreSQL/pgvector, and Nginx/local proxying
 
 ## Run Locally
 
@@ -195,6 +197,6 @@ Use `NOTION_PAGE_ID` for the parent AskOosu Wiki page. If the parent sync only s
 
 For Google Vertex fallback, run `gcloud auth application-default login` in local development, then set `GOOGLE_AI_ENABLED=true` and `GOOGLE_VERTEX_PROJECT` or `GOOGLE_CLOUD_PROJECT`. In production Docker, mount credentials into the container and set `GOOGLE_APPLICATION_CREDENTIALS`, or use `GOOGLE_VERTEX_API_KEY` intentionally.
 
-See [docs/architecture.md](docs/architecture.md) for the frontend, Grok streaming, and Notion/RAG upgrade plan.
+See [docs/architecture.md](docs/architecture.md) for the current chat, FAQ routing, provider fallback, RAG, and evidence architecture.
 
 Production Mac mini / Docker Compose notes live in [docs/home-server-deploy.md](docs/home-server-deploy.md), including `/api/health`, env-file permissions, backups, and Docker log checks.

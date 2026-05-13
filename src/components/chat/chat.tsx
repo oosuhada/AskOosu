@@ -237,11 +237,15 @@ const Chat = () => {
     }
   }, [status]);
 
-  const replaceChatUrl = useCallback(() => {
-    const params = new URLSearchParams({ lang: language, theme });
-    if (isDebugMode) params.set('debug', 'true');
-    router.replace(`/chat?${params.toString()}`, { scroll: false });
-  }, [isDebugMode, language, router, theme]);
+  const replaceChatUrl = useCallback(
+    (conversationId?: string | null) => {
+      const params = new URLSearchParams({ lang: language, theme });
+      if (conversationId) params.set('conversationId', conversationId);
+      if (isDebugMode) params.set('debug', 'true');
+      router.replace(`/chat?${params.toString()}`, { scroll: false });
+    },
+    [isDebugMode, language, router, theme]
+  );
 
   useEffect(() => {
     setConversations(readStoredConversations());
@@ -415,7 +419,9 @@ const Chat = () => {
             originalQuickLabel: exactSuggestedQuestion?.quickLabel,
             answerVariant: exactSuggestedQuestion?.answerVariant,
             renderSpec: exactSuggestedQuestion?.renderSpec,
-            source: exactSuggestedQuestion ? 'quick_question' : 'typed_question',
+            source: exactSuggestedQuestion
+              ? 'quick_question'
+              : 'typed_question',
           },
         }
       );
@@ -556,9 +562,10 @@ const Chat = () => {
       setChatErrorNotice(null);
       setLoadingSubmit(false);
       setPendingQueries([]);
-      replaceChatUrl();
+      replaceChatUrl(conversation.id);
+      window.requestAnimationFrame(() => scrollToLatestQuestion('auto'));
     },
-    [replaceChatUrl, setInput, setMessages]
+    [replaceChatUrl, scrollToLatestQuestion, setInput, setMessages]
   );
 
   const handleArchiveConversation = useCallback(
@@ -666,7 +673,7 @@ const Chat = () => {
   ]);
 
   return (
-    <div className="relative h-dvh overflow-hidden md:pl-[72px]">
+    <div className="relative h-dvh overflow-hidden">
       <PortfolioSidebar
         conversations={conversations}
         activeConversationId={activeConversationId}
@@ -687,14 +694,13 @@ const Chat = () => {
         />
       </div>
 
-      {/* Main Content Area */}
-      <div className="relative container mx-auto flex h-full max-w-3xl flex-col">
-        {/* Scrollable Chat Content */}
-        <div
-          ref={scrollContainerRef}
-          onScroll={handleChatScroll}
-          className="flex-1 overflow-y-auto px-2 pt-4 pb-36 md:pb-40"
-        >
+      {/* Scrollable Chat Content */}
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleChatScroll}
+        className="fixed inset-y-0 right-0 left-0 overflow-y-auto px-2 pt-4 pb-36 md:left-[72px] md:pb-40"
+      >
+        <div className="mx-auto min-h-full w-full max-w-3xl">
           <AnimatePresence mode="wait">
             {isEmptyState ? (
               <motion.div
@@ -790,55 +796,55 @@ const Chat = () => {
             )}
           </AnimatePresence>
         </div>
+      </div>
 
-        {/* Fixed Bottom Bar */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-40 px-2 pt-8 pb-[max(0.75rem,env(safe-area-inset-bottom))] before:pointer-events-none before:absolute before:inset-x-[-100vw] before:top-0 before:bottom-0 before:-z-10 before:bg-white/[0.025] before:backdrop-blur-2xl before:[mask-image:linear-gradient(to_bottom,transparent,black_34%,black)] md:px-0 md:pb-4 dark:before:bg-white/[0.012]">
-          <div className="pointer-events-auto relative flex flex-col items-center gap-3">
-            <AnimatePresence>
-              {showJumpToLatest && (
-                <motion.div
-                  key="jump-to-latest"
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 8 }}
-                  className="absolute -top-10 right-3 z-10 md:-top-12 md:right-6"
+      {/* Fixed Bottom Bar */}
+      <div className="pointer-events-none fixed right-0 bottom-0 left-0 z-40 px-2 pt-8 pb-[max(0.75rem,env(safe-area-inset-bottom))] before:pointer-events-none before:absolute before:inset-x-0 before:top-0 before:bottom-0 before:-z-10 before:bg-white/[0.025] before:backdrop-blur-2xl before:[mask-image:linear-gradient(to_bottom,transparent,black_34%,black)] md:left-[72px] md:pb-4 dark:before:bg-white/[0.012]">
+        <div className="pointer-events-auto relative mx-auto flex w-full max-w-3xl flex-col items-center gap-3">
+          <AnimatePresence>
+            {showJumpToLatest && (
+              <motion.div
+                key="jump-to-latest"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 8 }}
+                className="absolute -top-10 right-3 z-10 md:-top-12 md:right-6"
+              >
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="secondary"
+                  aria-label={
+                    language === 'ko'
+                      ? '최신 답변으로 이동'
+                      : 'Jump to the latest answer'
+                  }
+                  className="h-8 rounded-full border shadow-sm"
+                  onClick={() => scrollToLatest()}
                 >
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    aria-label={
-                      language === 'ko'
-                        ? '최신 답변으로 이동'
-                        : 'Jump to the latest answer'
-                    }
-                    className="h-8 rounded-full border shadow-sm"
-                    onClick={() => scrollToLatest()}
-                  >
-                    <ArrowDown className="h-4 w-4" />
-                    {language === 'ko' ? '최신 답변' : 'Latest'}
-                  </Button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-            <HelperBoost
-              submitQuery={submitQuery}
-              setInput={setInput}
-              activeSurface={activeSurface}
-              conversationId={activeConversationId}
-              hasReachedLimit={isToolInProgress}
-            />
-            <ChatBottombar
-              input={input}
-              handleInputChange={handleInputChange}
-              handleSubmit={onSubmit}
-              isLoading={isLoading}
-              stop={handleStop}
-              isToolInProgress={isToolInProgress}
-              placeholder={text.askAnything}
-              thinkingLabel={text.thinking}
-            />
-          </div>
+                  <ArrowDown className="h-4 w-4" />
+                  {language === 'ko' ? '최신 답변' : 'Latest'}
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <HelperBoost
+            submitQuery={submitQuery}
+            setInput={setInput}
+            activeSurface={activeSurface}
+            conversationId={activeConversationId}
+            hasReachedLimit={isToolInProgress}
+          />
+          <ChatBottombar
+            input={input}
+            handleInputChange={handleInputChange}
+            handleSubmit={onSubmit}
+            isLoading={isLoading}
+            stop={handleStop}
+            isToolInProgress={isToolInProgress}
+            placeholder={text.askAnything}
+            thinkingLabel={text.thinking}
+          />
         </div>
       </div>
     </div>
