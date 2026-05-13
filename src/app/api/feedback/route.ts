@@ -4,6 +4,7 @@ import {
   createAnswerFeedback,
   hasPostgresDatabaseUrl,
 } from '@/lib/feedback/database';
+import { updateLatestAskEventFeedback } from '@/lib/analytics/ask-events';
 import { checkRateLimit, rateLimitHeaders } from '@/lib/rate-limit';
 
 export const maxDuration = 10;
@@ -74,6 +75,13 @@ export async function POST(req: Request) {
 
   try {
     const feedback = await createAnswerFeedback(parsedBody.data);
+    void updateLatestAskEventFeedback({
+      sessionId: parsedBody.data.sessionId,
+      question: parsedBody.data.question,
+      feedback: parsedBody.data.rating === 'up' ? 'helpful' : 'not_helpful',
+    }).catch((error) => {
+      console.warn('Unable to update ask event feedback:', error);
+    });
 
     return NextResponse.json({
       ok: true,
