@@ -1246,6 +1246,14 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
       'AskOosu 안에서 Notion, RAG, Groq, PostgreSQL은 어떻게 연결되나요?',
     patterns: [
       'RAG 구조',
+      '웹사이트의 구조는?',
+      '웹사이트 구조',
+      '사이트 구조',
+      '이 사이트 구조',
+      '이 웹사이트는 어떻게 작동하나요?',
+      'oosu.dev 구조',
+      'AskOosu 구조',
+      'AskOosu 아키텍처',
       'AskOosu 안에서 Notion, RAG, Groq, PostgreSQL은 어떻게 연결되나요?',
       'AskOosu RAG',
       'Notion RAG Groq PostgreSQL',
@@ -1254,9 +1262,11 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
     shortAnswer:
       'AskOosu는 채팅 UI, FAQ 캐시, Notion Wiki/RAG, PostgreSQL 검색 캐시, Groq 생성 모델을 질문 성격에 따라 연결합니다.',
     defaultAnswer: [
-      'AskOosu는 방문자의 질문을 먼저 FAQ Answer Cache로 확인하고, 반복 질문이면 Groq 호출 없이 바로 답변합니다.',
+      'AskOosu는 Next.js App Router 기반의 채팅 UI와 `/api/chat` route handler를 중심으로 작동합니다.',
       '',
-      'FAQ로 충분하지 않은 질문은 Notion Wiki 기반 chunk와 PostgreSQL 검색 캐시를 통해 근거를 찾고, 필요한 경우에만 Groq 같은 모델 생성으로 넘어갑니다. 답변에는 source chunk id, confidence, TODO 여부 같은 메타데이터를 붙여 UI에서 근거와 fallback 상태를 확인할 수 있게 합니다.',
+      '질문이 들어오면 먼저 FAQ Answer Cache와 의도 라우터가 검증된 답변을 찾고, 반복 질문이면 모델 호출 없이 바로 답합니다. FAQ로 충분하지 않은 질문은 Notion Wiki와 로컬 문서에서 동기화된 RAG chunk를 PostgreSQL에서 검색한 뒤, 필요한 경우에만 Groq 또는 설정된 fallback 모델로 답변을 생성합니다.',
+      '',
+      '답변에는 source chunk id, confidence, TODO 여부 같은 메타데이터가 붙어 UI의 source/confidence badge와 피드백 저장 흐름으로 이어집니다.',
     ].join('\n'),
     renderSpec: {
       layout: 'ai_workflow',
@@ -1294,6 +1304,15 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
       'How do Notion, RAG, Groq, and PostgreSQL work together inside AskOosu?',
     patterns: [
       'RAG system',
+      'website structure',
+      'site structure',
+      'website architecture',
+      'site architecture',
+      'How is this website structured?',
+      'How does this website work?',
+      'How is oosu.dev built?',
+      'AskOosu structure',
+      'AskOosu architecture',
       'How do Notion, RAG, Groq, and PostgreSQL work together inside AskOosu?',
       'AskOosu RAG',
       'Notion RAG Groq PostgreSQL',
@@ -1302,9 +1321,11 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
     shortAnswer:
       'AskOosu connects chat UI, FAQ cache, Notion Wiki/RAG, PostgreSQL retrieval cache, and Groq generation depending on the question type.',
     defaultAnswer: [
-      'AskOosu checks the FAQ Answer Cache first, so repeated questions can return a grounded answer without calling Groq.',
+      'AskOosu runs around a Next.js App Router chat UI and the `/api/chat` route handler.',
       '',
-      'When the FAQ is not enough, it searches Notion Wiki chunks through a PostgreSQL-backed retrieval cache and only then uses a model such as Groq when generation is needed. The answer carries metadata such as source chunk IDs, confidence, and TODO state so the UI can show evidence and fallback status.',
+      'When a question arrives, FAQ Answer Cache and intent routing check whether a verified answer already exists. Repeated questions can return directly without a model call. When FAQ is not enough, AskOosu searches RAG chunks synced from the Notion Wiki and local docs into PostgreSQL, then uses Groq or the configured fallback model only when generation is needed.',
+      '',
+      'Each answer carries metadata such as source chunk IDs, confidence, and TODO state, which powers the public source/confidence badges and feedback logging flow.',
     ].join('\n'),
     renderSpec: {
       layout: 'ai_workflow',
