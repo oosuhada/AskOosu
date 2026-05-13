@@ -1,6 +1,7 @@
 import { convertToModelMessages, stepCountIs } from 'ai';
 import type { UIMessage } from 'ai';
 import { z } from 'zod';
+import { getContextualQuote } from '@/data/contextual-quotes';
 import {
   getChatModel,
   getFallbackChatModel,
@@ -380,6 +381,12 @@ export async function POST(req: Request) {
       });
     }
 
+    const generatedAnswer = appendGeneratedContextualQuote({
+      answer: generation.answer,
+      metadata: orchestration.metadata,
+      question: orchestration.question,
+    });
+
     const responseMetadata = {
       ...orchestration.metadata,
       answerSource: generation.answerSource,
@@ -387,13 +394,13 @@ export async function POST(req: Request) {
       model: generation.model,
       requestId,
       skippedGroq: generation.provider !== 'groq',
-      answer: generation.answer,
+      answer: generatedAnswer,
     };
 
     const cacheInput = {
       normalizedQuestion: orchestration.normalizedQuestion,
       language: orchestration.language,
-      answer: generation.answer,
+      answer: generatedAnswer,
       answerSource: generation.answerSource,
       matchedEntityIds: responseMetadata.matchedEntityIds,
       sourceChunkIds: responseMetadata.sourceChunkIds,
@@ -428,7 +435,7 @@ export async function POST(req: Request) {
 
     return createDirectAnswerResponse({
       messages,
-      answer: generation.answer,
+      answer: generatedAnswer,
       metadata: responseMetadata,
     });
   } catch (err) {
@@ -602,6 +609,34 @@ function scheduleAskEventLog({
 
 function uniqueTextValues(values: string[]) {
   return Array.from(new Set(values.filter(Boolean)));
+}
+
+function appendGeneratedContextualQuote({
+  answer,
+  metadata,
+  question,
+}: {
+  answer: string;
+  metadata: ChatAnswerMetadata;
+  question: string;
+}) {
+  if (/(^|\n)>\s+\S/.test(answer)) return answer;
+  if (metadata.sourceChunkIds.length === 0 && metadata.sources.length === 0) {
+    return answer;
+  }
+
+  const quote = getContextualQuote({
+    category:
+      metadata.conversationIntent === 'technical_deep_dive'
+        ? 'ai_era'
+        : metadata.conversationIntent === 'recruiter_evaluation'
+          ? 'product'
+          : 'ux',
+    language: metadata.language,
+    seed: `${metadata.requestId ?? ''}:${question}`,
+  });
+
+  return `${answer}\n\n---\n> ${quote}`;
 }
 
 const RAG_CHAT_SYSTEM_PROMPT = `

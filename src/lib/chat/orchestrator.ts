@@ -1,4 +1,8 @@
 import type { UIMessage } from 'ai';
+import {
+  getContextualQuote,
+  type ContextualQuoteCategory,
+} from '@/data/contextual-quotes';
 import { detectLanguage, type ChatLanguage } from '@/lib/i18n/detect-language';
 import {
   buildAnswerConfidenceSignals,
@@ -237,13 +241,26 @@ export async function prepareChatOrchestration({
       faqRoute,
     });
 
+    const answerText = getFaqAnswerText(faqAnswer, effectiveAnswerVariant);
+    const answerWithConversationContext = prefixRepeatedConcernAnswer({
+      answer: answerText,
+      messages,
+      faqAnswer,
+      language,
+    });
+
     return {
       mode: 'direct',
       question,
       language,
       routeDecision: metadata.routeDecision,
       directAnswer: {
-        answer: getFaqAnswerText(faqAnswer, effectiveAnswerVariant),
+        answer: appendFaqContextualQuote({
+          answer: answerWithConversationContext,
+          faqAnswer,
+          question,
+          language,
+        }),
         metadata,
       },
     };
@@ -1164,6 +1181,101 @@ function getFaqAnswerText(faqAnswer: FaqAnswer, variant: AnswerVariant | null) {
   }
 
   return faqAnswer.defaultAnswer;
+}
+
+function prefixRepeatedConcernAnswer({
+  answer,
+  messages,
+  faqAnswer,
+  language,
+}: {
+  answer: string;
+  messages: UIMessage[];
+  faqAnswer: FaqAnswer;
+  language: ChatLanguage;
+}) {
+  const concern = getRecruiterConcernKey(faqAnswer.id);
+  if (!concern) return answer;
+
+  const previousUserMessages = getPreviousUserMessages(messages);
+  const hasSimilarPreviousQuestion = previousUserMessages.some((message) =>
+    questionMatchesRecruiterConcern(getMessageText(message), concern)
+  );
+
+  if (!hasSimilarPreviousQuestion) return answer;
+
+  const prefix =
+    language === 'ko'
+      ? '위에서 이미 언급 드렸지만, 표현을 조금 바꿔 다시 정리하면:'
+      : 'As mentioned above, reframed slightly:';
+
+  if (answer.startsWith(prefix)) return answer;
+  return `${prefix}\n\n${answer}`;
+}
+
+function appendFaqContextualQuote({
+  answer,
+  faqAnswer,
+  question,
+  language,
+}: {
+  answer: string;
+  faqAnswer: FaqAnswer;
+  question: string;
+  language: ChatLanguage;
+}) {
+  if (hasMarkdownQuote(answer)) return answer;
+
+  const quote = getContextualQuote({
+    category: getQuoteCategoryForFaq(faqAnswer),
+    language,
+    seed: `${faqAnswer.id}:${question}`,
+  });
+
+  return `${answer}\n\n---\n> ${quote}`;
+}
+
+function hasMarkdownQuote(answer: string) {
+  return /(^|\n)>\s+\S/.test(answer);
+}
+
+function getQuoteCategoryForFaq(faqAnswer: FaqAnswer): ContextualQuoteCategory {
+  if (/ux|product|role|recruiter|career|profile/i.test(faqAnswer.intentId)) {
+    return 'product';
+  }
+
+  if (/ai|rag|workflow|director/i.test(faqAnswer.intentId)) {
+    return 'ai_era';
+  }
+
+  return 'ux';
+}
+
+function getRecruiterConcernKey(faqId: string) {
+  if (faqId.includes('age_career_timing')) return 'age';
+  if (faqId.includes('role_ambiguity')) return 'role';
+  if (faqId.includes('role_recommendation')) return 'role';
+  if (faqId.includes('non_cs_background')) return 'non_cs';
+  if (faqId.includes('ai_dependency')) return 'ai_dependency';
+  if (faqId.includes('retention')) return 'retention';
+
+  return null;
+}
+
+function questionMatchesRecruiterConcern(question: string, concern: string) {
+  const normalizedQuestion = question.toLocaleLowerCase();
+  const patterns: Record<string, RegExp> = {
+    age: /(나이|신입|주니어|지원자|적응|늦게|older|too\s+old|junior|late)/i,
+    role:
+      /(전문\s*분야|전문분야|분야|포지션|역할|뭘\s*제일\s*잘|가장\s*잘하|강점|specialty|specialist|generalist|role|position|best\s+at|strength)/i,
+    non_cs: /(비전공|컴퓨터\s*공학|cs\s*전공|non[-\s]?cs|cs\s+degree)/i,
+    ai_dependency:
+      /(ai\s*(의존|없이|못|포장)|프롬프트만|prompting|without\s+ai|dependency)/i,
+    retention:
+      /(오래|금방|퇴사|근속|창업|배울\s*(것|거)?만|retention|leave|startup|founder)/i,
+  };
+
+  return patterns[concern]?.test(normalizedQuestion) ?? false;
 }
 
 function getMessageText(message: UIMessage) {

@@ -181,9 +181,9 @@ const COLLABORATION_REQUEST_PATTERNS = [
 ];
 
 const RECRUITER_EVALUATION_PATTERNS = [
-  /(뽑|채용|포지션|주니어|시니어|실무|투입|강점|약점|협업|평가|혼자\s*(일|작업)|팀에서도|팀\s*(경험|워크|협업)|일하는\s*스타일)/,
-  /(오래\s*(근무|다니|못\s*다니|머물|못\s*머물)|장기\s*근속|금방\s*(그만|퇴사)|퇴사\s*리스크|이직\s*리스크|배울\s*(것|거)?만|뽑아\s*먹|뽑아먹|창업\s*(쪽|생각|리스크)|회사에\s*집중|비전공|전환형|깊이가\s*부족|AI\s*(의존|없이|포장))/i,
-  /(hire|recruiter|position|junior|senior|strength|weakness|collaboration|team\s*(fit|work|experience)|solo\s*builder|work\s+well\s+in\s+a\s+team|fit|retention|leave quickly|learn and leave|founder mindset|startup risk|career changer depth|ai dependency)/i,
+  /(뽑|채용|지원자|포지션|주니어|신입|시니어|실무|투입|강점|약점|전문\s*분야|전문분야|분야.*(다양|많|모르|애매)|뭘\s*제일\s*잘|뭐를\s*제일\s*잘|가장\s*잘하|제일\s*잘하|협업|평가|혼자\s*(일|작업)|팀에서도|팀\s*(경험|워크|협업)|일하는\s*스타일)/,
+  /(오래\s*(근무|다니|못\s*다니|머물|못\s*머물)|장기\s*근속|금방\s*(그만|퇴사)|퇴사\s*리스크|이직\s*리스크|배울\s*(것|거)?만|뽑아\s*먹|뽑아먹|창업\s*(쪽|생각|리스크)|회사에\s*집중|비전공|전환형|깊이가\s*부족|나이\s*(많|우려|리스크)|신입.*나이|나이.*신입|적응.*힘들|AI\s*(의존|없이|포장))/i,
+  /(hire|recruiter|candidate|position|junior|senior|strength|weakness|specialty|specialist|generalist|focus\s+area|what\s+is\s+oosu\s+best\s+at|collaboration|team\s*(fit|work|experience)|solo\s*builder|work\s+well\s+in\s+a\s+team|fit|retention|leave quickly|learn and leave|founder mindset|startup risk|career changer depth|ai dependency|too\s+old\s+for\s+(a\s+)?junior)/i,
 ];
 
 const METRIC_REQUEST_PATTERNS = [
@@ -496,7 +496,7 @@ export function getConversationEntityHints(question: string) {
   }
 
   if (
-    /(채용|리크루터|면접|오래\s*(근무|다니|머물)|금방\s*(그만|퇴사)|배울\s*(것|거)?만|창업\s*(쪽|생각|리스크)|retention|recruiter|founder|startup\s*risk)/i.test(
+    /(채용|리크루터|면접|지원자|신입|주니어|나이|적응|전문\s*분야|전문분야|분야.*(다양|모르)|뭘\s*제일\s*잘|오래\s*(근무|다니|머물)|금방\s*(그만|퇴사)|배울\s*(것|거)?만|창업\s*(쪽|생각|리스크)|retention|recruiter|candidate|junior|too\s+old|specialty|specialist|generalist|founder|startup\s*risk)/i.test(
       question
     )
   ) {
@@ -559,8 +559,9 @@ function getConversationModifiers(question: string): ConversationModifier[] {
     modifiers.push('language_switch');
   if (matchesAny(question, FORMAT_PATTERNS)) modifiers.push('format_transform');
   if (matchesAny(question, CORRECTION_PATTERNS)) modifiers.push('correction');
+  const questionMarkCount = question.match(/[?？]/g)?.length ?? 0;
   if (
-    question.split(/[?？]/).filter(Boolean).length > 1 ||
+    questionMarkCount >= 2 ||
     hasMultiplePortfolioTopicSignals(question) ||
     (question.length >= 80 &&
       /(그리고|또\s*다른\s*질문|추가로|마지막으로|한\s*가지는|두\s*번째|첫\s*번째|first|second|also|lastly)/i.test(
