@@ -87,13 +87,15 @@ export default function PrivacyPage() {
       </TextSection>
       <TextSection title="Retention">
         <p>
-          Sanitized AskOosu question logs should be retained for up to 180 days,
-          then deleted or aggregated for product-quality review. Manual cleanup
-          SQL is documented in the project analytics notes.
+          Sanitized AskOosu question logs are retained for product-quality
+          review unless they are manually deleted, aggregated, or no longer
+          needed for improving the portfolio experience. No automatic deletion
+          job is currently enabled.
         </p>
         <p>
-          민감정보가 제거된 질문 로그는 최대 180일 보관 후 삭제하거나 집계
-          데이터로 전환하는 것을 원칙으로 합니다.
+          민감정보가 제거된 질문 로그는 포트폴리오 UX와 답변 품질 개선을
+          위해 보관되며, 자동 삭제 작업은 현재 활성화되어 있지 않습니다. 필요
+          시 수동으로 삭제하거나 집계 데이터로 전환합니다.
         </p>
       </TextSection>
       <TextSection title="Deletion Requests">
