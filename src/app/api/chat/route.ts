@@ -385,6 +385,7 @@ export async function POST(req: Request) {
       answer: generation.answer,
       metadata: orchestration.metadata,
       question: orchestration.question,
+      messages,
     });
 
     const responseMetadata = {
@@ -615,15 +616,21 @@ function appendGeneratedContextualQuote({
   answer,
   metadata,
   question,
+  messages,
 }: {
   answer: string;
   metadata: ChatAnswerMetadata;
   question: string;
+  messages: UIMessage[];
 }) {
   if (/(^|\n)>\s+\S/.test(answer)) return answer;
   if (metadata.sourceChunkIds.length === 0 && metadata.sources.length === 0) {
     return answer;
   }
+  const recentAssistantText = messages
+    .filter((message) => message.role === 'assistant')
+    .map(getMessageText)
+    .join('\n');
 
   const quote = getContextualQuote({
     category:
@@ -634,9 +641,18 @@ function appendGeneratedContextualQuote({
           : 'ux',
     language: metadata.language,
     seed: `${metadata.requestId ?? ''}:${question}`,
+    avoidText: recentAssistantText,
   });
 
   return `${answer}\n\n---\n> ${quote}`;
+}
+
+function getMessageText(message: UIMessage) {
+  return message.parts
+    .filter((part) => part.type === 'text')
+    .map((part) => part.text)
+    .join('\n')
+    .trim();
 }
 
 const RAG_CHAT_SYSTEM_PROMPT = `

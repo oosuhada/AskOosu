@@ -101,6 +101,46 @@ export async function routeFaqIntent({
     return emptyRouteResult('empty_question', 'token_fallback');
   }
 
+  const candidateProfileMatch = getCandidateProfileMatch({
+    question: normalizedQuestion,
+    language,
+  });
+
+  if (candidateProfileMatch) {
+    return {
+      answer: candidateProfileMatch,
+      matchedFaqId: candidateProfileMatch.id,
+      intentScore: 0.99,
+      intentSecondScore: 0,
+      intentMargin: 0.99,
+      routeDecision: {
+        mode: 'direct',
+        reason: 'candidate_profile_phrase_match',
+        router: 'token_fallback',
+      },
+    };
+  }
+
+  const oosuSalonCareerMatch = getOosuSalonCareerMatch({
+    question: normalizedQuestion,
+    language,
+  });
+
+  if (oosuSalonCareerMatch) {
+    return {
+      answer: oosuSalonCareerMatch,
+      matchedFaqId: oosuSalonCareerMatch.id,
+      intentScore: 0.98,
+      intentSecondScore: 0,
+      intentMargin: 0.98,
+      routeDecision: {
+        mode: 'direct',
+        reason: 'oosu_salon_career_phrase_match',
+        router: 'token_fallback',
+      },
+    };
+  }
+
   const specialtyPositioningMatch = getSpecialtyPositioningMatch({
     question: normalizedQuestion,
     language,
@@ -302,7 +342,7 @@ function getHiddenRecruiterRiskMatch({
       question
     );
   const hasAgeTimingConcern =
-    /(나이\s*(많|리스크|우려)|늦게\s*(전환|시작)|주니어\s*치고\s*나이|상대적으로\s*늦|신입.*나이|나이.*신입|지원자.*나이|나이.*지원자|나이.*적응|적응.*나이|신입.*적응.*힘들|older\s+(than\s+)?(typical\s+)?junior|age\s+(concern|risk)|too\s+old\s+for\s+(a\s+)?junior|late\s+career\s+(switch|transition)|transitioned\s+.*later)/i.test(
+    /(나이(?:가|는|도)?\s*(너무\s*)?(많|높|리스크|우려|걸리)|나이.*많지\s*않|나이.*많|늦게\s*(전환|시작)|주니어\s*치고\s*나이|상대적으로\s*늦|신입.*나이|나이.*신입|지원자.*나이|나이.*지원자|나이.*적응|적응.*나이|나이.*조직|조직.*나이|신입.*적응.*힘들|older\s+(than\s+)?(typical\s+)?junior|age\s+(concern|risk)|too\s+old\s+for\s+(a\s+)?junior|late\s+career\s+(switch|transition)|transitioned\s+.*later)/i.test(
       question
     );
   const hasNonCsConcern =
@@ -416,6 +456,42 @@ function getHiddenRecruiterRiskMatch({
     )
   ) {
     return findFaqAnswerById('faq.recruiter.role_ambiguity.default', language);
+  }
+
+  return null;
+}
+
+function getCandidateProfileMatch({
+  question,
+  language,
+}: {
+  question: string;
+  language: ChatLanguage;
+}) {
+  if (
+    /(이\s*)?(지원자|후보자|candidate).*(어떤|누구|무슨|뭐\s*하는|정체|소개|사람)|(?:어떤|무슨)\s*(지원자|후보자|candidate)|who\s+is\s+(this\s+)?candidate/i.test(
+      question
+    )
+  ) {
+    return findFaqAnswerById('faq.profile.intro.default', language);
+  }
+
+  return null;
+}
+
+function getOosuSalonCareerMatch({
+  question,
+  language,
+}: {
+  question: string;
+  language: ChatLanguage;
+}) {
+  if (
+    /(와인바|우수살롱|oosu\s*salon).*(왜|그만|닫|접|폐업|종료|close|closed|stop|quit)|(?:왜).*(와인바|우수살롱|oosu\s*salon).*(그만|닫|접|폐업|종료|close|closed|stop|quit)/i.test(
+      question
+    )
+  ) {
+    return findFaqAnswerById('faq.career.oosu_salon_closed.default', language);
   }
 
   return null;

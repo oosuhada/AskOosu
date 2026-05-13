@@ -301,6 +301,14 @@ function cleanMarkdownAnswer(value: string) {
 }
 
 function extractBacktickValues(value: string) {
+  const commaSeparatedValues = value
+    .replace(/`/g, '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  if (commaSeparatedValues.length > 1) return commaSeparatedValues;
+
   const values = Array.from(value.matchAll(/`([^`]+)`/g), (match) =>
     match[1].trim()
   );
@@ -357,6 +365,8 @@ function enhanceRecruiterRiskPatterns({
         ? [
             '지원자는 나이가 너무 많지 않나 신입으로 채용하기엔',
             '신입으로 채용하기엔 나이가 너무 많아서 적응하기 힘들지 않을까',
+            '나이가 너무 많지 않나',
+            '나이가 많아서 조직 적응이 힘들지 않겠냐고',
             '신입 치고 나이가 많지 않나',
             '나이 때문에 적응이 어렵지 않을까',
           ]

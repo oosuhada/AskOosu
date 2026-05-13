@@ -272,15 +272,15 @@ The honest gap is: most of Oosu's recent development work has been solo, partly 
 
 **Short Answer**
 
-Breadth is intentional in Oosu's current stage, not a sign of indecision. The clearest positioning is: AI-connected fullstack, with a bias toward the product/UX side and a growing backend/data foundation. This is not "I can do anything." It is "I connect layers, and I care about the user problem."
+Breadth is intentional in Oosu's current stage, not a sign of indecision. The clearest positioning is AI-connected Fullstack Developer: someone who connects screens, APIs, data, and AI responses into user-facing product flows. This is not "I can do anything." It is "I connect layers around real user problems."
 
 **Default Answer**
 
-This is a real positioning question and worth answering directly. Oosu is not presenting as a frontend specialist, a backend engineer, or an ML researcher. The honest position is: AI-connected fullstack developer — someone who can build across the stack and understands how user experience, data, and AI generation connect into one service.
+Oosu's clearest strength is not frontend, backend, data, or AI as isolated labels. It is connecting those layers inside a user-facing product experience. The most accurate positioning is AI-connected Fullstack Developer.
 
-That is not the same as "I do everything at surface level." It means Oosu is strong at integration — the connective tissue between layers — and is still building depth in specialized areas like backend systems and data pipelines.
+That is not the same as "doing everything at surface level." It means he can build the interface, understand the API and data flow, and shape RAG/AI answers so they actually help users complete the task.
 
-For some roles, this is exactly right: teams that need someone who can take a feature from idea to working system, or who can design a product architecture that spans frontend, API, and AI tooling. For roles that need a deep specialist in one narrow area, Oosu is not the strongest match.
+The best-fit roles are teams working on early AI product features, RAG/search UX, internal tools, fullstack web workflows, or product teams that need translation between PM, design, and engineering. Oosu's strength is not overstating a narrow title. It is connecting the layers a product actually needs with grounded product judgment.
 
 **Detailed Answer**
 
