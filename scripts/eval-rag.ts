@@ -284,6 +284,14 @@ const FAQ_INTENT_EVAL_CASES: FaqIntentEvalCase[] = [
       'A mixed entity comparison should map to the comparison FAQ.',
   },
   {
+    id: 'site-architecture-ko',
+    question: '웹사이트의 구조는?',
+    expectedMode: 'faq_direct',
+    expectedFaqId: 'faq.project.askoosu.rag.default',
+    expectedReason:
+      'A short site-architecture question should use the grounded AskOosu architecture FAQ instead of falling through to empty RAG.',
+  },
+  {
     id: 'paraphrase-en',
     question:
       "Which portfolio projects best show Oosu's growth as a developer?",
