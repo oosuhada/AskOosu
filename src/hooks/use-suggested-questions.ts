@@ -31,13 +31,8 @@ export function useSuggestedQuestions(
   );
 
   const visibleQuestions = useMemo(() => {
-    const askedSet = new Set(askedQuestionIds);
-    const unanswered = allQuestions.filter(
-      (question) => !askedSet.has(question.id)
-    );
-
-    return (unanswered.length > 0 ? unanswered : allQuestions).slice(0, limit);
-  }, [allQuestions, askedQuestionIds, limit]);
+    return allQuestions.slice(0, limit);
+  }, [allQuestions, limit]);
 
   const markQuestionAsked = useCallback((id: SuggestedQuestionId) => {
     setAskedQuestionIds((currentIds) => {
