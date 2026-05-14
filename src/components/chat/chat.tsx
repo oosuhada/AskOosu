@@ -192,6 +192,29 @@ const Chat = () => {
     setShowJumpToLatest(false);
   }, []);
 
+  const scrollToLatestQuestion = useCallback(
+    (behavior: ScrollBehavior = 'smooth') => {
+      const scrollContainer = scrollContainerRef.current;
+      const latestUserBubble = latestUserBubbleRef.current;
+      if (!scrollContainer || !latestUserBubble) {
+        scrollToLatest(behavior);
+        return;
+      }
+
+      const containerRect = scrollContainer.getBoundingClientRect();
+      const bubbleRect = latestUserBubble.getBoundingClientRect();
+      const nextScrollTop =
+        scrollContainer.scrollTop + bubbleRect.top - containerRect.top - 12;
+
+      scrollContainer.scrollTo({
+        top: Math.max(0, nextScrollTop),
+        behavior,
+      });
+      setShowJumpToLatest(false);
+    },
+    [scrollToLatest]
+  );
+
   useEffect(() => {
     if (status === 'streaming') {
       setLoadingSubmit(false);
@@ -307,13 +330,9 @@ const Chat = () => {
 
     latestScrolledUserMessageIdRef.current = latestUserMessage.id;
     window.requestAnimationFrame(() => {
-      latestUserBubbleRef.current?.scrollIntoView({
-        block: 'start',
-        behavior: 'smooth',
-      });
-      setShowJumpToLatest(false);
+      scrollToLatestQuestion('smooth');
     });
-  }, [latestUserMessage?.id]);
+  }, [latestUserMessage?.id, scrollToLatestQuestion]);
 
   const isToolInProgress = messages.some(
     (m) =>
@@ -598,6 +617,11 @@ const Chat = () => {
       return;
     }
 
+    if (isGeneratingAnswer && latestUserMessage) {
+      scrollToLatestQuestion('auto');
+      return;
+    }
+
     if (isScrolledNearBottom()) {
       scrollToLatest('auto');
       return;
@@ -609,9 +633,12 @@ const Chat = () => {
   }, [
     hasConversationContent,
     isScrolledNearBottom,
+    isGeneratingAnswer,
+    latestUserMessage,
     loadingSubmit,
     messages,
     scrollToLatest,
+    scrollToLatestQuestion,
     shouldOfferJumpToLatest,
     status,
   ]);
