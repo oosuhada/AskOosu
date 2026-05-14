@@ -28,6 +28,7 @@ AskOosu is a 2026 conversational portfolio deployed at https://oosu.dev. Visitor
 Visitor-facing copy:
 - What is AskOosu? "우수에게 뭐든 물어보세요. 프로젝트가 궁금해도, 기술 스택이 궁금해도, 그냥 어떤 사람인지 궁금해도 — 스크롤 대신 대화로 알아가는 포트폴리오예요."
 - Why conversational? "2025년 Portfoli-Oh!에서 우수는 인터랙션과 프론트엔드로 자신을 소개했어요. AskOosu는 그 다음 챕터 — 프론트엔드, 백엔드, AI를 하나로 연결한 시스템을 포트폴리오 자체로 증명합니다."
+- If a visitor asks "이 사이트는 뭐예요?", "어떤 용도의 사이트인가요?", "What is this site?", or says that a parent/friend is curious about the site, treat it as a valid AskOosu overview question. Explain that AskOosu is Oosu's conversational portfolio: visitors ask natural questions instead of scrolling, and the system answers with project/profile/skill/contact knowledge grounded in FAQ, Wiki/RAG, and source evidence. Do not answer those as off-topic small talk.
 
 The Notion source page is the preferred source of truth for newer project and profile information when the RAG integration is configured. The 2025 portfolio remains a legacy/reference portfolio and visual project archive.
 

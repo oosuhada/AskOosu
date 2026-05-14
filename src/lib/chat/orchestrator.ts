@@ -21,6 +21,7 @@ import {
   shouldFallbackWhenNoEvidence,
   type ConversationIntentResult,
 } from './conversation-intent';
+import { interpretAmbiguousPortfolioIntent } from './intent-interpreter';
 import { getCachedAnswer } from './database';
 import { buildInsufficientEvidenceAnswer } from './output-guardrails';
 import { normalizeQuestion } from './text';
@@ -142,32 +143,54 @@ export async function prepareChatOrchestration({
     });
   }
 
+  const aiIntentInterpretation = await interpretAmbiguousPortfolioIntent({
+    question,
+    messages,
+    language,
+    ruleIntent: conversationIntent,
+    source: requestContext.source,
+  });
+  const effectiveConversationIntent: ConversationIntentResult =
+    aiIntentInterpretation
+      ? {
+          intent: 'portfolio_factual',
+          reason: `ai_intent_${aiIntentInterpretation.reason}`,
+          modifiers: conversationIntent.modifiers,
+        }
+      : conversationIntent;
+  const routingQuestion =
+    aiIntentInterpretation?.rewrittenQuestion?.trim() || question;
+
   if (
     !shouldBypassIntentDirectAnswer &&
-    (shouldAnswerIntentDirectly(conversationIntent.intent) ||
-      conversationIntent.reason === 'follow_up_without_context')
+    !aiIntentInterpretation &&
+    (shouldAnswerIntentDirectly(effectiveConversationIntent.intent) ||
+      effectiveConversationIntent.reason === 'follow_up_without_context')
   ) {
     return buildConversationDirectOrchestration({
       question,
       language,
       normalizedQuestion,
-      conversationIntent,
+      conversationIntent: effectiveConversationIntent,
       requestContext,
     });
   }
 
   const intentStarterQuestionId = getStarterQuestionIdForConversationIntent(
-    conversationIntent,
+    effectiveConversationIntent,
     messages
   );
   const faqRoute = await routeFaqIntent({
-    question,
+    question: routingQuestion,
     language,
-    starterQuestionId: requestContext.triggerId ?? intentStarterQuestionId,
+    starterQuestionId:
+      requestContext.triggerId ??
+      aiIntentInterpretation?.starterQuestionId ??
+      intentStarterQuestionId,
     source:
       requestContext.triggerId && requestContext.source
         ? requestContext.source
-        : intentStarterQuestionId
+        : aiIntentInterpretation?.starterQuestionId || intentStarterQuestionId
           ? 'quick_question'
           : requestContext.source,
   });
@@ -175,7 +198,10 @@ export async function prepareChatOrchestration({
   if (
     faqRoute.routeDecision.mode === 'direct' &&
     faqRoute.answer?.cacheMode === 'direct_cache' &&
-    !shouldBypassCurrentFaqDirectAnswer({ faqRoute, conversationIntent })
+    !shouldBypassCurrentFaqDirectAnswer({
+      faqRoute,
+      conversationIntent: effectiveConversationIntent,
+    })
   ) {
     const faqAnswer = faqRoute.answer;
     const effectiveAnswerVariant = getEffectiveAnswerVariant({
@@ -205,7 +231,7 @@ export async function prepareChatOrchestration({
         faqAnswer,
         confidence,
       }),
-      conversationIntent,
+      conversationIntent: effectiveConversationIntent,
       faqAnswer,
       requestContext: effectiveRequestContext,
       faqRoute,
@@ -224,7 +250,7 @@ export async function prepareChatOrchestration({
   }
 
   const cachedAnswer =
-    !shouldBypassAnswerCache(conversationIntent) && normalizedQuestion
+    !shouldBypassAnswerCache(effectiveConversationIntent) && normalizedQuestion
       ? await getCachedAnswer({
           normalizedQuestion,
           language,
@@ -246,7 +272,7 @@ export async function prepareChatOrchestration({
         confidence: cachedAnswer.confidence,
         reason: 'fresh_cache_hit',
       },
-      conversationIntent,
+      conversationIntent: effectiveConversationIntent,
       requestContext,
       faqRoute,
     });
@@ -263,12 +289,12 @@ export async function prepareChatOrchestration({
     };
   }
 
-  const ragContext = await buildRagChatContext(question, language);
-  const conversationEntityHints = getConversationEntityHints(question);
+  const ragContext = await buildRagChatContext(routingQuestion, language);
+  const conversationEntityHints = getConversationEntityHints(routingQuestion);
 
   if (
     ragContext.metadata.sources.length === 0 &&
-    shouldFallbackWhenNoEvidence(conversationIntent)
+    shouldFallbackWhenNoEvidence(effectiveConversationIntent)
   ) {
     const routeDecision: AnswerRouteDecision = {
       mode: 'safe_fallback',
@@ -283,7 +309,7 @@ export async function prepareChatOrchestration({
       sourceChunkIds: [],
       confidence: 0.25,
       routeDecision,
-      conversationIntent,
+      conversationIntent: effectiveConversationIntent,
       showEvidence: false,
       requestContext,
       faqRoute,
@@ -319,8 +345,8 @@ export async function prepareChatOrchestration({
     language,
     normalizedQuestion,
     answerSource: 'fallback',
-    conversationIntent: conversationIntent.intent,
-    conversationModifiers: conversationIntent.modifiers,
+    conversationIntent: effectiveConversationIntent.intent,
+    conversationModifiers: effectiveConversationIntent.modifiers,
     showEvidence: ragContext.metadata.sources.length > 0,
     skippedGroq: false,
     sourceChunkIds: ragContext.metadata.sources.map(
@@ -338,7 +364,7 @@ export async function prepareChatOrchestration({
     intentSecondScore: faqRoute.intentSecondScore,
     intentMargin: faqRoute.intentMargin,
     routeDecision: buildRagGenerateRouteDecision({
-      question,
+      question: routingQuestion,
       faqRoute,
       ragContext,
       confidence: confidenceSignals.final,
@@ -572,6 +598,7 @@ function getStarterQuestionIdForConversationIntent(
     return getStarterQuestionIdFromRecentConversation(messages);
   }
   if (reason === 'public_life_notes_request') return 'fun.public_notes';
+  if (reason === 'site_purpose_request') return 'project.askoosu.overview';
   if (reason === 'profile_intro_request') return 'home.profile.intro';
   if (intent === 'contact_or_link_request') return 'home.contact';
 
