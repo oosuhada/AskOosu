@@ -101,6 +101,26 @@ export async function routeFaqIntent({
     return emptyRouteResult('empty_question', 'token_fallback');
   }
 
+  const aiEraCompetitivenessMatch = getAiEraCompetitivenessMatch({
+    question: normalizedQuestion,
+    language,
+  });
+
+  if (aiEraCompetitivenessMatch) {
+    return {
+      answer: aiEraCompetitivenessMatch,
+      matchedFaqId: aiEraCompetitivenessMatch.id,
+      intentScore: 0.99,
+      intentSecondScore: 0,
+      intentMargin: 0.99,
+      routeDecision: {
+        mode: 'direct',
+        reason: 'ai_era_competitiveness_phrase_match',
+        router: 'token_fallback',
+      },
+    };
+  }
+
   const quickQuestionMatch =
     source === 'quick_question'
       ? getTrustedQuickQuestionMatch({ starterQuestionId, language })
@@ -314,6 +334,54 @@ function getHiddenRecruiterRiskMatch({
     )
   ) {
     return findFaqAnswerById('faq.recruiter.role_ambiguity.default', language);
+  }
+
+  return null;
+}
+
+function getAiEraCompetitivenessMatch({
+  question,
+  language,
+}: {
+  question: string;
+  language: ChatLanguage;
+}) {
+  if (
+    /(ai\s*(replace|replacing|obsolete)|replace\s+developers?|developers?.*(obsolete|replace)|why\s+hire\s+(a\s+)?(junior|developer)|developer\s+job\s+security|AI가\s*(개발자|사람|주니어).*(대체|필요\s*없)|개발자\s*(필요\s*없|안\s*뽑|살아남)|AI\s*때문에\s*개발자|AI가\s*코드.*다\s*짜)/i.test(
+      question
+    )
+  ) {
+    return findFaqAnswerById('faq.ai_era.replace_developer.default', language);
+  }
+
+  if (
+    /(skill\s*atrophy|real\s+skills?|can\s+you\s+code\s+without\s+ai|does.*actually\s+code|ai\s*(dependency|too\s+much)|AI\s*(많이\s*쓰|의존|없이|기본기|진짜\s*실력)|코드.*직접|직접.*코드|실력\s*안\s*늘)/i.test(
+      question
+    )
+  ) {
+    return findFaqAnswerById('faq.ai_era.skill_atrophy.default', language);
+  }
+
+  if (
+    /(ai\s+fluency|using\s+ai\s+well|dependency|AI를\s*잘\s*쓰|AI\s*fluency|의존.*차이|잘\s*쓰는\s*것.*의존)/i.test(
+      question
+    )
+  ) {
+    return findFaqAnswerById(
+      'faq.ai_competitiveness.ai_fluency_vs_dependency.default',
+      language
+    );
+  }
+
+  if (
+    /(competitive\s+advantage|why\s+hire\s+oosu|what\s+makes\s+oosu\s+different|competitor|competing\s+with\s+ai|AI\s*시대.*(경쟁력|차별점|강점)|왜\s*우수를\s*뽑|우수.*(경쟁력|강점|차별점)|경쟁자.*AI|AI와\s*경쟁|본인.*경쟁자)/i.test(
+      question
+    )
+  ) {
+    return findFaqAnswerById(
+      'faq.ai_era.competitiveness_source.default',
+      language
+    );
   }
 
   return null;

@@ -104,6 +104,22 @@ const LOCAL_MARKDOWN_DOCUMENTS: LocalMarkdownDocument[] = [
     language: 'en',
     author: 'gemini',
   },
+  {
+    path: 'docs/askoosu-wiki-addon-v13-ko.md',
+    slug: 'askoosu-wiki-addon-v13-ko',
+    language: 'ko',
+    author: 'gpt',
+    docId: 'faq.ai_competitiveness_addon.v13.ko',
+    sourceType: 'faq_addon',
+  },
+  {
+    path: 'docs/askoosu-wiki-addon-v13-en.md',
+    slug: 'askoosu-wiki-addon-v13-en',
+    language: 'en',
+    author: 'gpt',
+    docId: 'faq.ai_competitiveness_addon.v13.en',
+    sourceType: 'faq_addon',
+  },
 ];
 
 const SECOND_BRAIN_BASE_PATH = 'docs/askoosu_second_brain_docs';
@@ -253,6 +269,8 @@ function sectionToRagChunk({
   const intentGroup =
     getFrontmatterString(frontmatter, 'intentGroup') ||
     getIntentGroupFromSourceType(sourceType);
+  const isFaqAddonDocument =
+    sourceType === 'faq_addon' || intentGroup === 'ai_era_competitiveness';
   const chunkId =
     getPreferredChunkId({
       faqId,
@@ -288,7 +306,7 @@ function sectionToRagChunk({
         sourceTitle: documentTitle,
         documentPath: document.path,
         documentSlug: document.slug,
-        documentVersion: 'v12',
+        documentVersion: getDocumentVersion(document.path, docId),
         documentAuthor: document.author,
         ...frontmatter,
         ...(docId ? { docId } : {}),
@@ -314,7 +332,18 @@ function sectionToRagChunk({
               preferredTone: 'personal_take',
             }
           : {}),
+        ...(isFaqAddonDocument
+          ? {
+              sourceCategory: 'faq_addon',
+              sourceLabel: 'AskOosu AI Era Competitiveness Add-on',
+              cachePriority:
+                getFrontmatterString(frontmatter, 'priority') || 'high',
+              priority: getFrontmatterString(frontmatter, 'priority') || 'high',
+              preferredTone: 'interview_ready_evidence_backed',
+            }
+          : {}),
         language: document.language,
+        sectionId: slugify(section.heading) || `${section.index}`,
         sectionHeading: section.heading,
         sectionPath: section.sectionPath,
         faqId,
@@ -427,12 +456,25 @@ function cleanHeading(value: string) {
 }
 
 function extractField(section: string, field: string) {
-  const pattern = new RegExp(
+  const tablePattern = new RegExp(
     String.raw`\|\s*${escapeRegExp(field)}\s*\|\s*([^|]+?)\s*\|`,
     'i'
   );
-  const match = section.match(pattern);
-  return match?.[1]?.trim().replace(/^`|`$/g, '') ?? '';
+  const tableMatch = section.match(tablePattern);
+  if (tableMatch) return cleanExtractedField(tableMatch[1]);
+
+  const boldColonPattern = new RegExp(
+    String.raw`^\s*\*\*${escapeRegExp(field)}\*\*\s*:\s*(.+)$`,
+    'im'
+  );
+  const boldColonMatch = section.match(boldColonPattern);
+  if (boldColonMatch) return cleanExtractedField(boldColonMatch[1]);
+
+  return '';
+}
+
+function cleanExtractedField(value: string) {
+  return value.trim().replace(/^`|`$/g, '');
 }
 
 function extractBacktickValues(value: string) {
@@ -541,7 +583,13 @@ function getIntentGroupFromSourceType(sourceType: string | undefined) {
   if (sourceType === 'operating_system_doc') return 'operating_system';
   if (sourceType === 'decision_log') return 'decision_log';
   if (sourceType === 'postmortem_doc') return 'project_postmortem';
+  if (sourceType === 'faq_addon') return 'ai_era_competitiveness';
   return '';
+}
+
+function getDocumentVersion(pathValue: string, docId?: string) {
+  const versionMatch = `${pathValue} ${docId ?? ''}`.match(/\bv(\d+)\b/i);
+  return versionMatch ? `v${versionMatch[1]}` : 'v12';
 }
 
 function getSecondBrainSourceLabel(sourceType: string | undefined) {

@@ -5,6 +5,7 @@ import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useMemo, useState } from 'react';
 import { normalizeMarkdownSpacing } from '@/lib/chat/markdown-spacing';
+import { QuoteBlock } from '@/components/ui/quote-block';
 import { oosuProfile } from '@/lib/oosu-profile';
 import { cn } from '@/lib/utils';
 import { isAskOosuDebugUiEnabled } from '@/lib/debug-ui';
@@ -311,6 +312,9 @@ function MarkdownBlock({ content }: { content: string }) {
             <ol className="my-2 list-decimal space-y-2 pl-5">{children}</ol>
           ),
           li: ({ children }) => <li className="my-0 pl-0">{children}</li>,
+          blockquote: ({ children }) => (
+            <QuoteBlock attribution="Oosu">{children}</QuoteBlock>
+          ),
           a: ({ href, children }) => (
             <a
               href={href}

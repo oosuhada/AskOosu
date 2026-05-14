@@ -16,6 +16,7 @@ import {
   RichAnswerRenderer,
 } from './rich-answer-renderer';
 import { normalizeMarkdownSpacing } from '@/lib/chat/markdown-spacing';
+import { QuoteBlock } from '@/components/ui/quote-block';
 
 export type ChatMessageContentProps = {
   message: UIMessage;
@@ -157,6 +158,9 @@ function PlainMarkdownContent({ content }: { content: string }) {
             <ol className="my-2 list-decimal space-y-2 pl-5">{children}</ol>
           ),
           li: ({ children }) => <li className="my-0 pl-0">{children}</li>,
+          blockquote: ({ children }) => (
+            <QuoteBlock attribution="Oosu">{children}</QuoteBlock>
+          ),
           a: ({ href, children }) => (
             <a
               href={href}
