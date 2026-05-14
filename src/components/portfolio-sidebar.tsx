@@ -13,13 +13,21 @@ import { getUiText } from '@/lib/i18n';
 import { oosuProfile } from '@/lib/oosu-profile';
 import type { DisplayLanguage, DisplayTheme } from '@/lib/preferences';
 import {
+  archiveAllStoredConversations,
+  archiveStoredConversation,
+  clearArchivedConversations,
+  deleteArchivedConversation,
+  readArchivedConversations,
   readStoredConversations,
+  restoreArchivedConversation,
   type StoredChatConversation,
 } from '@/lib/chat-history';
 import { cn } from '@/lib/utils';
 import { useDisplayPreferences } from '@/lib/use-display-preferences';
 import {
   Check,
+  Archive,
+  ArchiveRestore,
   ChevronRight,
   Code2,
   ExternalLink,
@@ -34,17 +42,21 @@ import {
   Settings,
   SquarePen,
   Sun,
+  Trash2,
   X,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import type { ElementType } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import type { ElementType, PointerEvent as ReactPointerEvent } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 type PortfolioSidebarProps = {
   conversations?: StoredChatConversation[];
   activeConversationId?: string | null;
   onNewChat?: () => void;
   onSelectConversation?: (conversation: StoredChatConversation) => void;
+  onArchiveConversation?: (conversationId: string) => void;
+  onArchiveAllConversations?: () => void;
+  onConversationsChange?: (conversations: StoredChatConversation[]) => void;
   className?: string;
 };
 
@@ -55,11 +67,19 @@ export function PortfolioSidebar({
   activeConversationId,
   onNewChat,
   onSelectConversation,
+  onArchiveConversation,
+  onArchiveAllConversations,
+  onConversationsChange,
   className,
 }: PortfolioSidebarProps) {
   const [open, setOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [archiveOpen, setArchiveOpen] = useState(false);
+  const [jiggleMode, setJiggleMode] = useState(false);
   const [storedConversations, setStoredConversations] = useState<
+    StoredChatConversation[]
+  >([]);
+  const [archivedConversations, setArchivedConversations] = useState<
     StoredChatConversation[]
   >([]);
   const router = useRouter();
@@ -72,6 +92,12 @@ export function PortfolioSidebar({
       setStoredConversations(readStoredConversations());
     }
   }, [conversations, open]);
+
+  useEffect(() => {
+    if (settingsOpen || archiveOpen) {
+      setArchivedConversations(readArchivedConversations());
+    }
+  }, [archiveOpen, settingsOpen]);
 
   const displayedConversations = conversations ?? storedConversations;
 
@@ -95,6 +121,8 @@ export function PortfolioSidebar({
   };
 
   const handleSelectConversation = (conversation: StoredChatConversation) => {
+    if (jiggleMode) return;
+
     if (onSelectConversation) {
       onSelectConversation(conversation);
     } else {
@@ -108,6 +136,47 @@ export function PortfolioSidebar({
     }
 
     setOpen(false);
+  };
+
+  const handleArchiveConversation = (conversationId: string) => {
+    if (onArchiveConversation) {
+      onArchiveConversation(conversationId);
+    } else {
+      setStoredConversations(archiveStoredConversation(conversationId));
+    }
+    setArchivedConversations(readArchivedConversations());
+  };
+
+  const handleArchiveAllConversations = () => {
+    if (onArchiveAllConversations) {
+      onArchiveAllConversations();
+    } else {
+      setStoredConversations(archiveAllStoredConversations());
+    }
+    setArchivedConversations(readArchivedConversations());
+    setJiggleMode(false);
+  };
+
+  const handleRestoreConversation = (conversationId: string) => {
+    const { activeConversations, archivedConversations: nextArchived } =
+      restoreArchivedConversation(conversationId);
+    setArchivedConversations(nextArchived);
+    setStoredConversations(activeConversations);
+    onConversationsChange?.(activeConversations);
+  };
+
+  const handleDeleteArchivedConversation = (conversationId: string) => {
+    setArchivedConversations(deleteArchivedConversation(conversationId));
+  };
+
+  const handleClearArchive = () => {
+    setArchivedConversations(clearArchivedConversations());
+  };
+
+  const openArchive = () => {
+    setArchiveOpen(true);
+    setSettingsOpen(false);
+    setArchivedConversations(readArchivedConversations());
   };
 
   return (
@@ -180,30 +249,33 @@ export function PortfolioSidebar({
               </button>
 
               <section className="space-y-3">
-                <SectionLabel icon={MessageSquare} label={text.chatHistory} />
+                <div className="flex items-center justify-between gap-3">
+                  <SectionLabel icon={MessageSquare} label={text.chatHistory} />
+                  {sortedConversations.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleArchiveAllConversations}
+                      className="text-muted-foreground hover:text-destructive inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs transition-colors"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      {text.deleteAll}
+                    </button>
+                  )}
+                </div>
                 {sortedConversations.length > 0 ? (
                   <div className="space-y-2">
                     {sortedConversations.map((conversation) => (
-                      <button
-                        type="button"
+                      <ConversationHistoryItem
                         key={conversation.id}
-                        onClick={() => handleSelectConversation(conversation)}
-                        className={cn(
-                          'flex w-full flex-col rounded-lg px-4 py-3 text-left transition-colors hover:bg-white/35 dark:hover:bg-white/[0.07]',
-                          activeConversationId === conversation.id &&
-                            'text-foreground bg-white/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.16)] dark:bg-white/[0.1]'
-                        )}
-                      >
-                        <span className="line-clamp-2 text-sm font-medium">
-                          {conversation.title}
-                        </span>
-                        <span className="text-muted-foreground mt-1 text-xs">
-                          {formatConversationDate(
-                            conversation.updatedAt,
-                            language
-                          )}
-                        </span>
-                      </button>
+                        conversation={conversation}
+                        isActive={activeConversationId === conversation.id}
+                        isJiggling={jiggleMode}
+                        language={language}
+                        text={text}
+                        onSelect={handleSelectConversation}
+                        onArchive={handleArchiveConversation}
+                        onLongPress={() => setJiggleMode(true)}
+                      />
                     ))}
                   </div>
                 ) : (
@@ -216,14 +288,26 @@ export function PortfolioSidebar({
           </ScrollArea>
 
           <div className="border-t border-white/40 px-6 py-5 dark:border-white/10">
-            <button
-              type="button"
-              onClick={openSettings}
-              className="hover:bg-sidebar-accent flex w-full items-center gap-4 rounded-lg px-4 py-3 text-left text-base font-medium transition-colors"
-            >
-              <Settings className="h-5 w-5" />
-              {text.settings} & {text.help}
-            </button>
+            <div className="grid gap-2">
+              {jiggleMode && (
+                <button
+                  type="button"
+                  onClick={() => setJiggleMode(false)}
+                  className="hover:bg-sidebar-accent flex w-full items-center gap-4 rounded-lg px-4 py-3 text-left text-sm font-medium transition-colors"
+                >
+                  <Check className="h-5 w-5" />
+                  {text.done}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={openSettings}
+                className="hover:bg-sidebar-accent flex w-full items-center gap-4 rounded-lg px-4 py-3 text-left text-base font-medium transition-colors"
+              >
+                <Settings className="h-5 w-5" />
+                {text.settings} & {text.help}
+              </button>
+            </div>
           </div>
         </DrawerContent>
       </Drawer>
@@ -242,8 +326,31 @@ export function PortfolioSidebar({
               language={language}
               theme={theme}
               onClose={() => setSettingsOpen(false)}
+              onOpenArchive={openArchive}
               onLanguageChange={setLanguagePreference}
               onThemeChange={setThemePreference}
+            />
+          </aside>
+        </>
+      )}
+
+      {archiveOpen && (
+        <>
+          <button
+            type="button"
+            aria-label={text.close}
+            className="fixed inset-0 z-[70] cursor-default bg-transparent"
+            onClick={() => setArchiveOpen(false)}
+          />
+          <aside className="text-popover-foreground bg-background/70 fixed bottom-4 left-4 z-[80] max-h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border border-white/45 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_24px_70px_rgba(15,23,42,0.18)] backdrop-blur-2xl md:left-[84px] md:w-[min(420px,calc(100vw-104px))] dark:border-white/10 dark:bg-white/[0.08] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_24px_70px_rgba(0,0,0,0.42)]">
+            <ArchivePanel
+              text={text}
+              language={language}
+              conversations={archivedConversations}
+              onClose={() => setArchiveOpen(false)}
+              onRestore={handleRestoreConversation}
+              onDelete={handleDeleteArchivedConversation}
+              onClear={handleClearArchive}
             />
           </aside>
         </>
@@ -267,11 +374,126 @@ function SectionLabel({
   );
 }
 
+function ConversationHistoryItem({
+  conversation,
+  isActive,
+  isJiggling,
+  language,
+  text,
+  onSelect,
+  onArchive,
+  onLongPress,
+}: {
+  conversation: StoredChatConversation;
+  isActive: boolean;
+  isJiggling: boolean;
+  language: DisplayLanguage;
+  text: UiText;
+  onSelect: (conversation: StoredChatConversation) => void;
+  onArchive: (conversationId: string) => void;
+  onLongPress: () => void;
+}) {
+  const [isDeleteRevealed, setIsDeleteRevealed] = useState(false);
+  const startXRef = useRef(0);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearLongPressTimer = () => {
+    if (!longPressTimerRef.current) return;
+    clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = null;
+  };
+
+  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    startXRef.current = event.clientX;
+    clearLongPressTimer();
+    longPressTimerRef.current = setTimeout(() => {
+      setIsDeleteRevealed(false);
+      onLongPress();
+    }, 520);
+  };
+
+  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const deltaX = event.clientX - startXRef.current;
+    if (Math.abs(deltaX) > 12) clearLongPressTimer();
+    if (deltaX < -44) setIsDeleteRevealed(true);
+    if (deltaX > 24) setIsDeleteRevealed(false);
+  };
+
+  const handlePointerEnd = () => {
+    clearLongPressTimer();
+  };
+
+  const handleSelect = () => {
+    if (isJiggling || isDeleteRevealed) {
+      setIsDeleteRevealed(false);
+      return;
+    }
+    onSelect(conversation);
+  };
+
+  return (
+    <div
+      data-testid={`conversation-row-${conversation.id}`}
+      className={cn(
+        'group relative overflow-hidden rounded-lg',
+        isJiggling && 'askoosu-jiggle'
+      )}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerEnd}
+      onPointerCancel={handlePointerEnd}
+      onPointerLeave={handlePointerEnd}
+    >
+      <button
+        type="button"
+        data-testid={`conversation-delete-${conversation.id}`}
+        onClick={() => onArchive(conversation.id)}
+        aria-label={text.deleteConversation}
+        className="bg-destructive text-destructive-foreground absolute inset-y-0 right-0 flex w-16 items-center justify-center"
+      >
+        <Trash2 className="h-5 w-5" />
+      </button>
+
+      {isJiggling && (
+        <button
+          type="button"
+          data-testid={`conversation-jiggle-delete-${conversation.id}`}
+          onClick={() => onArchive(conversation.id)}
+          aria-label={text.deleteConversation}
+          className="bg-destructive text-destructive-foreground absolute -top-1 -left-1 z-20 inline-flex h-6 w-6 items-center justify-center rounded-full shadow-sm"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      )}
+
+      <button
+        type="button"
+        data-testid={`conversation-select-${conversation.id}`}
+        onClick={handleSelect}
+        className={cn(
+          'relative z-10 flex w-full flex-col rounded-lg bg-background/70 px-4 py-3 text-left transition-transform hover:bg-white/35 dark:bg-background/50 dark:hover:bg-white/[0.07]',
+          isDeleteRevealed && '-translate-x-16',
+          isActive &&
+            'text-foreground bg-white/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.16)] dark:bg-white/[0.1]'
+        )}
+      >
+        <span className="line-clamp-2 text-sm font-medium">
+          {conversation.title}
+        </span>
+        <span className="text-muted-foreground mt-1 text-xs">
+          {formatConversationDate(conversation.updatedAt, language)}
+        </span>
+      </button>
+    </div>
+  );
+}
+
 function SettingsPanel({
   text,
   language,
   theme,
   onClose,
+  onOpenArchive,
   onLanguageChange,
   onThemeChange,
 }: {
@@ -279,6 +501,7 @@ function SettingsPanel({
   language: DisplayLanguage;
   theme: DisplayTheme;
   onClose: () => void;
+  onOpenArchive: () => void;
   onLanguageChange: (value: DisplayLanguage) => void;
   onThemeChange: (value: DisplayTheme) => void;
 }) {
@@ -324,6 +547,18 @@ function SettingsPanel({
       />
 
       <Separator className="my-2" />
+
+      <button
+        type="button"
+        onClick={onOpenArchive}
+        className="hover:bg-accent flex w-full items-center justify-between rounded-lg px-3 py-3 text-sm transition-colors"
+      >
+        <span className="flex items-center gap-3">
+          <Archive className="text-muted-foreground h-5 w-5" />
+          {text.archive}
+        </span>
+        <ChevronRight className="text-muted-foreground h-4 w-4" />
+      </button>
 
       <a
         href={oosuProfile.github}
@@ -372,6 +607,102 @@ function SettingsPanel({
           {text.siteStackBody}
         </div>
       </details>
+    </div>
+  );
+}
+
+function ArchivePanel({
+  text,
+  language,
+  conversations,
+  onClose,
+  onRestore,
+  onDelete,
+  onClear,
+}: {
+  text: UiText;
+  language: DisplayLanguage;
+  conversations: StoredChatConversation[];
+  onClose: () => void;
+  onRestore: (conversationId: string) => void;
+  onDelete: (conversationId: string) => void;
+  onClear: () => void;
+}) {
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between px-3 py-2">
+        <div className="flex items-center gap-3 text-sm font-semibold">
+          <Archive className="h-4 w-4" />
+          {text.archive}
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label={text.close}
+          className="hover:bg-accent inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      {conversations.length > 0 ? (
+        <>
+          <div className="max-h-[52vh] space-y-2 overflow-y-auto px-1 py-1">
+            {conversations.map((conversation) => (
+              <div
+                key={conversation.id}
+                data-testid={`archived-conversation-${conversation.id}`}
+                className="bg-background/50 rounded-lg border border-white/35 px-3 py-3 dark:border-white/10 dark:bg-white/[0.04]"
+              >
+                <div className="min-w-0">
+                  <p className="line-clamp-2 text-sm font-medium">
+                    {conversation.title}
+                  </p>
+                  <p className="text-muted-foreground mt-1 text-xs">
+                    {formatConversationDate(
+                      conversation.archivedAt ?? conversation.updatedAt,
+                      language
+                    )}
+                  </p>
+                </div>
+                <div className="mt-3 flex justify-end gap-2">
+                  <button
+                    type="button"
+                    data-testid={`archive-restore-${conversation.id}`}
+                    onClick={() => onRestore(conversation.id)}
+                    className="hover:bg-accent inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs transition-colors"
+                  >
+                    <ArchiveRestore className="h-3.5 w-3.5" />
+                    {text.restore}
+                  </button>
+                  <button
+                    type="button"
+                    data-testid={`archive-delete-${conversation.id}`}
+                    onClick={() => onDelete(conversation.id)}
+                    className="text-destructive hover:bg-destructive/10 inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-xs transition-colors"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    {text.deleteForever}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <Separator className="my-2" />
+          <button
+            type="button"
+            onClick={onClear}
+            className="text-destructive hover:bg-destructive/10 flex w-full items-center justify-center gap-2 rounded-lg px-3 py-3 text-sm font-medium transition-colors"
+          >
+            <Trash2 className="h-4 w-4" />
+            {text.clearArchive}
+          </button>
+        </>
+      ) : (
+        <p className="text-muted-foreground px-3 py-8 text-center text-sm">
+          {text.emptyArchive}
+        </p>
+      )}
     </div>
   );
 }

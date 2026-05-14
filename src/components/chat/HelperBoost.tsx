@@ -20,6 +20,7 @@ interface HelperBoostProps {
   submitQuery?: (query: string, suggestedQuestion?: SuggestedQuestion) => void;
   setInput?: (value: string) => void;
   activeSurface?: QuestionSurface;
+  conversationId?: string | null;
   hasReachedLimit?: boolean;
 }
 
@@ -38,13 +39,17 @@ const questionConfig: Record<string, { color: string; icon: ElementType }> = {
 export default function HelperBoost({
   submitQuery,
   activeSurface = 'home',
+  conversationId = null,
   hasReachedLimit = false,
 }: HelperBoostProps) {
   const [isVisible, setIsVisible] = useState(true);
   const { language } = useDisplayPreferences();
   const text = getUiText(language);
-  const { visibleQuestions, askedQuestionIds, markQuestionAsked } =
-    useSuggestedQuestions(5, activeSurface);
+  const { visibleQuestions, askedQuestionIds } = useSuggestedQuestions(
+    5,
+    activeSurface,
+    conversationId
+  );
   const askedQuestionSet = new Set(askedQuestionIds);
 
   useEffect(() => {
@@ -71,7 +76,6 @@ export default function HelperBoost({
                 key={question.id}
                 onClick={() => {
                   if (!submitQuery || hasReachedLimit) return;
-                  markQuestionAsked(question.id);
                   submitQuery(question.displayQuestion, question);
                 }}
                 className={`focus-visible:border-ring focus-visible:ring-ring/50 relative inline-flex h-auto w-fit max-w-[82vw] shrink-0 snap-center items-center justify-start gap-2.5 overflow-hidden rounded-2xl border bg-clip-padding px-3.5 py-2.5 text-left whitespace-normal backdrop-blur-2xl backdrop-contrast-125 backdrop-saturate-150 transition-all outline-none before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[radial-gradient(circle_at_18%_0%,rgba(255,255,255,0.22),transparent_52%)] before:opacity-60 focus-visible:ring-[3px] md:max-w-[25rem] md:px-4 md:py-3 dark:before:bg-[radial-gradient(circle_at_18%_0%,rgba(255,255,255,0.12),transparent_52%)] ${
