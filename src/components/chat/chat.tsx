@@ -71,6 +71,11 @@ type ChatErrorNotice = {
   reportHref: string;
 };
 
+type PendingChatQuery = {
+  query: string;
+  suggestedQuestion?: SuggestedQuestion;
+};
+
 const Chat = () => {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -86,6 +91,7 @@ const Chat = () => {
   );
   const [chatErrorNotice, setChatErrorNotice] =
     useState<ChatErrorNotice | null>(null);
+  const [pendingQueries, setPendingQueries] = useState<PendingChatQuery[]>([]);
   const [conversations, setConversations] = useState<StoredChatConversation[]>(
     []
   );
@@ -253,6 +259,15 @@ const Chat = () => {
     setConversations(nextConversations);
   }, [activeConversationId, messages]);
 
+  useEffect(() => {
+    if (!activeConversationId || messages.length === 0) return;
+
+    for (const message of messages) {
+      if (message.role !== 'user') continue;
+      markQueryAsked(getMessageText(message), activeConversationId);
+    }
+  }, [activeConversationId, markQueryAsked, messages]);
+
   const { latestUserMessage, hasActiveTool, latestAssistantMessageIndex } =
     useMemo(() => {
       const latestAIMessageIndex = messages.findLastIndex(
@@ -287,11 +302,29 @@ const Chat = () => {
     (m) =>
       m.role === 'assistant' && m.parts?.some((part) => isPendingToolPart(part))
   );
+  const isGeneratingAnswer = isLoading || isToolInProgress || loadingSubmit;
 
-  const submitQuery = useCallback(
+  const enqueuePendingQuery = useCallback(
     (query: string, suggestedQuestion?: SuggestedQuestion) => {
       const trimmedQuery = query.trim();
-      if (!trimmedQuery || isToolInProgress) return false;
+      if (!trimmedQuery) return false;
+
+      setPendingQueries((currentQueries) => {
+        if (currentQueries.some((item) => item.query === trimmedQuery)) {
+          return currentQueries;
+        }
+
+        return [...currentQueries, { query: trimmedQuery, suggestedQuestion }];
+      });
+      return true;
+    },
+    []
+  );
+
+  const executeQuery = useCallback(
+    (query: string, suggestedQuestion?: SuggestedQuestion) => {
+      const trimmedQuery = query.trim();
+      if (!trimmedQuery) return false;
 
       const exactSuggestedQuestion =
         suggestedQuestion ??
@@ -338,13 +371,58 @@ const Chat = () => {
     [
       activeConversationId,
       clearError,
-      isToolInProgress,
       language,
       markQuestionAsked,
       markQueryAsked,
       sendMessage,
     ]
   );
+
+  const submitQuery = useCallback(
+    (query: string, suggestedQuestion?: SuggestedQuestion) => {
+      const trimmedQuery = query.trim();
+      if (!trimmedQuery) return false;
+
+      if (isGeneratingAnswer) {
+        const exactSuggestedQuestion =
+          suggestedQuestion ??
+          getSuggestedQuestionRoutingMeta(
+            findSuggestedQuestionId(trimmedQuery),
+            language
+          ) ??
+          undefined;
+        const conversationId = activeConversationId ?? createConversationId();
+        if (!activeConversationId) setActiveConversationId(conversationId);
+
+        if (exactSuggestedQuestion?.id) {
+          markQuestionAsked(exactSuggestedQuestion.id, conversationId);
+        } else {
+          markQueryAsked(trimmedQuery, conversationId);
+        }
+
+        return enqueuePendingQuery(trimmedQuery, exactSuggestedQuestion);
+      }
+
+      return executeQuery(trimmedQuery, suggestedQuestion);
+    },
+    [
+      activeConversationId,
+      enqueuePendingQuery,
+      executeQuery,
+      isGeneratingAnswer,
+      language,
+      markQuestionAsked,
+      markQueryAsked,
+    ]
+  );
+
+  useEffect(() => {
+    if (isGeneratingAnswer || pendingQueries.length === 0) return;
+
+    const [nextQuery, ...remainingQueries] = pendingQueries;
+    setPendingQueries(remainingQueries);
+    executeQuery(nextQuery.query, nextQuery.suggestedQuestion);
+  }, [executeQuery, isGeneratingAnswer, pendingQueries]);
 
   useEffect(() => {
     const trimmedInitialQuery = initialQuery?.trim();
@@ -380,14 +458,15 @@ const Chat = () => {
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
-    if (!input.trim() || isToolInProgress) return;
-    submitQuery(input);
-    setInput('');
+    if (!input.trim()) return;
+    const didSubmit = submitQuery(input);
+    if (didSubmit) setInput('');
   };
 
   const handleStop = () => {
     void stop();
     setLoadingSubmit(false);
+    setPendingQueries([]);
   };
 
   const handleNewChat = useCallback(() => {
@@ -398,6 +477,7 @@ const Chat = () => {
     setLastSubmittedQuery(null);
     setChatErrorNotice(null);
     setLoadingSubmit(false);
+    setPendingQueries([]);
     autoSubmittedQueryRef.current = null;
     replaceChatUrl();
   }, [replaceChatUrl, setInput, setMessages]);
@@ -410,6 +490,7 @@ const Chat = () => {
       setLastSubmittedQuery(null);
       setChatErrorNotice(null);
       setLoadingSubmit(false);
+      setPendingQueries([]);
       replaceChatUrl();
     },
     [replaceChatUrl, setInput, setMessages]
@@ -428,6 +509,7 @@ const Chat = () => {
         setLastSubmittedQuery(null);
         setChatErrorNotice(null);
         setLoadingSubmit(false);
+        setPendingQueries([]);
         autoSubmittedQueryRef.current = null;
         replaceChatUrl();
       }
@@ -444,6 +526,7 @@ const Chat = () => {
     setLastSubmittedQuery(null);
     setChatErrorNotice(null);
     setLoadingSubmit(false);
+    setPendingQueries([]);
     autoSubmittedQueryRef.current = null;
     replaceChatUrl();
   }, [replaceChatUrl, setInput, setMessages]);
@@ -617,6 +700,13 @@ const Chat = () => {
                     onRetry={handleRetryChatError}
                   />
                 )}
+                {pendingQueries.map((pendingQuery, index) => (
+                  <PendingQuestionBubble
+                    key={`${pendingQuery.query}-${index}`}
+                    content={pendingQuery.query}
+                    language={language}
+                  />
+                ))}
                 <div ref={conversationEndRef} className="h-1" />
               </motion.div>
             )}
@@ -688,6 +778,25 @@ function UserQuestionBubble({ content }: { content: string }) {
       >
         <ChatBubbleMessage>{content}</ChatBubbleMessage>
       </ChatBubble>
+    </div>
+  );
+}
+
+function PendingQuestionBubble({
+  content,
+  language,
+}: {
+  content: string;
+  language: 'ko' | 'en';
+}) {
+  return (
+    <div className="mx-auto flex w-full max-w-3xl justify-end px-4 pb-4">
+      <div className="mr-0 ml-auto max-w-[min(85%,40rem)] rounded-2xl border border-dashed border-teal-400/45 bg-teal-500/10 px-4 py-3 text-right text-sm text-teal-900/75 backdrop-blur-sm dark:text-teal-100/75">
+        <p className="break-words whitespace-pre-wrap">{content}</p>
+        <p className="mt-1 text-xs text-teal-800/55 dark:text-teal-100/50">
+          {language === 'ko' ? '답변 대기 중' : 'Queued'}
+        </p>
+      </div>
     </div>
   );
 }
