@@ -160,14 +160,14 @@ pre {
 @keyframes askoosu-jiggle {
   0%,
   100% {
-    transform: rotate(-0.6deg);
+    transform: rotate(-0.45deg);
   }
   50% {
-    transform: rotate(0.6deg);
+    transform: rotate(0.45deg);
   }
 }
 
 .askoosu-jiggle {
-  animation: askoosu-jiggle 320ms ease-in-out infinite;
+  animation: askoosu-jiggle 420ms ease-in-out infinite;
   transform-origin: 50% 50%;
 }

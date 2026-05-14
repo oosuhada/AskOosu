@@ -24,7 +24,12 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { ElementType } from 'react';
+import type {
+  ElementType,
+  MouseEvent as ReactMouseEvent,
+  PointerEvent as ReactPointerEvent,
+  WheelEvent as ReactWheelEvent,
+} from 'react';
 import { Suspense, useRef, useState } from 'react';
 
 const questionConfig: Record<string, { color: string; icon: ElementType }> = {
@@ -56,6 +61,11 @@ function HomeContent() {
   const [isQuickQuestionsVisible, setIsQuickQuestionsVisible] = useState(true);
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
+  const quickQuestionRailRef = useRef<HTMLDivElement | null>(null);
+  const dragStartXRef = useRef(0);
+  const dragStartScrollLeftRef = useRef(0);
+  const isDraggingRailRef = useRef(false);
+  const suppressRailClickRef = useRef(false);
   const { language, theme } = useDisplayPreferences();
   const {
     visibleQuestions,
@@ -75,6 +85,79 @@ function HomeContent() {
   const startNewChat = () => {
     const params = new URLSearchParams({ lang: language, theme });
     router.push(`/chat?${params.toString()}`);
+  };
+
+  const handleQuickQuestionWheel = (
+    event: ReactWheelEvent<HTMLDivElement>
+  ) => {
+    const rail = quickQuestionRailRef.current;
+    if (!rail || rail.scrollWidth <= rail.clientWidth) return;
+
+    const scrollDelta =
+      Math.abs(event.deltaX) > Math.abs(event.deltaY)
+        ? event.deltaX
+        : event.deltaY;
+    if (scrollDelta === 0) return;
+
+    event.preventDefault();
+    rail.scrollLeft += scrollDelta;
+  };
+
+  const handleQuickQuestionPointerDown = (
+    event: ReactPointerEvent<HTMLDivElement>
+  ) => {
+    if (event.pointerType !== 'mouse' || event.button !== 0) return;
+    const rail = quickQuestionRailRef.current;
+    if (!rail || rail.scrollWidth <= rail.clientWidth) return;
+
+    isDraggingRailRef.current = true;
+    suppressRailClickRef.current = false;
+    dragStartXRef.current = event.clientX;
+    dragStartScrollLeftRef.current = rail.scrollLeft;
+
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // Pointer capture can be unavailable for synthetic or cancelled gestures.
+    }
+  };
+
+  const handleQuickQuestionPointerMove = (
+    event: ReactPointerEvent<HTMLDivElement>
+  ) => {
+    if (!isDraggingRailRef.current) return;
+    const rail = quickQuestionRailRef.current;
+    if (!rail) return;
+
+    const deltaX = event.clientX - dragStartXRef.current;
+    if (Math.abs(deltaX) > 4) {
+      suppressRailClickRef.current = true;
+    }
+
+    event.preventDefault();
+    rail.scrollLeft = dragStartScrollLeftRef.current - deltaX;
+  };
+
+  const handleQuickQuestionPointerEnd = (
+    event: ReactPointerEvent<HTMLDivElement>
+  ) => {
+    if (!isDraggingRailRef.current) return;
+    isDraggingRailRef.current = false;
+
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    } catch {
+      // Pointer capture may already be released after a cancelled gesture.
+    }
+  };
+
+  const handleQuickQuestionClickCapture = (
+    event: ReactMouseEvent<HTMLDivElement>
+  ) => {
+    if (!suppressRailClickRef.current) return;
+    event.preventDefault();
+    event.stopPropagation();
+    suppressRailClickRef.current = false;
   };
 
   /* hero animations (unchanged) */
@@ -144,68 +227,78 @@ function HomeContent() {
       >
         {isQuickQuestionsVisible && (
           <div
+            ref={quickQuestionRailRef}
             id="home-quick-questions"
-            className="flex w-full max-w-5xl flex-wrap justify-center gap-2 md:gap-3"
+            className="custom-scrollbar w-full max-w-5xl cursor-grab touch-pan-x overflow-x-auto overflow-y-hidden overscroll-x-contain px-2 active:cursor-grabbing [-webkit-overflow-scrolling:touch]"
+            onWheel={handleQuickQuestionWheel}
+            onPointerDown={handleQuickQuestionPointerDown}
+            onPointerMove={handleQuickQuestionPointerMove}
+            onPointerUp={handleQuickQuestionPointerEnd}
+            onPointerCancel={handleQuickQuestionPointerEnd}
+            onPointerLeave={handleQuickQuestionPointerEnd}
+            onClickCapture={handleQuickQuestionClickCapture}
           >
-            {visibleQuestions.map((question) => {
-              const isAsked = askedQuestionSet.has(question.id);
-              const { color, icon: Icon } = questionConfig[question.id] ?? {
-                color: '#64748B',
-                icon: Sparkles,
-              };
-              const chatHref = buildChatHref({
-                query: question.displayQuestion,
-                language,
-                theme,
-                starterQuestionId: question.id,
-                faqId: question.faqId,
-                intentId: question.intentId,
-                displayQuestion: question.displayQuestion,
-                originalQuickLabel: question.quickLabel,
-                answerVariant: question.answerVariant,
-                renderSpec: question.renderSpec,
-                source: 'quick_question',
-              });
+            <div className="flex w-max min-w-full flex-nowrap justify-center gap-2 md:gap-3">
+              {visibleQuestions.map((question) => {
+                const isAsked = askedQuestionSet.has(question.id);
+                const { color, icon: Icon } = questionConfig[question.id] ?? {
+                  color: '#64748B',
+                  icon: Sparkles,
+                };
+                const chatHref = buildChatHref({
+                  query: question.displayQuestion,
+                  language,
+                  theme,
+                  starterQuestionId: question.id,
+                  faqId: question.faqId,
+                  intentId: question.intentId,
+                  displayQuestion: question.displayQuestion,
+                  originalQuickLabel: question.quickLabel,
+                  answerVariant: question.answerVariant,
+                  renderSpec: question.renderSpec,
+                  source: 'quick_question',
+                });
 
-              return (
-                <Button
-                  key={question.id}
-                  asChild
-                  variant="outline"
-                  className={`min-h-12 w-fit max-w-[82vw] shrink-0 cursor-pointer snap-center justify-start gap-2.5 rounded-2xl border px-3.5 py-2.5 text-left whitespace-normal backdrop-blur-xl active:scale-[0.98] md:max-w-[25rem] md:px-4 md:py-3 ${
-                    isAsked
-                      ? 'border-slate-200/60 bg-white/20 text-slate-400 shadow-none hover:bg-white/30 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-500 dark:hover:bg-white/[0.06]'
-                      : 'bg-background/35 hover:bg-background/60 text-foreground/90 border-white/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_30px_rgba(15,23,42,0.1)] dark:border-white/15 dark:bg-white/[0.11] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_10px_30px_rgba(0,0,0,0.28)] dark:hover:bg-white/[0.16]'
-                  }`}
-                >
-                  <Link
-                    href={chatHref}
-                    onClick={(event) => {
-                      event.preventDefault();
-                      markQuestionAsked(question.id);
-                      router.push(chatHref);
-                    }}
-                    aria-label={`Ask starter question: ${question.displayQuestion}`}
+                return (
+                  <Button
+                    key={question.id}
+                    asChild
+                    variant="outline"
+                    className={`min-h-12 w-fit max-w-[82vw] shrink-0 cursor-pointer snap-center justify-start gap-2.5 rounded-2xl border px-3.5 py-2.5 text-left whitespace-nowrap backdrop-blur-xl active:scale-[0.98] md:max-w-[25rem] md:px-4 md:py-3 ${
+                      isAsked
+                        ? 'border-slate-200/60 bg-white/20 text-slate-400 shadow-none hover:bg-white/30 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-500 dark:hover:bg-white/[0.06]'
+                        : 'bg-background/35 hover:bg-background/60 text-foreground/90 border-white/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_30px_rgba(15,23,42,0.1)] dark:border-white/15 dark:bg-white/[0.11] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_10px_30px_rgba(0,0,0,0.28)] dark:hover:bg-white/[0.16]'
+                    }`}
                   >
-                    <Icon
-                      className="shrink-0"
-                      size={18}
-                      strokeWidth={2}
-                      color={isAsked ? '#CBD5E1' : color}
-                    />
-                    <span
-                      className={`line-clamp-2 min-w-0 text-sm leading-snug font-medium md:text-base ${
-                        isAsked
-                          ? 'text-slate-400 dark:text-slate-500'
-                          : 'text-foreground'
-                      }`}
+                    <Link
+                      href={chatHref}
+                      onClick={(event) => {
+                        event.preventDefault();
+                        markQuestionAsked(question.id);
+                        router.push(chatHref);
+                      }}
+                      aria-label={`Ask starter question: ${question.displayQuestion}`}
                     >
-                      {question.quickLabel}
-                    </span>
-                  </Link>
-                </Button>
-              );
-            })}
+                      <Icon
+                        className="shrink-0"
+                        size={18}
+                        strokeWidth={2}
+                        color={isAsked ? '#CBD5E1' : color}
+                      />
+                      <span
+                        className={`min-w-0 truncate text-sm leading-snug font-medium md:text-base ${
+                          isAsked
+                            ? 'text-slate-400 dark:text-slate-500'
+                            : 'text-foreground'
+                        }`}
+                      >
+                        {question.quickLabel}
+                      </span>
+                    </Link>
+                  </Button>
+                );
+              })}
+            </div>
           </div>
         )}
 

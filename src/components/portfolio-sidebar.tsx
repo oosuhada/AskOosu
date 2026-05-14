@@ -68,10 +68,11 @@ type UiText = ReturnType<typeof getUiText>;
 
 const JIGGLE_ACTION_SELECTOR = '[data-jiggle-action="true"]';
 const ARCHIVE_ACTION_SELECTOR = '[data-archive-action="true"]';
+const ARCHIVE_ALL_ACTION_SELECTOR = '[data-archive-all-action="true"]';
 const CLOSE_REVEALED_ARCHIVE_EVENT = 'askoosu:close-revealed-archive';
-const SWIPE_REVEAL_DISTANCE = 34;
-const SWIPE_COMMIT_DISTANCE = 68;
-const SWIPE_MAX_DISTANCE = 76;
+const SWIPE_REVEAL_DISTANCE = 44;
+const SWIPE_COMMIT_DISTANCE = 120;
+const SWIPE_MAX_DISTANCE = 96;
 const REVEALED_SWIPE_X = 56;
 
 function isJiggleAction(target: EventTarget | null) {
@@ -85,6 +86,13 @@ function isArchiveAction(target: EventTarget | null) {
   return (
     target instanceof HTMLElement &&
     Boolean(target.closest(ARCHIVE_ACTION_SELECTOR))
+  );
+}
+
+function isArchiveAllAction(target: EventTarget | null) {
+  return (
+    target instanceof HTMLElement &&
+    Boolean(target.closest(ARCHIVE_ALL_ACTION_SELECTOR))
   );
 }
 
@@ -102,6 +110,7 @@ export function PortfolioSidebar({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [jiggleMode, setJiggleMode] = useState(false);
+  const [confirmArchiveAll, setConfirmArchiveAll] = useState(false);
   const [storedConversations, setStoredConversations] = useState<
     StoredChatConversation[]
   >([]);
@@ -149,12 +158,22 @@ export function PortfolioSidebar({
     }
 
     setOpen(nextOpen);
-    if (!nextOpen) setJiggleMode(false);
+    if (!nextOpen) {
+      setJiggleMode(false);
+      setConfirmArchiveAll(false);
+    }
   };
 
   const handleDrawerContentPointerDownCapture = (
     event: ReactPointerEvent<HTMLDivElement>
   ) => {
+    if (confirmArchiveAll && !isArchiveAllAction(event.target)) {
+      setConfirmArchiveAll(false);
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+
     if (!jiggleMode && !isArchiveAction(event.target)) {
       window.dispatchEvent(new CustomEvent(CLOSE_REVEALED_ARCHIVE_EVENT));
     }
@@ -182,6 +201,11 @@ export function PortfolioSidebar({
   const openSettings = () => {
     setSettingsOpen(true);
     setOpen(false);
+  };
+
+  const closeSettingsToMenu = () => {
+    setSettingsOpen(false);
+    setOpen(true);
   };
 
   const handleSelectConversation = (conversation: StoredChatConversation) => {
@@ -212,6 +236,11 @@ export function PortfolioSidebar({
   };
 
   const handleArchiveAllConversations = () => {
+    if (!confirmArchiveAll) {
+      setConfirmArchiveAll(true);
+      return;
+    }
+
     if (onArchiveAllConversations) {
       onArchiveAllConversations();
     } else {
@@ -219,6 +248,7 @@ export function PortfolioSidebar({
     }
     setArchivedConversations(readArchivedConversations());
     setJiggleMode(false);
+    setConfirmArchiveAll(false);
   };
 
   const handleRestoreConversation = (conversationId: string) => {
@@ -241,6 +271,11 @@ export function PortfolioSidebar({
     setArchiveOpen(true);
     setSettingsOpen(false);
     setArchivedConversations(readArchivedConversations());
+  };
+
+  const closeArchiveToSettings = () => {
+    setArchiveOpen(false);
+    setSettingsOpen(true);
   };
 
   return (
@@ -296,6 +331,11 @@ export function PortfolioSidebar({
           onClickCapture={handleDrawerContentClickCapture}
           onPointerDownOutside={(event) => {
             event.preventDefault();
+            if (confirmArchiveAll) {
+              setConfirmArchiveAll(false);
+              return;
+            }
+
             if (jiggleMode) {
               setJiggleMode(false);
               return;
@@ -345,7 +385,7 @@ export function PortfolioSidebar({
                 <SectionLabel icon={MessageSquare} label={text.chatHistory} />
                 {sortedConversations.length > 0 ? (
                   <div className="space-y-3">
-                    <div className="space-y-2 pr-3">
+                    <div className="space-y-2">
                       {sortedConversations.map((conversation) => (
                         <ConversationHistoryItem
                           key={conversation.id}
@@ -362,11 +402,20 @@ export function PortfolioSidebar({
                     </div>
                     <button
                       type="button"
+                      data-archive-all-action="true"
                       onClick={handleArchiveAllConversations}
-                      className="text-muted-foreground hover:text-destructive flex w-full items-center justify-center gap-2 rounded-lg border border-transparent px-4 py-2.5 text-sm font-medium transition-colors hover:bg-destructive/10"
+                      className={cn(
+                        'text-muted-foreground hover:text-destructive flex w-full items-center justify-center gap-2 rounded-lg border border-transparent px-4 py-2.5 text-sm font-medium transition-colors hover:bg-destructive/10',
+                        confirmArchiveAll &&
+                          'bg-destructive/10 text-destructive hover:bg-destructive/15'
+                      )}
                     >
                       <Trash2 className="h-4 w-4" />
-                      {text.deleteAll}
+                      {confirmArchiveAll
+                        ? language === 'ko'
+                          ? '한 번 더 눌러 전체 삭제'
+                          : 'Tap again to delete all'
+                        : text.deleteAll}
                     </button>
                   </div>
                 ) : (
@@ -398,15 +447,15 @@ export function PortfolioSidebar({
           <button
             type="button"
             aria-label={text.close}
-            className="fixed inset-0 z-[70] cursor-default bg-transparent"
-            onClick={() => setSettingsOpen(false)}
+            className="fixed inset-0 z-[70] cursor-default bg-black/15 backdrop-blur-[2px] dark:bg-black/35"
+            onClick={closeSettingsToMenu}
           />
-          <aside className="text-popover-foreground bg-background/70 fixed bottom-4 left-4 z-[80] max-h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border border-white/45 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_24px_70px_rgba(15,23,42,0.18)] backdrop-blur-2xl md:left-[84px] md:w-[min(420px,calc(100vw-104px))] dark:border-white/10 dark:bg-white/[0.08] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_24px_70px_rgba(0,0,0,0.42)]">
+          <aside className="text-popover-foreground fixed inset-y-0 left-0 z-[80] w-[min(420px,calc(100vw-24px))] overflow-y-auto rounded-none border-r border-slate-200/70 bg-white/78 p-5 shadow-[inset_1px_0_0_rgba(255,255,255,0.55),0_24px_70px_rgba(15,23,42,0.2)] backdrop-blur-2xl md:left-[72px] dark:border-white/10 dark:bg-zinc-950/78 dark:shadow-[inset_1px_0_0_rgba(255,255,255,0.08),0_24px_70px_rgba(0,0,0,0.42)]">
             <SettingsPanel
               text={text}
               language={language}
               theme={theme}
-              onClose={() => setSettingsOpen(false)}
+              onClose={closeSettingsToMenu}
               onOpenArchive={openArchive}
               onLanguageChange={setLanguagePreference}
               onThemeChange={setThemePreference}
@@ -420,15 +469,15 @@ export function PortfolioSidebar({
           <button
             type="button"
             aria-label={text.close}
-            className="fixed inset-0 z-[70] cursor-default bg-transparent"
-            onClick={() => setArchiveOpen(false)}
+            className="fixed inset-0 z-[70] cursor-default bg-black/15 backdrop-blur-[2px] dark:bg-black/35"
+            onClick={closeArchiveToSettings}
           />
-          <aside className="text-popover-foreground bg-background/70 fixed bottom-4 left-4 z-[80] max-h-[calc(100vh-2rem)] w-[calc(100vw-2rem)] overflow-y-auto rounded-2xl border border-white/45 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.16),0_24px_70px_rgba(15,23,42,0.18)] backdrop-blur-2xl md:left-[84px] md:w-[min(420px,calc(100vw-104px))] dark:border-white/10 dark:bg-white/[0.08] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_24px_70px_rgba(0,0,0,0.42)]">
+          <aside className="text-popover-foreground fixed inset-y-0 left-0 z-[80] w-[min(420px,calc(100vw-24px))] overflow-y-auto rounded-none border-r border-slate-200/70 bg-white/78 p-5 shadow-[inset_1px_0_0_rgba(255,255,255,0.55),0_24px_70px_rgba(15,23,42,0.2)] backdrop-blur-2xl md:left-[72px] dark:border-white/10 dark:bg-zinc-950/78 dark:shadow-[inset_1px_0_0_rgba(255,255,255,0.08),0_24px_70px_rgba(0,0,0,0.42)]">
             <ArchivePanel
               text={text}
               language={language}
               conversations={archivedConversations}
-              onClose={() => setArchiveOpen(false)}
+              onClose={closeArchiveToSettings}
               onRestore={handleRestoreConversation}
               onDelete={handleDeleteArchivedConversation}
               onClear={handleClearArchive}
@@ -604,7 +653,7 @@ function ConversationHistoryItem({
     <div
       data-testid={`conversation-row-${conversation.id}`}
       className={cn(
-        'group relative overflow-visible rounded-lg pr-3 select-none touch-pan-y',
+        'group relative overflow-visible rounded-xl select-none touch-pan-y',
         isJiggling && 'askoosu-jiggle'
       )}
       onPointerDown={handlePointerDown}
@@ -621,13 +670,13 @@ function ConversationHistoryItem({
         onClick={() => onArchive(conversation.id)}
         aria-label={text.archive}
         className={cn(
-          'absolute inset-y-0 left-0 z-0 flex w-14 items-center justify-center rounded-lg bg-teal-500/85 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22)] transition-opacity dark:bg-teal-400/80 dark:text-slate-950',
+          'absolute inset-y-0 left-0 z-0 flex w-14 items-center justify-center rounded-xl bg-teal-500/80 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.22)] transition-opacity dark:bg-teal-400/75 dark:text-slate-950',
           isDeleteRevealed || swipeX > 0
             ? 'pointer-events-auto opacity-100'
             : 'pointer-events-none opacity-0'
         )}
       >
-        <Archive className="h-5 w-5" />
+        <Archive className="h-4.5 w-4.5" />
       </button>
 
       {isJiggling && (
@@ -638,9 +687,9 @@ function ConversationHistoryItem({
           onPointerDown={(event) => event.stopPropagation()}
           onClick={() => onArchive(conversation.id)}
           aria-label={text.deleteConversation}
-          className="absolute top-0 right-3 z-30 inline-flex h-7 w-7 translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-teal-500 text-white shadow-md dark:bg-teal-400 dark:text-slate-950"
+          className="absolute top-2 right-2 z-30 inline-flex h-6.5 w-6.5 items-center justify-center rounded-full bg-teal-500 text-white shadow-[0_6px_18px_rgba(13,148,136,0.24)] dark:bg-teal-400 dark:text-slate-950"
         >
-          <X className="h-4 w-4" />
+          <X className="h-3.5 w-3.5" />
         </button>
       )}
 
@@ -652,7 +701,7 @@ function ConversationHistoryItem({
           transform: `translateX(${isDeleteRevealed ? REVEALED_SWIPE_X : swipeX}px)`,
         }}
         className={cn(
-          'relative z-10 flex w-full flex-col rounded-lg bg-background/85 px-4 py-3 text-left shadow-[0_1px_0_rgba(255,255,255,0.18)] transition-[transform,background-color] hover:bg-white/60 dark:bg-background/80 dark:hover:bg-white/[0.07]',
+          'relative z-10 flex w-full flex-col rounded-xl bg-background/88 px-4 py-3 text-left shadow-[0_1px_0_rgba(255,255,255,0.2),0_10px_26px_rgba(15,23,42,0.04)] transition-[transform,background-color,box-shadow] hover:bg-white/65 dark:bg-background/82 dark:hover:bg-white/[0.08]',
           isActive &&
             'text-foreground bg-white/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.16)] dark:bg-white/[0.1]'
         )}
