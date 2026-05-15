@@ -13,6 +13,7 @@ import { Analytics } from '@vercel/analytics/react';
 import type { Metadata } from 'next';
 import type { Viewport } from 'next';
 import { Inter } from 'next/font/google';
+import Script from 'next/script';
 import { Suspense } from 'react';
 import './globals.css';
 
@@ -144,6 +145,8 @@ export const viewport: Viewport = {
 const shouldLoadVercelAnalytics =
   process.env.VERCEL === '1' ||
   process.env.NEXT_PUBLIC_ENABLE_VERCEL_ANALYTICS === 'true';
+const cloudflareAnalyticsToken =
+  process.env.NEXT_PUBLIC_CLOUDFLARE_ANALYTICS_TOKEN;
 
 export default function RootLayout({
   children,
@@ -174,6 +177,16 @@ export default function RootLayout({
           </Suspense>
           <main className="flex min-h-screen flex-col">{children}</main>
           <Toaster />
+          {cloudflareAnalyticsToken ? (
+            <Script
+              src="https://static.cloudflareinsights.com/beacon.min.js"
+              strategy="afterInteractive"
+              defer
+              data-cf-beacon={JSON.stringify({
+                token: cloudflareAnalyticsToken,
+              })}
+            />
+          ) : null}
           {shouldLoadVercelAnalytics ? <Analytics /> : null}
         </ThemeProvider>
       </body>

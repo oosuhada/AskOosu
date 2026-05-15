@@ -12,7 +12,7 @@ AskOosu (`ask-oosu`)
 
 ## Current Goal
 
-Improve SEO, AEO, and LLM readability for the public oosu.dev portfolio without overclaiming Oosu's experience.
+Implement privacy-conscious analytics and sanitized AskOosu question logging.
 
 ## Current Status
 
@@ -20,6 +20,8 @@ Improve SEO, AEO, and LLM readability for the public oosu.dev portfolio without 
 - Added `sitemap.ts`, `robots.ts`, Open Graph/Twitter image routes, homepage JSON-LD, and public LLM-readable files.
 - Added public AEO pages for AskOosu, AI Director positioning, AI-era developer competitiveness, AI FAQ, projects, AskOosu project notes, about, and privacy.
 - Homepage now links quietly to AI Director, AI-era developer, and AskOosu project pages.
+- Added Postgres-backed `ask_events` schema and privacy-first custom question event logging.
+- Added client-side anonymous `askOosuSessionId`, Cloudflare Web Analytics env support, expanded privacy policy, and analytics retention/query docs.
 - Existing untracked local assets were present before this branch and should not be included unless a future task explicitly asks for them.
 
 ## Relevant Files / Areas
@@ -31,10 +33,14 @@ Improve SEO, AEO, and LLM readability for the public oosu.dev portfolio without 
 - `src/app/api/chat/`: chat API and streaming entrypoint.
 - `src/lib/chat/`, `src/lib/faq/`, `src/lib/rag/`, `src/lib/db/`: core orchestration, routing, retrieval, and Postgres helpers.
 - `src/lib/seo.ts`: shared SEO/AEO metadata, public routes, and JSON-LD graph.
+- `src/lib/analytics/`: privacy-conscious AskOosu event logging and anonymous client session helper.
+- `src/lib/privacy/redact.ts`: conservative redaction utility for emails, phone numbers, tokens, private keys, ID-like values, cards, and long secrets.
 - `src/components/seo/`: JSON-LD and public page shell components.
 - `src/app/sitemap.ts`, `src/app/robots.ts`, `src/app/opengraph-image.tsx`, `src/app/twitter-image.tsx`: crawler and social preview surfaces.
 - `src/app/ai-director/`, `src/app/ai-era-developer/`, `src/app/faq/ai-competitiveness/`, `src/app/ask/`, `src/app/about/`, `src/app/projects/`, `src/app/privacy/`: public SEO/AEO pages.
 - `public/llms.txt`, `public/llms-full.txt`, `public/ai-profile.md`, `public/ai-projects.md`, `public/ai-faq.md`: machine-readable public summaries.
+- `db/migrations/009_create_ask_events.sql`: Postgres schema for sanitized AskOosu question analytics.
+- `docs/analytics.md`: storage decision, Cloudflare setup, retention SQL, read queries, and home-server note.
 - `docs/askoosu-wiki-addon-v14-sensitive-interview-ko.md`: KO sensitive interview positioning source.
 - `docs/askoosu-wiki-addon-v14-sensitive-interview-en.md`: EN sensitive interview positioning source.
 - `src/lib/faq/recruiter-risk-answers.ts`: Markdown-backed hidden recruiter-risk FAQ loader.
