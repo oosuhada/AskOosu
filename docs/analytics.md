@@ -56,11 +56,15 @@ Manual Cloudflare setup:
 
 ## Retention
 
-Keep sanitized question logs for up to 180 days, then delete or aggregate them.
-Run cleanup manually; do not schedule destructive jobs until retention behavior
-has been reviewed in production.
+Sanitized question logs are kept for product-quality review unless they are
+manually deleted, aggregated, or no longer needed for improving the portfolio
+experience. No automatic deletion job is enabled in this implementation.
 
-Postgres cleanup:
+Manual cleanup SQL is kept here for future review, but it should not be run
+unless the retention policy changes or the owner explicitly decides to prune old
+records.
+
+Example Postgres cleanup:
 
 ```sql
 DELETE FROM ask_events
