@@ -1,6 +1,7 @@
 'use client';
 
 import FluidCursor from '@/components/FluidCursor';
+import { HomeJsonLd } from '@/components/seo/json-ld';
 import { TealCyanLottieButtonIcon } from '@/components/chat/teal-cyan-lottie-button-icon';
 import { OosuAvatar } from '@/components/oosu-avatar';
 import { PortfolioSidebar } from '@/components/portfolio-sidebar';
@@ -47,6 +48,24 @@ const questionConfig: Record<string, { color: string; icon: ElementType }> = {
   conversationalPortfolio: { color: '#8B5CF6', icon: LibraryBig },
   contactCollab: { color: '#C19433', icon: UserRoundSearch },
 };
+
+const aeoLinks = [
+  {
+    href: '/ai-director',
+    label: 'AI Director',
+    description: 'Working thesis',
+  },
+  {
+    href: '/ai-era-developer',
+    label: 'AI-era developer',
+    description: 'Competitiveness',
+  },
+  {
+    href: '/projects/askoosu',
+    label: 'AskOosu',
+    description: 'RAG portfolio',
+  },
+];
 
 export default function Home() {
   return (
@@ -180,6 +199,7 @@ function HomeContent() {
 
   return (
     <div className="relative flex min-h-dvh flex-col items-center justify-start overflow-x-hidden px-4 pt-20 pb-32 md:min-h-screen md:px-8 md:pt-12 md:pb-44">
+      <HomeJsonLd />
       <PortfolioSidebar onNewChat={startNewChat} />
 
       {/* big blurred footer word */}
@@ -210,6 +230,23 @@ function HomeContent() {
           <span className="block">AI-connected</span>
           <span className="block">Fullstack Developer</span>
         </h1>
+        <nav
+          aria-label="Featured portfolio pages"
+          className="mt-5 flex max-w-3xl flex-wrap justify-center gap-2"
+        >
+          {aeoLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className="bg-background/35 hover:bg-background/65 text-foreground/80 rounded-full border border-white/55 px-3 py-1.5 text-xs font-medium backdrop-blur-xl transition-colors dark:border-white/10 dark:bg-white/[0.08] dark:hover:bg-white/[0.14]"
+            >
+              <span>{link.label}</span>
+              <span className="text-muted-foreground ml-1 hidden sm:inline">
+                {link.description}
+              </span>
+            </Link>
+          ))}
+        </nav>
       </motion.div>
 
       <OosuAvatar
