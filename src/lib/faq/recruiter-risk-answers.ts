@@ -352,6 +352,46 @@ function enhanceRecruiterRiskPatterns({
       language === 'ko'
         ? ['AI 없으면 개발 못 하는 것 아닌가', '프롬프트만 잘하는 것 아닌가']
         : ['is Oosu just prompting', 'can Oosu code without AI'],
+    'faq.recruiter.age_career_timing.default':
+      language === 'ko'
+        ? [
+            '지원자는 나이가 너무 많지 않나 신입으로 채용하기엔',
+            '신입으로 채용하기엔 나이가 너무 많아서 적응하기 힘들지 않을까',
+            '신입 치고 나이가 많지 않나',
+            '나이 때문에 적응이 어렵지 않을까',
+          ]
+        : [
+            'too old to hire as a junior',
+            'too old for a junior candidate',
+            'will age make it hard to adapt',
+          ],
+    'faq.recruiter.role_ambiguity.default':
+      language === 'ko'
+        ? [
+            '뭘 제일 잘하지',
+            '분야가 다양해서 전문분야를 모르겠네',
+            '전문분야가 뭔지 모르겠다',
+            '가장 잘하는 분야가 뭐야',
+            '제너럴리스트인지 스페셜리스트인지 모르겠다',
+          ]
+        : [
+            'what is Oosu best at',
+            'too many fields to understand specialty',
+            'what is Oosu specialty',
+            'generalist or specialist',
+          ],
+    'faq.recruiter.role_recommendation.default':
+      language === 'ko'
+        ? [
+            '어떤 일을 맡기면 좋을까',
+            '어떤 역할이 제일 맞을까',
+            '채용하면 무슨 분야를 맡겨야 할까',
+          ]
+        : [
+            'what role fits Oosu best',
+            'what should Oosu work on',
+            'what position should Oosu have',
+          ],
   };
 
   return uniqueText([...patterns, ...(additions[id] ?? [])]);
