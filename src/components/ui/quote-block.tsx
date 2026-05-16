@@ -17,22 +17,22 @@ export function QuoteBlock({
   return (
     <blockquote
       className={cn(
-        'border-primary/40 bg-muted/45 text-foreground/80 my-3 rounded-md border px-4 py-3 text-sm leading-relaxed italic',
-        variant === 'subtle' && 'border-primary/35 bg-muted/30',
-        variant === 'highlight' && 'border-primary bg-muted/60'
+        'text-foreground/80 border-border/70 my-3 border-t pt-3 text-sm leading-relaxed italic',
+        variant === 'subtle' && 'border-border/50',
+        variant === 'highlight' && 'border-primary/60'
       )}
     >
       <div className="flex items-start justify-center gap-1.5 text-center">
         <span
           aria-hidden
-          className="text-primary/40 mt-0.5 shrink-0 select-none text-lg leading-none"
+          className="text-primary/35 mt-0.5 shrink-0 select-none text-lg leading-none"
         >
           &quot;
         </span>
         <div className="min-w-0 [&>p]:my-0">{children}</div>
         <span
           aria-hidden
-          className="text-primary/40 mt-0.5 shrink-0 select-none text-lg leading-none"
+          className="text-primary/35 mt-0.5 shrink-0 select-none text-lg leading-none"
         >
           &quot;
         </span>
