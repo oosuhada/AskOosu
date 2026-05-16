@@ -177,6 +177,7 @@ export async function prepareChatOrchestration({
       normalizedQuestion,
       conversationIntent: effectiveConversationIntent,
       requestContext,
+      messages,
     });
   }
 
@@ -260,6 +261,7 @@ export async function prepareChatOrchestration({
           faqAnswer,
           question,
           language,
+          messages,
         }),
         metadata,
       },
@@ -478,6 +480,18 @@ function getPreviousUserMessages(messages: UIMessage[]) {
     .filter((message) => message.role === 'user');
 }
 
+function getPreviousAssistantMessages(messages: UIMessage[]) {
+  const latestUserIndex = messages.findLastIndex(
+    (message) => message.role === 'user'
+  );
+  const endIndex = latestUserIndex >= 0 ? latestUserIndex : messages.length;
+  if (endIndex <= 0) return [];
+
+  return messages
+    .slice(0, endIndex)
+    .filter((message) => message.role === 'assistant');
+}
+
 function hasMatchingQuestionText(
   message: UIMessage,
   candidateTexts: Array<string | null>
@@ -563,12 +577,14 @@ function buildConversationDirectOrchestration({
   normalizedQuestion,
   conversationIntent,
   requestContext,
+  messages,
 }: {
   question: string;
   language: ChatLanguage;
   normalizedQuestion: string;
   conversationIntent: ConversationIntentResult;
   requestContext: RequestContext;
+  messages: UIMessage[];
 }): Extract<ChatOrchestration, { mode: 'direct' }> {
   const routeDecision = buildConversationRouteDecision(conversationIntent);
   const metadata = buildDirectMetadata({
@@ -597,6 +613,10 @@ function buildConversationDirectOrchestration({
             : conversationIntent.intent,
         language,
         question,
+        avoidText: messages
+          .filter((message) => message.role === 'assistant')
+          .map(getMessageText)
+          .join('\n'),
       }),
       metadata,
     },
@@ -1197,12 +1217,12 @@ function prefixRepeatedConcernAnswer({
   const concern = getRecruiterConcernKey(faqAnswer.id);
   if (!concern) return answer;
 
-  const previousUserMessages = getPreviousUserMessages(messages);
-  const hasSimilarPreviousQuestion = previousUserMessages.some((message) =>
-    questionMatchesRecruiterConcern(getMessageText(message), concern)
+  const previousAssistantMessages = getPreviousAssistantMessages(messages);
+  const hasPreviousAnswerForConcern = previousAssistantMessages.some((message) =>
+    assistantMessageAddressesRecruiterConcern(message, concern)
   );
 
-  if (!hasSimilarPreviousQuestion) return answer;
+  if (!hasPreviousAnswerForConcern) return answer;
 
   const prefix =
     language === 'ko'
@@ -1218,18 +1238,25 @@ function appendFaqContextualQuote({
   faqAnswer,
   question,
   language,
+  messages,
 }: {
   answer: string;
   faqAnswer: FaqAnswer;
   question: string;
   language: ChatLanguage;
+  messages: UIMessage[];
 }) {
   if (hasMarkdownQuote(answer)) return answer;
+  const recentAssistantText = messages
+    .filter((message) => message.role === 'assistant')
+    .map(getMessageText)
+    .join('\n');
 
   const quote = getContextualQuote({
     category: getQuoteCategoryForFaq(faqAnswer),
     language,
     seed: `${faqAnswer.id}:${question}`,
+    avoidText: recentAssistantText,
   });
 
   return `${answer}\n\n---\n> ${quote}`;
@@ -1262,20 +1289,57 @@ function getRecruiterConcernKey(faqId: string) {
   return null;
 }
 
-function questionMatchesRecruiterConcern(question: string, concern: string) {
-  const normalizedQuestion = question.toLocaleLowerCase();
+function assistantMessageAddressesRecruiterConcern(
+  message: UIMessage,
+  concern: string
+) {
+  const metadata = getMessageMetadataRecord(message);
+  const candidateIds = [
+    metadata?.matchedFaqId,
+    metadata?.faqId,
+    metadata?.intentId,
+  ].filter((value): value is string => typeof value === 'string');
+
+  if (
+    candidateIds.some(
+      (candidateId) => getRecruiterConcernKey(candidateId) === concern
+    )
+  ) {
+    return true;
+  }
+
+  const text = getMessageText(message);
+  if (!text || isOffTopicRedirectText(text)) return false;
+
+  return answerTextMatchesRecruiterConcern(text, concern);
+}
+
+function getMessageMetadataRecord(message: UIMessage) {
+  return isRecord(message.metadata) ? message.metadata : null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isOffTopicRedirectText(text: string) {
+  return /(AskOosu에서는 우수의 프로젝트와 기술 경험을 소개하는 데 집중|포트폴리오에서는 우수의 작업 방식이나 프로젝트 맥락|keep the spotlight on Oosu's work|keep us close to the portfolio)/i.test(
+    text
+  );
+}
+
+function answerTextMatchesRecruiterConcern(text: string, concern: string) {
   const patterns: Record<string, RegExp> = {
-    age: /(나이|신입|주니어|지원자|적응|늦게|older|too\s+old|junior|late)/i,
+    age: /(상대적으로\s*늦게\s*개발\s*커리어|그\s*시간을\s*공백|나이를\s*방어|older\s+than\s+typical\s+junior|does\s+not\s+see\s+that\s+time\s+as\s+a\s+gap)/i,
     role:
-      /(전문\s*분야|전문분야|분야|포지션|역할|뭘\s*제일\s*잘|가장\s*잘하|강점|specialty|specialist|generalist|role|position|best\s+at|strength)/i,
-    non_cs: /(비전공|컴퓨터\s*공학|cs\s*전공|non[-\s]?cs|cs\s+degree)/i,
+      /(AI-connected\s+Fullstack|AI\s*연결\s*풀스택|레이어.*연결|product\/UX|포지셔닝)/i,
+    non_cs: /(비전공|non[-\s]?CS|CS\s+degree|learn\s+faster)/i,
     ai_dependency:
-      /(ai\s*(의존|없이|못|포장)|프롬프트만|prompting|without\s+ai|dependency)/i,
-    retention:
-      /(오래|금방|퇴사|근속|창업|배울\s*(것|거)?만|retention|leave|startup|founder)/i,
+      /(AI\s*의존|AI\s*없이|AI\s*코드|review\s+AI-generated|AI-generated\s+code)/i,
+    retention: /(오래\s*근무|장기\s*근속|retention|leave\s+quickly|startup)/i,
   };
 
-  return patterns[concern]?.test(normalizedQuestion) ?? false;
+  return patterns[concern]?.test(text) ?? false;
 }
 
 function getMessageText(message: UIMessage) {

@@ -3,7 +3,13 @@
 import Image from 'next/image';
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { useMemo, useState } from 'react';
+import {
+  Fragment,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import { normalizeMarkdownSpacing } from '@/lib/chat/markdown-spacing';
 import { QuoteBlock } from '@/components/ui/quote-block';
 import { oosuProfile } from '@/lib/oosu-profile';
@@ -88,6 +94,8 @@ type ProjectItem = {
   tags: string[];
   href?: string;
 };
+
+type ProjectActionHighlight = 'questions' | 'open';
 
 type SkillGroup = {
   group: string;
@@ -300,11 +308,15 @@ function renderPart({
 
 function MarkdownBlock({ content }: { content: string }) {
   return (
-    <div className="prose dark:prose-invert w-full max-w-none whitespace-normal">
+    <div className="prose dark:prose-invert w-full max-w-none whitespace-normal leading-7">
       <Markdown
         remarkPlugins={[remarkGfm]}
         components={{
-          p: ({ children }) => <p className="my-0 break-words">{children}</p>,
+          p: ({ children }) => (
+            <p className="my-2 break-words first:mt-0 last:mb-0">
+              {renderProjectActionText(children)}
+            </p>
+          ),
           ul: ({ children }) => (
             <ul className="my-2 list-disc space-y-2 pl-5">{children}</ul>
           ),
@@ -331,6 +343,67 @@ function MarkdownBlock({ content }: { content: string }) {
       </Markdown>
     </div>
   );
+}
+
+function renderProjectActionText(children: ReactNode): ReactNode {
+  if (typeof children === 'string') return renderProjectActionString(children);
+  if (Array.isArray(children)) {
+    return children.map((child, index) => (
+      <Fragment key={`project-action-text-${index}`}>
+        {renderProjectActionText(child)}
+      </Fragment>
+    ));
+  }
+
+  return children;
+}
+
+function renderProjectActionString(value: string): ReactNode {
+  const phrases: Array<{ label: string; action: ProjectActionHighlight }> = [
+    { label: '관련 질문', action: 'questions' },
+    { label: '공개 링크', action: 'open' },
+    { label: '열기', action: 'open' },
+    { label: 'Questions', action: 'questions' },
+    { label: 'related questions', action: 'questions' },
+    { label: 'public links', action: 'open' },
+    { label: 'Open', action: 'open' },
+  ];
+  const pattern = new RegExp(
+    `(${phrases.map((phrase) => escapeRegExp(phrase.label)).join('|')})`,
+    'gi'
+  );
+  const parts = value.split(pattern).filter((part) => part.length > 0);
+  if (parts.length <= 1) return value;
+
+  return parts.map((part, index) => {
+    const phrase = phrases.find(
+      (candidate) => candidate.label.toLowerCase() === part.toLowerCase()
+    );
+    if (!phrase) return part;
+
+    return (
+      <button
+        key={`${part}-${index}`}
+        type="button"
+        onClick={() => highlightProjectAction(phrase.action)}
+        className="text-primary hover:text-primary/80 inline break-words underline underline-offset-4"
+      >
+        {part}
+      </button>
+    );
+  });
+}
+
+function highlightProjectAction(action: ProjectActionHighlight) {
+  window.dispatchEvent(
+    new CustomEvent<ProjectActionHighlight>('askoosu:highlightProjectAction', {
+      detail: action,
+    })
+  );
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function sanitizeRichMarkdownContent(content: string) {
@@ -376,10 +449,32 @@ function ProjectShowcaseCards({
   language: 'ko' | 'en';
 }) {
   const projects = block.items.map(parseProjectItem).filter(isDefined);
-  if (projects.length === 0) return null;
+  const [highlightedAction, setHighlightedAction] =
+    useState<ProjectActionHighlight | null>(null);
   const isMoreProjectsRail =
     block.dataKey === 'projects.more' ||
     block.title?.toLowerCase().includes('more project');
+
+  useEffect(() => {
+    function handleHighlight(event: Event) {
+      const action = (event as CustomEvent<ProjectActionHighlight>).detail;
+      if (action !== 'questions' && action !== 'open') return;
+      setHighlightedAction(action);
+      window.setTimeout(() => setHighlightedAction(null), 1600);
+    }
+
+    window.addEventListener(
+      'askoosu:highlightProjectAction',
+      handleHighlight
+    );
+    return () =>
+      window.removeEventListener(
+        'askoosu:highlightProjectAction',
+        handleHighlight
+      );
+  }, []);
+
+  if (projects.length === 0) return null;
 
   return (
     <section className="space-y-2" aria-label={block.title ?? 'Projects'}>
@@ -454,7 +549,12 @@ function ProjectShowcaseCards({
                   <button
                     type="button"
                     onClick={() => switchQuestionSurface(project.id)}
-                    className="bg-background/70 hover:bg-accent hover:text-accent-foreground inline-flex h-8 max-w-full min-w-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition"
+                    data-project-action="questions"
+                    className={cn(
+                      'bg-background/70 hover:bg-accent hover:text-accent-foreground focus-visible:ring-primary/50 inline-flex h-8 max-w-full min-w-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition focus-visible:ring-2 focus-visible:outline-none',
+                      highlightedAction === 'questions' &&
+                        'border-primary/70 bg-primary/10 text-primary ring-2 ring-primary/30'
+                    )}
                   >
                     <MessageSquareText className="h-3.5 w-3.5" />
                     <span className="min-w-0 truncate">
@@ -467,7 +567,12 @@ function ProjectShowcaseCards({
                     href={project.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="bg-background/70 hover:bg-accent hover:text-accent-foreground inline-flex h-8 max-w-full min-w-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition"
+                    data-project-action="open"
+                    className={cn(
+                      'bg-background/70 hover:bg-accent hover:text-accent-foreground focus-visible:ring-primary/50 inline-flex h-8 max-w-full min-w-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition focus-visible:ring-2 focus-visible:outline-none',
+                      highlightedAction === 'open' &&
+                        'border-primary/70 bg-primary/10 text-primary ring-2 ring-primary/30'
+                    )}
                   >
                     <span className="min-w-0 truncate">
                       {language === 'ko' ? '열기' : 'Open'}
