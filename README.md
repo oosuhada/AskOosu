@@ -4,6 +4,14 @@ AskOosu is Oosu Jang's 2026 AI-connected portfolio, deployed at [oosu.dev](https
 
 Instead of asking visitors to scroll through a static profile, AskOosu lets them ask natural language questions and receive grounded answers about Oosu's projects, skills, working style, contact links, and portfolio evidence.
 
+## 왜 만들었나 / Why I built it
+
+이전 포트폴리오인 **Portfoli-Oh!**를 만들 때는 “내가 구현할 수 있는 건 최대한 다 보여주자”는 생각으로 기능과 인터랙션을 계속 추가했다. 결과적으로 사이트가 방대하고 무거워졌고, 정보 구조도 복잡해졌다. 챗봇도 넣었지만 방문자가 그 챗봇에 도달하기까지 거쳐야 하는 단계가 너무 많았다.
+
+그래서 방향을 반대로 바꿨다. 모든 정보를 먼저 펼쳐놓고 읽게 하는 대신, **궁금한 것이 생긴 순간 바로 물어보고 필요한 근거만 받게 하자**가 AskOosu의 출발점이다. 이전 포트폴리오의 콘텐츠를 버리는 것이 아니라, 그 많은 정보를 대화형 진입점 뒤에 두고 필요할 때 꺼내 쓰는 구조로 다시 만든 프로젝트다.
+
+Portfoli-Oh! grew from an attempt to show everything I could build, but that also made the portfolio heavy and difficult to navigate. AskOosu reverses that model: instead of making visitors discover the right page or chatbot first, it lets them ask for the information they need immediately and retrieves the supporting evidence on demand.
+
 ![AskOosu desktop preview](public/images/projects/askoosu-cover-desktop.webp)
 
 ## 한국어 요약
