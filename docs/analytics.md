@@ -24,6 +24,7 @@ pattern is already sufficient.
 - anonymous `session_id`
 - language
 - sanitized `question` and `question_redacted`
+- sanitized `answer_preview`, a short redacted response excerpt for quality review
 - normalized intent
 - answer mode: `direct_cache`, `rag`, `fallback`, `smalltalk`, `safety`, `unknown`
 - confidence
@@ -115,6 +116,15 @@ FROM ask_events
 WHERE answer_mode = 'fallback'
    OR confidence IS NULL
    OR confidence < 0.55
+ORDER BY created_at DESC
+LIMIT 50;
+```
+
+Recent questions with answer previews:
+
+```sql
+SELECT created_at, language, question_redacted, answer_preview, normalized_intent, answer_mode, confidence
+FROM ask_events
 ORDER BY created_at DESC
 LIMIT 50;
 ```
