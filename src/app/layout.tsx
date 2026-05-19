@@ -1,4 +1,5 @@
 import { PreferenceSync } from '@/components/preference-sync';
+import { VisitorTracker } from '@/components/analytics/visitor-tracker';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
 import {
@@ -174,6 +175,7 @@ export default function RootLayout({
         >
           <Suspense fallback={null}>
             <PreferenceSync />
+            <VisitorTracker />
           </Suspense>
           <main className="flex min-h-screen flex-col">{children}</main>
           <Toaster />
