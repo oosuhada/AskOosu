@@ -127,11 +127,15 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
+        url: '/favicon.ico',
+        sizes: 'any',
+      },
+      {
         url: '/favicon.svg',
         sizes: 'any',
       },
     ],
-    shortcut: '/favicon.svg?v=2',
+    shortcut: '/favicon.ico',
     apple: '/apple-touch-icon.png?v=2',
   },
 };
@@ -157,6 +161,7 @@ export default function RootLayout({
   return (
     <html lang="ko" suppressHydrationWarning>
       <head>
+        <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/favicon.svg" sizes="any" />
         <script dangerouslySetInnerHTML={{ __html: preferenceInitScript }} />
       </head>
