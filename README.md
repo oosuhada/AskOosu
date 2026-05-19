@@ -217,3 +217,7 @@ For Google Vertex fallback, run `gcloud auth application-default login` in local
 See [docs/architecture.md](docs/architecture.md) for the frontend, Grok streaming, and Notion/RAG upgrade plan.
 
 Production Mac mini / Docker Compose notes live in [docs/home-server-deploy.md](docs/home-server-deploy.md), including `/api/health`, env-file permissions, backups, and Docker log checks.
+
+## Topics
+
+[`hybrid-search`](https://github.com/topics/hybrid-search) · [`llm`](https://github.com/topics/llm) · [`nextjs`](https://github.com/topics/nextjs) · [`pgvector`](https://github.com/topics/pgvector) · [`postgresql`](https://github.com/topics/postgresql) · [`rag`](https://github.com/topics/rag) · [`rag-evaluation`](https://github.com/topics/rag-evaluation) · [`typescript`](https://github.com/topics/typescript)
