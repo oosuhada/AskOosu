@@ -191,6 +191,111 @@ pre {
   overflow-x: auto;
 }
 
+.blog-prose {
+  color: var(--foreground);
+  max-width: none;
+}
+
+.blog-prose :where(h2) {
+  border-top: 1px solid var(--border);
+  font-size: 1.65rem;
+  font-weight: 750;
+  line-height: 1.25;
+  margin-top: 3rem;
+  padding-top: 2rem;
+}
+
+.blog-prose :where(h3) {
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.35;
+  margin-top: 2rem;
+}
+
+.blog-prose :where(p, li) {
+  color: var(--muted-foreground);
+  font-size: 1.02rem;
+  line-height: 1.85;
+}
+
+.blog-prose :where(a) {
+  color: var(--foreground);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.blog-prose :where(ul, ol) {
+  margin: 1rem 0 1.5rem;
+  padding-left: 1.4rem;
+}
+
+.blog-prose :where(blockquote) {
+  border-left: 3px solid var(--border);
+  color: var(--muted-foreground);
+  margin: 1.5rem 0;
+  padding-left: 1rem;
+}
+
+.blog-prose :where(:not(pre) > code) {
+  background: var(--muted);
+  border-radius: 0.35rem;
+  color: var(--foreground);
+  font-size: 0.92em;
+  padding: 0.15rem 0.35rem;
+  white-space: normal;
+}
+
+.blog-code-figure {
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  margin: 1.5rem 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.blog-code-figure figcaption {
+  background: var(--muted);
+  border-bottom: 1px solid var(--border);
+  color: var(--muted-foreground);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.55rem 4.25rem 0.55rem 0.85rem;
+}
+
+.blog-code-figure pre {
+  background: color-mix(in oklab, var(--muted) 45%, transparent);
+  margin: 0;
+  padding: 1rem;
+}
+
+.blog-code-figure code {
+  counter-reset: line;
+  display: grid;
+  font-size: 0.88rem;
+  line-height: 1.75;
+  min-width: max-content;
+}
+
+.blog-code-copy {
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--foreground);
+  cursor: pointer;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.28rem 0.65rem;
+  position: absolute;
+  right: 0.7rem;
+  top: 0.48rem;
+  z-index: 1;
+}
+
+.blog-code-copy:hover {
+  background: var(--muted);
+}
+
 @keyframes askoosu-jiggle {
   0%,
   100% {

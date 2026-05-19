@@ -257,6 +257,7 @@ export async function POST(req: Request) {
         req,
         body,
         question: orchestration.question,
+        answer: directAnswer.answer,
         metadata: directMetadata,
         latencyMs: Date.now() - requestStartedAt,
       });
@@ -370,6 +371,7 @@ export async function POST(req: Request) {
         req,
         body,
         question: orchestration.question,
+        answer: safeAnswer,
         metadata: responseMetadata,
         latencyMs: Date.now() - requestStartedAt,
       });
@@ -430,6 +432,7 @@ export async function POST(req: Request) {
       req,
       body,
       question: orchestration.question,
+      answer: generatedAnswer,
       metadata: responseMetadata,
       latencyMs: Date.now() - requestStartedAt,
     });
@@ -486,6 +489,7 @@ export async function POST(req: Request) {
       req,
       body,
       question: getLatestUserText(messages),
+      answer: buildModelUnavailableAnswer(fallbackMetadata.language),
       metadata: fallbackMetadata,
       latencyMs: Date.now() - requestStartedAt,
     });
@@ -565,12 +569,14 @@ function scheduleAskEventLog({
   req,
   body,
   question,
+  answer,
   metadata,
   latencyMs,
 }: {
   req: Request;
   body: ValidatedChatRequestBody | null;
   question: string;
+  answer?: string | null;
   metadata: ChatAnswerMetadata;
   latencyMs: number;
 }) {
@@ -588,6 +594,7 @@ function scheduleAskEventLog({
     sessionId: body.sessionId ?? body.conversationId,
     language: metadata.language,
     question,
+    answerPreview: answer,
     normalizedIntent: getNormalizedIntentFromMetadata(metadata),
     answerMode: getAnswerModeFromMetadata(metadata),
     confidence: metadata.confidence,

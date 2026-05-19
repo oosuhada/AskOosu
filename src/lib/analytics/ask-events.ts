@@ -2,6 +2,14 @@ import type { ChatLanguage } from '@/lib/i18n/detect-language';
 import type { AnswerRouteDecision, ChatAnswerMetadata } from '@/lib/chat/types';
 import { getPostgresPool, hasPostgresDatabaseUrl } from '@/lib/db/postgres';
 import { redactSensitiveText } from '@/lib/privacy/redact';
+import {
+  normalizeCountry,
+  normalizeOptionalText,
+  normalizePath,
+  normalizeReferrer,
+  parseRequestAnalyticsContext,
+  truncateText,
+} from './request-context';
 
 export type AskEventAnswerMode =
   | 'direct_cache'
@@ -25,6 +33,7 @@ export type AskEventContext = {
 export type AskEventInput = AskEventContext & {
   language?: ChatLanguage | null;
   question: string;
+  answerPreview?: string | null;
   normalizedIntent?: string | null;
   answerMode: AskEventAnswerMode;
   confidence?: number | null;
@@ -32,6 +41,17 @@ export type AskEventInput = AskEventContext & {
   modelProvider?: string | null;
   latencyMs?: number | null;
   country?: string | null;
+  ipHash?: string | null;
+  cfRay?: string | null;
+  geoCity?: string | null;
+  geoRegion?: string | null;
+  geoRegionCode?: string | null;
+  geoPostalCode?: string | null;
+  geoTimezone?: string | null;
+  geoLatitude?: number | null;
+  geoLongitude?: number | null;
+  userAgentHash?: string | null;
+  acceptLanguage?: string | null;
   deviceType?: string | null;
   browser?: string | null;
   os?: string | null;
@@ -39,6 +59,7 @@ export type AskEventInput = AskEventContext & {
 
 const MAX_SESSION_ID_LENGTH = 128;
 const MAX_TEXT_LENGTH = 2000;
+const MAX_ANSWER_PREVIEW_LENGTH = 120;
 const MAX_SHORT_TEXT_LENGTH = 500;
 const MAX_ID_LENGTH = 160;
 const MAX_IDS = 50;
@@ -61,6 +82,7 @@ export async function createAskEvent(input: AskEventInput) {
         language,
         question,
         question_redacted,
+        answer_preview,
         normalized_intent,
         answer_mode,
         confidence,
@@ -72,14 +94,26 @@ export async function createAskEvent(input: AskEventInput) {
         utm_source,
         utm_medium,
         utm_campaign,
+        ip_hash,
+        cf_ray,
         country,
+        geo_city,
+        geo_region,
+        geo_region_code,
+        geo_postal_code,
+        geo_timezone,
+        geo_latitude,
+        geo_longitude,
+        user_agent_hash,
+        accept_language,
         device_type,
         browser,
         os
       )
       VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8::text[], $9, $10,
-        $11, $12, $13, $14, $15, $16, $17, $18, $19
+        $1, $2, $3, $4, $5, $6, $7, $8, $9::text[], $10, $11,
+        $12, $13, $14, $15, $16, $17, $18, $19, $20,
+        $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31
       )
       RETURNING id
     `,
@@ -88,6 +122,7 @@ export async function createAskEvent(input: AskEventInput) {
       event.language,
       event.question,
       event.questionRedacted,
+      event.answerPreview,
       event.normalizedIntent,
       event.answerMode,
       event.confidence,
@@ -99,7 +134,18 @@ export async function createAskEvent(input: AskEventInput) {
       event.utmSource,
       event.utmMedium,
       event.utmCampaign,
+      event.ipHash,
+      event.cfRay,
       event.country,
+      event.geoCity,
+      event.geoRegion,
+      event.geoRegionCode,
+      event.geoPostalCode,
+      event.geoTimezone,
+      event.geoLatitude,
+      event.geoLongitude,
+      event.userAgentHash,
+      event.acceptLanguage,
       event.deviceType,
       event.browser,
       event.os,
@@ -191,14 +237,10 @@ export function getNormalizedIntentFromMetadata(metadata: ChatAnswerMetadata) {
 }
 
 export function parseRequestEventContext(req: Request, context?: AskEventContext) {
-  const userAgent = req.headers.get('user-agent') ?? '';
-  const parsedUserAgent = parseUserAgent(userAgent);
+  const requestContext = parseRequestAnalyticsContext(req);
 
   return {
-    country: normalizeCountry(req.headers.get('cf-ipcountry')),
-    deviceType: parsedUserAgent.deviceType,
-    browser: parsedUserAgent.browser,
-    os: parsedUserAgent.os,
+    ...requestContext,
     pagePath: normalizePath(context?.pagePath),
     referrer: normalizeReferrer(context?.referrer),
     utmSource: normalizeOptionalText(context?.utmSource, MAX_SHORT_TEXT_LENGTH),
@@ -227,6 +269,7 @@ async function createAskEventsSchema() {
       language text CHECK (language IS NULL OR language IN ('ko', 'en')),
       question text NOT NULL DEFAULT '',
       question_redacted text NOT NULL DEFAULT '',
+      answer_preview text,
       normalized_intent text,
       answer_mode text NOT NULL DEFAULT 'unknown'
         CHECK (answer_mode IN ('direct_cache', 'rag', 'fallback', 'smalltalk', 'safety', 'unknown')),
@@ -243,14 +286,40 @@ async function createAskEventsSchema() {
       utm_source text,
       utm_medium text,
       utm_campaign text,
+      ip_hash text,
+      cf_ray text,
       country text,
+      geo_city text,
+      geo_region text,
+      geo_region_code text,
+      geo_postal_code text,
+      geo_timezone text,
+      geo_latitude numeric(9, 6),
+      geo_longitude numeric(9, 6),
+      user_agent_hash text,
+      accept_language text,
       device_type text,
       browser text,
       os text
     )
   `);
+  await pool.query(
+    'ALTER TABLE ask_events ADD COLUMN IF NOT EXISTS answer_preview text'
+  );
+  await pool.query('ALTER TABLE ask_events ADD COLUMN IF NOT EXISTS ip_hash text');
+  await pool.query('ALTER TABLE ask_events ADD COLUMN IF NOT EXISTS cf_ray text');
+  await pool.query('ALTER TABLE ask_events ADD COLUMN IF NOT EXISTS geo_city text');
+  await pool.query('ALTER TABLE ask_events ADD COLUMN IF NOT EXISTS geo_region text');
+  await pool.query('ALTER TABLE ask_events ADD COLUMN IF NOT EXISTS geo_region_code text');
+  await pool.query('ALTER TABLE ask_events ADD COLUMN IF NOT EXISTS geo_postal_code text');
+  await pool.query('ALTER TABLE ask_events ADD COLUMN IF NOT EXISTS geo_timezone text');
+  await pool.query('ALTER TABLE ask_events ADD COLUMN IF NOT EXISTS geo_latitude numeric(9, 6)');
+  await pool.query('ALTER TABLE ask_events ADD COLUMN IF NOT EXISTS geo_longitude numeric(9, 6)');
+  await pool.query('ALTER TABLE ask_events ADD COLUMN IF NOT EXISTS user_agent_hash text');
+  await pool.query('ALTER TABLE ask_events ADD COLUMN IF NOT EXISTS accept_language text');
   await pool.query('CREATE INDEX IF NOT EXISTS ask_events_created_at_idx ON ask_events (created_at DESC)');
   await pool.query('CREATE INDEX IF NOT EXISTS ask_events_session_id_idx ON ask_events (session_id)');
+  await pool.query('CREATE INDEX IF NOT EXISTS ask_events_ip_hash_idx ON ask_events (ip_hash)');
   await pool.query('CREATE INDEX IF NOT EXISTS ask_events_answer_mode_idx ON ask_events (answer_mode)');
   await pool.query('CREATE INDEX IF NOT EXISTS ask_events_language_idx ON ask_events (language)');
   await pool.query('CREATE INDEX IF NOT EXISTS ask_events_user_feedback_idx ON ask_events (user_feedback)');
@@ -260,12 +329,14 @@ async function createAskEventsSchema() {
 
 function normalizeAskEvent(input: AskEventInput) {
   const redactedQuestion = redactSensitiveText(input.question, MAX_TEXT_LENGTH);
+  const answerPreview = createAnswerPreview(input.answerPreview);
 
   return {
     sessionId: truncateText(input.sessionId ?? '', MAX_SESSION_ID_LENGTH),
     language: input.language ?? null,
     question: redactedQuestion,
     questionRedacted: redactedQuestion,
+    answerPreview,
     normalizedIntent: normalizeOptionalText(input.normalizedIntent, MAX_ID_LENGTH),
     answerMode: input.answerMode,
     confidence: normalizeConfidence(input.confidence),
@@ -277,43 +348,29 @@ function normalizeAskEvent(input: AskEventInput) {
     utmSource: normalizeOptionalText(input.utmSource, MAX_SHORT_TEXT_LENGTH),
     utmMedium: normalizeOptionalText(input.utmMedium, MAX_SHORT_TEXT_LENGTH),
     utmCampaign: normalizeOptionalText(input.utmCampaign, MAX_SHORT_TEXT_LENGTH),
+    ipHash: normalizeOptionalText(input.ipHash, 128),
+    cfRay: normalizeOptionalText(input.cfRay, 128),
     country: normalizeCountry(input.country),
+    geoCity: normalizeOptionalText(input.geoCity, 120),
+    geoRegion: normalizeOptionalText(input.geoRegion, 120),
+    geoRegionCode: normalizeOptionalText(input.geoRegionCode, 40),
+    geoPostalCode: normalizeOptionalText(input.geoPostalCode, 40),
+    geoTimezone: normalizeOptionalText(input.geoTimezone, 80),
+    geoLatitude: normalizeCoordinate(input.geoLatitude, -90, 90),
+    geoLongitude: normalizeCoordinate(input.geoLongitude, -180, 180),
+    userAgentHash: normalizeOptionalText(input.userAgentHash, 128),
+    acceptLanguage: normalizeOptionalText(input.acceptLanguage, 200),
     deviceType: normalizeOptionalText(input.deviceType, 80),
     browser: normalizeOptionalText(input.browser, 80),
     os: normalizeOptionalText(input.os, 80),
   };
 }
 
-function parseUserAgent(userAgent: string) {
-  const lowerUserAgent = userAgent.toLowerCase();
-
-  return {
-    deviceType: /mobile|iphone|android/.test(lowerUserAgent)
-      ? 'mobile'
-      : /ipad|tablet/.test(lowerUserAgent)
-        ? 'tablet'
-        : 'desktop',
-    browser: /edg\//.test(lowerUserAgent)
-      ? 'Edge'
-      : /chrome|crios/.test(lowerUserAgent)
-        ? 'Chrome'
-        : /safari/.test(lowerUserAgent)
-          ? 'Safari'
-          : /firefox|fxios/.test(lowerUserAgent)
-            ? 'Firefox'
-            : 'Other',
-    os: /iphone|ipad|ios/.test(lowerUserAgent)
-      ? 'iOS'
-      : /android/.test(lowerUserAgent)
-        ? 'Android'
-        : /mac os|macintosh/.test(lowerUserAgent)
-          ? 'macOS'
-          : /windows/.test(lowerUserAgent)
-            ? 'Windows'
-            : /linux/.test(lowerUserAgent)
-              ? 'Linux'
-              : 'Other',
-  };
+function createAnswerPreview(value: string | null | undefined) {
+  const redactedAnswer = redactSensitiveText(value ?? '', MAX_TEXT_LENGTH);
+  const singleLineAnswer = redactedAnswer.replace(/\s+/g, ' ').trim();
+  if (!singleLineAnswer) return null;
+  return truncateText(singleLineAnswer, MAX_ANSWER_PREVIEW_LENGTH);
 }
 
 function getRouteDecisionName(routeDecision: AnswerRouteDecision) {
@@ -349,41 +406,10 @@ function normalizeLatency(value: number | null | undefined) {
   return Math.max(0, Math.round(value));
 }
 
-function normalizeCountry(value: string | null | undefined) {
-  const country = normalizeOptionalText(value, 8);
-  if (!country || country === 'XX' || country === 'T1') return null;
-  return country.toUpperCase();
-}
-
-function normalizePath(value: string | null | undefined) {
-  const text = normalizeOptionalText(value, MAX_SHORT_TEXT_LENGTH);
-  if (!text) return null;
-
-  try {
-    const url = new URL(text, 'https://oosu.dev');
-    return url.pathname.slice(0, MAX_SHORT_TEXT_LENGTH);
-  } catch {
-    return text.startsWith('/') ? text : null;
-  }
-}
-
-function normalizeReferrer(value: string | null | undefined) {
-  const text = normalizeOptionalText(value, MAX_SHORT_TEXT_LENGTH);
-  if (!text) return null;
-
-  try {
-    const url = new URL(text);
-    return `${url.origin}${url.pathname}`.slice(0, MAX_SHORT_TEXT_LENGTH);
-  } catch {
+function normalizeCoordinate(value: number | null | undefined, min: number, max: number) {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
     return null;
   }
-}
 
-function normalizeOptionalText(value: string | null | undefined, max: number) {
-  const text = truncateText(value ?? '', max);
-  return text || null;
-}
-
-function truncateText(value: string, max: number) {
-  return value.trim().replace(/\s+/g, ' ').slice(0, max);
+  return Math.max(min, Math.min(max, value));
 }

@@ -144,10 +144,12 @@ This applies:
 - `db/migrations/007_add_answer_cache_invalidation.sql`
 - `db/migrations/008_create_rate_limit_buckets.sql`
 - `db/migrations/009_create_ask_events.sql`
+- `db/migrations/010_add_ask_event_answer_preview.sql`
+- `db/migrations/011_add_visitor_events_and_identity_context.sql`
 
 The script runs `psql` inside the `postgres` Compose service and reads `POSTGRES_USER` and `POSTGRES_DB` from `.env.production`.
 
-Migration `003` is required for `answer_cache`, `ai_provider_usage`, and `ai_provider_status`. Migration `004` is required for language-specific RAG search and sync locking. Migration `005` is required for short-lived RAG search result caching. Migration `006` adds provider usage metadata. Migration `007` adds entity/source-chunk indexes plus soft invalidation for `answer_cache`, and lets RAG sync record deleted chunks. Migration `008` adds persistent `rate_limit_buckets` for Postgres-backed chat and feedback request limits. Migration `009` adds privacy-conscious `ask_events` logging for sanitized AskOosu question analytics. If production was already deployed before these migrations existed, run `scripts/prod-migrate.sh` again after pulling the latest code.
+Migration `003` is required for `answer_cache`, `ai_provider_usage`, and `ai_provider_status`. Migration `004` is required for language-specific RAG search and sync locking. Migration `005` is required for short-lived RAG search result caching. Migration `006` adds provider usage metadata. Migration `007` adds entity/source-chunk indexes plus soft invalidation for `answer_cache`, and lets RAG sync record deleted chunks. Migration `008` adds persistent `rate_limit_buckets` for Postgres-backed chat and feedback request limits. Migration `009` adds privacy-conscious `ask_events` logging for sanitized AskOosu question analytics. Migration `010` adds a short sanitized `answer_preview` excerpt for answer-quality review. Migration `011` adds visitor page-view logging plus `ip_hash` and Cloudflare location context for visitor and question analytics. If production was already deployed before these migrations existed, run `scripts/prod-migrate.sh` again after pulling the latest code.
 
 After a successful `/api/rag/sync`, AskOosu invalidates generated `answer_cache` rows by changed `matched_entity_ids` first. If changed chunks do not have entity ids, sync falls back to `source_chunk_ids` when possible and otherwise leaves stale rows to expire via `ASKOOSU_ANSWER_CACHE_TTL_HOURS`.
 
