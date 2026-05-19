@@ -1,10 +1,11 @@
 # AskOosu Analytics And Question Logging
 
-Last updated: 2026-05-13
+Last updated: 2026-05-19
 
 ## Storage Choice
 
-AskOosu uses the existing PostgreSQL database for custom AskOosu question logs.
+AskOosu uses the existing PostgreSQL database for custom AskOosu visitor and
+question logs.
 This is the most natural option for this codebase because the project already
 has:
 
@@ -19,9 +20,20 @@ pattern is already sufficient.
 
 ## What Is Logged
 
+`visitor_events` stores page-view and acquisition signals:
+
+- anonymous `session_id`
+- `ip_hash`, generated server-side with HMAC-SHA256
+- path, referrer without query string, UTM values
+- Cloudflare country and optional city/region/timezone/lat-lon headers
+- Cloudflare Ray ID
+- user-agent hash plus coarse device/browser/OS labels
+- screen, viewport, browser timezone, and browser language
+
 `ask_events` stores privacy-conscious product-quality signals:
 
 - anonymous `session_id`
+- `ip_hash`, so question behavior can be correlated with visits without raw IP storage
 - language
 - sanitized `question` and `question_redacted`
 - sanitized `answer_preview`, a short redacted response excerpt for quality review
@@ -33,9 +45,19 @@ pattern is already sufficient.
 - latency
 - optional user feedback value
 - page path, referrer without query string, UTM values
-- country code, device type, browser, OS
+- country code, optional city/region fields, device type, browser, OS
 
-Raw IP addresses and precise geolocation are not stored.
+Raw IP addresses are not stored. `ip_hash` is intended for repeat-visitor
+analysis, not identity proof. Set a stable production-only salt so the same IP
+hashes consistently over time:
+
+```bash
+ASKOOSU_IP_HASH_SALT=<long-random-secret>
+```
+
+City/region fields depend on Cloudflare request headers. In Cloudflare, enable
+visitor location headers if city/region-level reporting is needed. Location from
+IP is approximate and may reflect VPNs, carriers, or company networks.
 
 ## Cloudflare Web Analytics
 
@@ -80,6 +102,92 @@ WHERE created_at < now() - interval '180 days';
 ```
 
 ## Useful Read Queries
+
+Daily visitor stats:
+
+```sql
+SELECT
+  date_trunc('day', created_at) AS day,
+  count(*) AS page_views,
+  count(DISTINCT session_id) AS sessions,
+  count(DISTINCT ip_hash) FILTER (WHERE ip_hash IS NOT NULL) AS ip_hashes
+FROM visitor_events
+WHERE created_at >= now() - interval '30 days'
+GROUP BY day
+ORDER BY day DESC;
+```
+
+Top entry and content paths:
+
+```sql
+SELECT path, count(*) AS page_views, count(DISTINCT session_id) AS sessions
+FROM visitor_events
+WHERE created_at >= now() - interval '30 days'
+GROUP BY path
+ORDER BY page_views DESC
+LIMIT 30;
+```
+
+Referrer and campaign sources:
+
+```sql
+SELECT
+  coalesce(utm_source, '(direct)') AS utm_source,
+  coalesce(referrer, '(none)') AS referrer,
+  count(*) AS page_views,
+  count(DISTINCT session_id) AS sessions
+FROM visitor_events
+WHERE created_at >= now() - interval '30 days'
+GROUP BY utm_source, referrer
+ORDER BY page_views DESC
+LIMIT 30;
+```
+
+Repeat visitors by IP hash:
+
+```sql
+SELECT
+  ip_hash,
+  min(created_at) AS first_seen_at,
+  max(created_at) AS last_seen_at,
+  count(*) AS page_views,
+  count(DISTINCT session_id) AS sessions,
+  array_agg(DISTINCT path) FILTER (WHERE path IS NOT NULL) AS paths
+FROM visitor_events
+WHERE ip_hash IS NOT NULL
+GROUP BY ip_hash
+HAVING count(*) > 1
+ORDER BY last_seen_at DESC
+LIMIT 50;
+```
+
+Visitor timeline by session:
+
+```sql
+SELECT created_at, path, referrer, utm_source, utm_campaign, country, geo_region, geo_city
+FROM visitor_events
+WHERE session_id = '<session-id>'
+ORDER BY created_at;
+```
+
+Question timeline with visitor context:
+
+```sql
+SELECT
+  created_at,
+  session_id,
+  ip_hash,
+  country,
+  geo_region,
+  geo_city,
+  page_path,
+  question_redacted,
+  answer_preview,
+  answer_mode
+FROM ask_events
+ORDER BY created_at DESC
+LIMIT 50;
+```
 
 Total questions:
 
