@@ -25,6 +25,7 @@ export type AskEventContext = {
 export type AskEventInput = AskEventContext & {
   language?: ChatLanguage | null;
   question: string;
+  answerPreview?: string | null;
   normalizedIntent?: string | null;
   answerMode: AskEventAnswerMode;
   confidence?: number | null;
@@ -39,6 +40,7 @@ export type AskEventInput = AskEventContext & {
 
 const MAX_SESSION_ID_LENGTH = 128;
 const MAX_TEXT_LENGTH = 2000;
+const MAX_ANSWER_PREVIEW_LENGTH = 120;
 const MAX_SHORT_TEXT_LENGTH = 500;
 const MAX_ID_LENGTH = 160;
 const MAX_IDS = 50;
@@ -61,6 +63,7 @@ export async function createAskEvent(input: AskEventInput) {
         language,
         question,
         question_redacted,
+        answer_preview,
         normalized_intent,
         answer_mode,
         confidence,
@@ -78,8 +81,8 @@ export async function createAskEvent(input: AskEventInput) {
         os
       )
       VALUES (
-        $1, $2, $3, $4, $5, $6, $7, $8::text[], $9, $10,
-        $11, $12, $13, $14, $15, $16, $17, $18, $19
+        $1, $2, $3, $4, $5, $6, $7, $8, $9::text[], $10, $11,
+        $12, $13, $14, $15, $16, $17, $18, $19, $20
       )
       RETURNING id
     `,
@@ -88,6 +91,7 @@ export async function createAskEvent(input: AskEventInput) {
       event.language,
       event.question,
       event.questionRedacted,
+      event.answerPreview,
       event.normalizedIntent,
       event.answerMode,
       event.confidence,
@@ -227,6 +231,7 @@ async function createAskEventsSchema() {
       language text CHECK (language IS NULL OR language IN ('ko', 'en')),
       question text NOT NULL DEFAULT '',
       question_redacted text NOT NULL DEFAULT '',
+      answer_preview text,
       normalized_intent text,
       answer_mode text NOT NULL DEFAULT 'unknown'
         CHECK (answer_mode IN ('direct_cache', 'rag', 'fallback', 'smalltalk', 'safety', 'unknown')),
@@ -249,6 +254,9 @@ async function createAskEventsSchema() {
       os text
     )
   `);
+  await pool.query(
+    'ALTER TABLE ask_events ADD COLUMN IF NOT EXISTS answer_preview text'
+  );
   await pool.query('CREATE INDEX IF NOT EXISTS ask_events_created_at_idx ON ask_events (created_at DESC)');
   await pool.query('CREATE INDEX IF NOT EXISTS ask_events_session_id_idx ON ask_events (session_id)');
   await pool.query('CREATE INDEX IF NOT EXISTS ask_events_answer_mode_idx ON ask_events (answer_mode)');
@@ -260,12 +268,14 @@ async function createAskEventsSchema() {
 
 function normalizeAskEvent(input: AskEventInput) {
   const redactedQuestion = redactSensitiveText(input.question, MAX_TEXT_LENGTH);
+  const answerPreview = createAnswerPreview(input.answerPreview);
 
   return {
     sessionId: truncateText(input.sessionId ?? '', MAX_SESSION_ID_LENGTH),
     language: input.language ?? null,
     question: redactedQuestion,
     questionRedacted: redactedQuestion,
+    answerPreview,
     normalizedIntent: normalizeOptionalText(input.normalizedIntent, MAX_ID_LENGTH),
     answerMode: input.answerMode,
     confidence: normalizeConfidence(input.confidence),
@@ -282,6 +292,13 @@ function normalizeAskEvent(input: AskEventInput) {
     browser: normalizeOptionalText(input.browser, 80),
     os: normalizeOptionalText(input.os, 80),
   };
+}
+
+function createAnswerPreview(value: string | null | undefined) {
+  const redactedAnswer = redactSensitiveText(value ?? '', MAX_TEXT_LENGTH);
+  const singleLineAnswer = redactedAnswer.replace(/\s+/g, ' ').trim();
+  if (!singleLineAnswer) return null;
+  return truncateText(singleLineAnswer, MAX_ANSWER_PREVIEW_LENGTH);
 }
 
 function parseUserAgent(userAgent: string) {

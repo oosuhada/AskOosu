@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS ask_events (
   language text CHECK (language IS NULL OR language IN ('ko', 'en')),
   question text NOT NULL DEFAULT '',
   question_redacted text NOT NULL DEFAULT '',
+  answer_preview text,
   normalized_intent text,
   answer_mode text NOT NULL DEFAULT 'unknown'
     CHECK (answer_mode IN ('direct_cache', 'rag', 'fallback', 'smalltalk', 'safety', 'unknown')),
