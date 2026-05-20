@@ -33,14 +33,19 @@ export default function PrivacyPage() {
           The site may use Cloudflare Web Analytics when the production
           analytics token is configured. This is used to understand public page
           traffic, referrers, approximate country-level traffic, and basic web
-          performance. Oosu.dev does not use this setup to store raw IP
-          addresses or precise geolocation in the application database.
+          performance. Oosu.dev also records privacy-conscious first-party
+          visitor events such as page views, approximate engaged time, and
+          clicks on links or buttons. These events use a random anonymous
+          browser session ID and hashed network/browser identifiers; raw IP
+          addresses are not stored in the application database.
         </p>
         <p>
           운영 환경에서 Cloudflare Web Analytics 토큰이 설정된 경우, 공개
           페이지 방문 흐름, referrer, 국가 단위의 대략적인 유입, 기본 성능
-          지표를 확인할 수 있습니다. 애플리케이션 DB에는 원본 IP 주소나
-          정밀 위치를 저장하지 않습니다.
+          지표를 확인할 수 있습니다. 또한 페이지 조회, 대략적인 활성 체류
+          시간, 링크·버튼 클릭 같은 first-party 방문 이벤트를 익명 세션
+          기준으로 기록합니다. 네트워크/브라우저 식별자는 해시 형태로만
+          저장하며 애플리케이션 DB에 원본 IP 주소를 저장하지 않습니다.
         </p>
       </TextSection>
       <TextSection title="AskOosu Question Logs">
