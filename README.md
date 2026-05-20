@@ -218,6 +218,16 @@ See [docs/architecture.md](docs/architecture.md) for the frontend, Grok streamin
 
 Production Mac mini / Docker Compose notes live in [docs/home-server-deploy.md](docs/home-server-deploy.md), including `/api/health`, env-file permissions, backups, and Docker log checks.
 
-## Topics
+## Architecture & Topics / 아키텍처 및 주제
 
-[`hybrid-search`](https://github.com/topics/hybrid-search) · [`llm`](https://github.com/topics/llm) · [`nextjs`](https://github.com/topics/nextjs) · [`pgvector`](https://github.com/topics/pgvector) · [`postgresql`](https://github.com/topics/postgresql) · [`rag`](https://github.com/topics/rag) · [`rag-evaluation`](https://github.com/topics/rag-evaluation) · [`typescript`](https://github.com/topics/typescript) · [`portfolio`](https://github.com/topics/portfolio) · [`ai-chatbot`](https://github.com/topics/ai-chatbot) · [`openai`](https://github.com/topics/openai) · [`embeddings`](https://github.com/topics/embeddings) · [`vector-search`](https://github.com/topics/vector-search) · [`semantic-search`](https://github.com/topics/semantic-search) · [`full-stack`](https://github.com/topics/full-stack) · [`chatbot`](https://github.com/topics/chatbot)
+**Architecture / 아키텍처**<br>
+[`retrieval-augmented-generation`](https://github.com/topics/retrieval-augmented-generation) · [`hybrid-retrieval`](https://github.com/topics/hybrid-retrieval) · [`semantic-routing`](https://github.com/topics/semantic-routing) · [`provider-failover`](https://github.com/topics/provider-failover) · [`cache-aside`](https://github.com/topics/cache-aside) · [`rate-limiting`](https://github.com/topics/rate-limiting) · [`server-sent-events`](https://github.com/topics/server-sent-events) · [`adapter-pattern`](https://github.com/topics/adapter-pattern) · [`background-sync`](https://github.com/topics/background-sync) · [`distributed-lock`](https://github.com/topics/distributed-lock) · [`deterministic-routing`](https://github.com/topics/deterministic-routing) · [`graceful-degradation`](https://github.com/topics/graceful-degradation)
+
+**Core technologies / 핵심 기술**<br>
+[`pgvector`](https://github.com/topics/pgvector) · [`notion-api`](https://github.com/topics/notion-api)
+
+**Project context / 프로젝트 맥락**<br>
+[`ai-chatbot`](https://github.com/topics/ai-chatbot) · [`chatbot`](https://github.com/topics/chatbot) · [`embeddings`](https://github.com/topics/embeddings) · [`full-stack`](https://github.com/topics/full-stack) · [`hybrid-search`](https://github.com/topics/hybrid-search) · [`llm`](https://github.com/topics/llm) · [`portfolio`](https://github.com/topics/portfolio) · [`rag`](https://github.com/topics/rag) · [`rag-evaluation`](https://github.com/topics/rag-evaluation) · [`semantic-search`](https://github.com/topics/semantic-search) · [`vector-search`](https://github.com/topics/vector-search)
+
+**Implementation stack / 구현 스택**<br>
+[`nextjs`](https://github.com/topics/nextjs) · [`openai`](https://github.com/topics/openai) · [`postgresql`](https://github.com/topics/postgresql) · [`typescript`](https://github.com/topics/typescript)
