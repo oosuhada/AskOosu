@@ -54,7 +54,7 @@ const stackGroups: StackGroup[] = [
     ],
   },
   {
-    label: 'App / Desktop / Extensions',
+    label: 'App / Extensions',
     skills: [
       { name: 'Flutter', firstSeen: '2024-11', timelineAt: '2024-09', repo: 'train_booking_app', path: 'pubspec.yaml', commit: 'cb5862f2eca1d34692cee87d712cfb1f3629b6f7' },
       { name: 'Riverpod', firstSeen: '2024-11', timelineAt: '2024-09', repo: 'flutter_riverpod_mvvm', path: 'pubspec.yaml', commit: '4790201b5324a54a569eed9456e42f6aef89c2f4' },
