@@ -5,8 +5,10 @@ import { useState } from 'react';
 
 type Skill = {
   name: string;
-  unlockedAt: number;
-  firstProject?: string;
+  firstSeen: `${number}-${number}`;
+  repo: string;
+  path: string;
+  commit: string;
 };
 
 type StackGroup = {
@@ -15,95 +17,97 @@ type StackGroup = {
 };
 
 const START_YEAR = 2024;
-const START_MONTH = 1;
-const MAX_MONTH = 31; // 2024-01 -> 2026-08
+const START_MONTH = 10;
+const END_YEAR = 2026;
+const END_MONTH = 8;
 
+function monthToOffset(year: number, month: number) {
+  return year * 12 + (month - 1) - (START_YEAR * 12 + (START_MONTH - 1));
+}
+
+function firstSeenOffset(firstSeen: Skill['firstSeen']) {
+  const [year, month] = firstSeen.split('-').map(Number);
+  return monthToOffset(year, month);
+}
+
+const MAX_MONTH = monthToOffset(END_YEAR, END_MONTH);
+
+// Dates below are the earliest public Git commit evidence found for each skill.
+// They mean "in use by this month", not necessarily "learned for the first time this month".
 const stackGroups: StackGroup[] = [
   {
     label: 'Languages',
     skills: [
-      { name: 'Python', unlockedAt: 12, firstProject: 'Python / AI studies' },
-      { name: 'TypeScript', unlockedAt: 6, firstProject: 'Web projects' },
-      { name: 'JavaScript', unlockedAt: 0, firstProject: 'Early web projects' },
-      { name: 'Dart', unlockedAt: 3, firstProject: 'Flutter apps' },
-      { name: 'Java', unlockedAt: 13, firstProject: 'Aigram' },
-      { name: 'Swift', unlockedAt: 25, firstProject: 'iBridge Studio' },
-      { name: 'SQL', unlockedAt: 10, firstProject: 'Full-stack projects' },
-      { name: 'HTML', unlockedAt: 0, firstProject: 'Early web projects' },
-      { name: 'CSS', unlockedAt: 0, firstProject: 'Early web projects' },
+      { name: 'Dart', firstSeen: '2024-10', repo: 'shoppingmall_console', path: 'shoppingmall_main.dart', commit: '691b820a473bf89487c5dbc732afec9ccefca528' },
+      { name: 'JavaScript', firstSeen: '2025-06', repo: 'portfolio', path: 'repository root', commit: '4490db6bfdea28082f2dad7f87710c97d0a6a81b' },
+      { name: 'HTML', firstSeen: '2025-06', repo: 'portfolio', path: 'repository root', commit: '4490db6bfdea28082f2dad7f87710c97d0a6a81b' },
+      { name: 'CSS', firstSeen: '2025-06', repo: 'portfolio', path: 'repository root', commit: '4490db6bfdea28082f2dad7f87710c97d0a6a81b' },
+      { name: 'Python', firstSeen: '2026-03', repo: 'Flai', path: 'sdk/python/pyproject.toml', commit: '4460b429fcf4827b3a92d8db1298ef26776a72e7' },
+      { name: 'TypeScript', firstSeen: '2026-03', repo: 'Flai', path: 'sdk/js/src/index.ts', commit: 'd9c2c9e54489e348d4a22728086d64bc2a0d85b5' },
+      { name: 'Java', firstSeen: '2026-04', repo: 'instagram-project', path: 'backend/build.gradle', commit: '2fd1ea806e3addbb83a3614cb41264f3ee877baa' },
+      { name: 'Swift', firstSeen: '2026-05', repo: 'iBridge-Studio', path: 'apps/primary-macos/Package.swift', commit: '0b9ccde5ec048307adffcc8bd05a638da9e2aa81' },
     ],
   },
   {
     label: 'Web / Frontend',
     skills: [
-      { name: 'React', unlockedAt: 5, firstProject: 'Web projects' },
-      { name: 'Next.js', unlockedAt: 8, firstProject: 'Portfolio / AI apps' },
-      { name: 'Vite', unlockedAt: 4, firstProject: 'Frontend projects' },
-      { name: 'Tailwind CSS', unlockedAt: 5, firstProject: 'Web projects' },
-      { name: 'React Admin', unlockedAt: 19, firstProject: 'Lingo' },
-      { name: 'Framer Motion', unlockedAt: 18, firstProject: 'Interactive web UI' },
-      { name: 'Three.js', unlockedAt: 20, firstProject: 'Interactive web UI' },
+      { name: 'Three.js', firstSeen: '2025-06', repo: 'portfolio', path: 'lab/javascript/3d/3dBlob/index.html', commit: '7eebcd31b36f4cd8a447cb6d4dc650975167c379' },
+      { name: 'React', firstSeen: '2026-04', repo: 'Flai', path: 'website/package.json', commit: '515f29c5d4197d50dd403992917927becc2df90b' },
+      { name: 'Next.js', firstSeen: '2026-04', repo: 'Flai', path: 'website/package.json', commit: '515f29c5d4197d50dd403992917927becc2df90b' },
+      { name: 'Tailwind CSS', firstSeen: '2026-04', repo: 'instagram-project', path: 'frontend/package.json', commit: 'f6075cfd0b8cdb552c9a45de1d1f17fc41f1595b' },
+      { name: 'Framer Motion', firstSeen: '2026-04', repo: 'instagram-project', path: 'frontend/package.json', commit: 'f6075cfd0b8cdb552c9a45de1d1f17fc41f1595b' },
+      { name: 'Vite', firstSeen: '2026-04', repo: 'Aigram', path: 'package.json', commit: 'ebdb6455b3f812f5db8d5feaac6eb4316121e982' },
+      { name: 'React Admin', firstSeen: '2026-05', repo: 'Lingo', path: 'package.json', commit: '6e6f227f4e533167cf4a84bf26bf3fd235439a3e' },
     ],
   },
   {
     label: 'App / Desktop / Extensions',
     skills: [
-      { name: 'Flutter', unlockedAt: 3, firstProject: 'Flutter apps' },
-      { name: 'Riverpod', unlockedAt: 4, firstProject: 'Flutter apps' },
-      { name: 'GoRouter', unlockedAt: 4, firstProject: 'Flutter apps' },
-      { name: 'Firebase', unlockedAt: 2, firstProject: 'Mobile / web apps' },
-      { name: 'Firestore', unlockedAt: 2, firstProject: 'Mobile / web apps' },
-      { name: 'Swift / macOS', unlockedAt: 25, firstProject: 'iBridge Studio' },
-      { name: 'ScreenCaptureKit', unlockedAt: 26, firstProject: 'iBridge Studio' },
-      { name: 'VS Code Extension API', unlockedAt: 28, firstProject: 'GitAnimals for VS Code' },
-      { name: 'Chrome Extensions', unlockedAt: 27, firstProject: 'Algolog' },
+      { name: 'Flutter', firstSeen: '2024-11', repo: 'train_booking_app', path: 'pubspec.yaml', commit: 'cb5862f2eca1d34692cee87d712cfb1f3629b6f7' },
+      { name: 'Riverpod', firstSeen: '2024-11', repo: 'flutter_riverpod_mvvm', path: 'pubspec.yaml', commit: '4790201b5324a54a569eed9456e42f6aef89c2f4' },
+      { name: 'Firebase', firstSeen: '2024-12', repo: 'flutter_firebase_blog_app', path: 'pubspec.yaml', commit: '5b7ecdabb4118aec3adca005b9a14424d4f6b1a7' },
+      { name: 'Firestore', firstSeen: '2024-12', repo: 'flutter_firebase_blog_app', path: 'pubspec.yaml', commit: '5b7ecdabb4118aec3adca005b9a14424d4f6b1a7' },
+      { name: 'GoRouter', firstSeen: '2025-01', repo: 'flutter_nomad_market_v1.2', path: 'pubspec.yaml', commit: '724698f5c5a4d3fcf99c5f141cfab1e2243eb018' },
+      { name: 'Chrome Extensions', firstSeen: '2026-04', repo: 'codetestlog-extension', path: 'manifest.json', commit: 'd8f93685c3b5e668bfcc4a992d15f8a9bbf0934b' },
+      { name: 'Swift / macOS', firstSeen: '2026-05', repo: 'iBridge-Studio', path: 'apps/primary-macos/Package.swift', commit: '0b9ccde5ec048307adffcc8bd05a638da9e2aa81' },
+      { name: 'ScreenCaptureKit', firstSeen: '2026-05', repo: 'iBridge-Studio', path: 'apps/primary-macos/Package.swift', commit: '0b9ccde5ec048307adffcc8bd05a638da9e2aa81' },
+      { name: 'VS Code Extension API', firstSeen: '2026-05', repo: 'gitanimals-vscode', path: 'package.json', commit: 'f4ce7fff342b50bca6162f08722e36ad423e1813' },
     ],
   },
   {
     label: 'Backend / API',
     skills: [
-      { name: 'FastAPI', unlockedAt: 16, firstProject: 'AI / data apps' },
-      { name: 'Spring Boot', unlockedAt: 13, firstProject: 'Aigram' },
-      { name: 'Node.js', unlockedAt: 6, firstProject: 'Web projects' },
-      { name: 'SQLAlchemy', unlockedAt: 17, firstProject: 'Python backend projects' },
-      { name: 'Drizzle ORM', unlockedAt: 19, firstProject: 'Lingo' },
-      { name: 'Pydantic', unlockedAt: 18, firstProject: 'FastAPI projects' },
-      { name: 'WebSocket', unlockedAt: 20, firstProject: 'Realtime app experiments' },
+      { name: 'Node.js', firstSeen: '2025-06', repo: 'ezair.ai', path: 'backend/package.json', commit: 'a6ea2813aa8371d970fbffbaf7886df7435e26df' },
+      { name: 'Express', firstSeen: '2025-06', repo: 'ezair.ai', path: 'backend/package.json', commit: 'a6ea2813aa8371d970fbffbaf7886df7435e26df' },
+      { name: 'Pydantic', firstSeen: '2026-03', repo: 'Flai', path: 'sdk/python/pyproject.toml', commit: '4460b429fcf4827b3a92d8db1298ef26776a72e7' },
+      { name: 'Spring Boot', firstSeen: '2026-04', repo: 'instagram-project', path: 'backend/build.gradle', commit: '2fd1ea806e3addbb83a3614cb41264f3ee877baa' },
+      { name: 'Meilisearch', firstSeen: '2026-04', repo: 'instagram-project', path: 'backend/build.gradle', commit: '8ed1ec64f7ed889d902953edf656ed840df7116e' },
+      { name: 'FastAPI', firstSeen: '2026-04', repo: 'webtoon-ai-translate', path: 'backend/requirements.txt', commit: '469e6b62b841402baa513eb1b732d9039f0c2539' },
+      { name: 'SQLAlchemy', firstSeen: '2026-04', repo: 'webtoon-ai-translate', path: 'backend/requirements.txt', commit: '469e6b62b841402baa513eb1b732d9039f0c2539' },
+      { name: 'Drizzle ORM', firstSeen: '2026-05', repo: 'Lingo', path: 'package.json', commit: '6e6f227f4e533167cf4a84bf26bf3fd235439a3e' },
     ],
   },
   {
     label: 'AI / ML',
     skills: [
-      { name: 'LLM', unlockedAt: 14, firstProject: 'AI projects' },
-      { name: 'RAG', unlockedAt: 18, firstProject: 'RAG experiments' },
-      { name: 'Agentic Workflows', unlockedAt: 25, firstProject: 'Agentic Ontology Dashboard' },
-      { name: 'LangChain', unlockedAt: 18, firstProject: 'LangChain practice' },
-      { name: 'LangGraph', unlockedAt: 27, firstProject: 'Agentic systems' },
-      { name: 'LlamaIndex', unlockedAt: 24, firstProject: 'Knowledge / graph experiments' },
-      { name: 'Embeddings / Vector Search', unlockedAt: 19, firstProject: 'RAG projects' },
-      { name: 'Prompt Engineering', unlockedAt: 14, firstProject: 'LLM projects' },
-      { name: 'Fine-tuning', unlockedAt: 23, firstProject: 'Modeling studies' },
-      { name: 'Reinforcement Learning', unlockedAt: 22, firstProject: 'ML studies' },
-      { name: 'Machine Learning', unlockedAt: 15, firstProject: 'Colab modeling studies' },
-      { name: 'Google Colab', unlockedAt: 15, firstProject: 'ML studies' },
-      { name: 'Jupyter', unlockedAt: 15, firstProject: 'ML / data studies' },
-      { name: 'Vertex AI / Gemini', unlockedAt: 20, firstProject: 'AI projects' },
-      { name: 'OpenAI API', unlockedAt: 14, firstProject: 'LLM projects' },
-      { name: 'Groq', unlockedAt: 21, firstProject: 'AI projects' },
+      { name: 'Groq', firstSeen: '2026-04', repo: 'webtoon-ai-translate', path: 'backend/requirements.txt', commit: '469e6b62b841402baa513eb1b732d9039f0c2539' },
+      { name: 'OpenAI API', firstSeen: '2026-05', repo: 'AskOosu', path: 'package.json', commit: '744ecd925afdcf1dcb82f5eb2e4e8a3b13d879a6' },
+      { name: 'RAG', firstSeen: '2026-05', repo: 'AskOosu', path: 'src/lib/rag', commit: '7855017b768a5ebe6be71b3d07c07fc9944b84b4' },
+      { name: 'Embeddings / Vector Search', firstSeen: '2026-05', repo: 'AskOosu', path: 'src/lib/rag', commit: '7cb5c2539c6490c2eb2983a22a7dc6ddaff9f9ce' },
+      { name: 'Vertex AI / Gemini', firstSeen: '2026-05', repo: 'AskOosu', path: 'package.json', commit: 'da67abea59b81d34bb5d37dce7966d885f339bcb' },
+      { name: 'LangChain', firstSeen: '2026-06', repo: 'kosa-langchain-practice', path: 'langchain/requirements.txt', commit: '53f12e2410d26e8c7846a6e3ff8715e0da7668cf' },
+      { name: 'Agentic Workflows', firstSeen: '2026-08', repo: 'agentic-ontology-dashboard', path: 'api/pyproject.toml', commit: '47eefeb2c5576fc01b1d474c429b95a68bf9b80e' },
     ],
   },
   {
     label: 'Data / Knowledge',
     skills: [
-      { name: 'Data Modeling', unlockedAt: 12, firstProject: 'Backend / data studies' },
-      { name: 'Ontology', unlockedAt: 26, firstProject: 'Agentic Ontology Dashboard' },
-      { name: 'Knowledge Graph', unlockedAt: 25, firstProject: 'Text-to-Cypher Factory RCA' },
-      { name: 'Text-to-Cypher', unlockedAt: 26, firstProject: 'Text-to-Cypher Factory RCA' },
-      { name: 'Neo4j', unlockedAt: 25, firstProject: 'Text-to-Cypher Factory RCA' },
-      { name: 'PostgreSQL', unlockedAt: 12, firstProject: 'Full-stack projects' },
-      { name: 'pgvector', unlockedAt: 19, firstProject: 'RAG projects' },
-      { name: 'SQLite', unlockedAt: 8, firstProject: 'App / backend projects' },
-      { name: 'Meilisearch', unlockedAt: 13, firstProject: 'Aigram' },
+      { name: 'PostgreSQL', firstSeen: '2026-04', repo: 'instagram-project', path: 'backend/build.gradle', commit: '2fd1ea806e3addbb83a3614cb41264f3ee877baa' },
+      { name: 'pgvector', firstSeen: '2026-05', repo: 'AskOosu', path: 'src/lib/rag', commit: '7cb5c2539c6490c2eb2983a22a7dc6ddaff9f9ce' },
+      { name: 'Knowledge Graph', firstSeen: '2026-07', repo: 'text2cypher-factory-rca', path: 'backend/requirements.txt', commit: 'ea4c283f8dba3fe87fd91f67a1a8f8b78dd185a3' },
+      { name: 'Neo4j', firstSeen: '2026-07', repo: 'text2cypher-factory-rca', path: 'backend/requirements.txt', commit: 'ea4c283f8dba3fe87fd91f67a1a8f8b78dd185a3' },
+      { name: 'Text-to-Cypher', firstSeen: '2026-07', repo: 'text2cypher-factory-rca', path: 'backend/requirements.txt', commit: 'ea4c283f8dba3fe87fd91f67a1a8f8b78dd185a3' },
+      { name: 'Ontology', firstSeen: '2026-08', repo: 'agentic-ontology-dashboard', path: 'api/pyproject.toml', commit: '21b894d56883455a023c826a2f6cf010cfe3ba6f' },
     ],
   },
 ];
@@ -113,6 +117,10 @@ function monthToLabel(offset: number) {
   const year = Math.floor(absoluteMonth / 12);
   const month = (absoluteMonth % 12) + 1;
   return `${year}.${String(month).padStart(2, '0')}`;
+}
+
+function evidenceUrl(skill: Skill) {
+  return `https://github.com/oosuhada/${skill.repo}/commit/${skill.commit}`;
 }
 
 export default function StackTimelinePage() {
@@ -127,7 +135,7 @@ export default function StackTimelinePage() {
           <Link href="/" className="transition-colors hover:text-foreground">
             ← AskOosu
           </Link>
-          <span>README interaction prototype</span>
+          <span>GitHub-backed stack timeline</span>
         </div>
 
         <header className="border-b border-border pb-4">
@@ -141,21 +149,21 @@ export default function StackTimelinePage() {
         <section className="mb-8 rounded-xl border border-border bg-card p-5 sm:p-6">
           <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
             <div>
-              <p className="text-sm font-medium text-muted-foreground">STACK HISTORY</p>
+              <p className="text-sm font-medium text-muted-foreground">FIRST SEEN IN GITHUB</p>
               <p className="mt-1 text-2xl font-semibold tabular-nums">
                 {isNow ? 'NOW · ' : ''}{selectedLabel}
               </p>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <span className="inline-block h-2.5 w-2.5 rounded-full bg-foreground" />
-              visible at selected time
+              evidenced by selected time
               <span className="ml-2 inline-block h-2.5 w-2.5 rounded-full border border-border bg-muted opacity-30" />
-              future skill
+              not yet seen
             </div>
           </div>
 
           <label htmlFor="stack-time" className="sr-only">
-            Stack history date
+            GitHub stack history date
           </label>
           <input
             id="stack-time"
@@ -169,14 +177,16 @@ export default function StackTimelinePage() {
             style={{ accentColor: 'var(--foreground)' }}
           />
           <div className="mt-2 flex justify-between font-mono text-xs text-muted-foreground">
-            <span>2024.01</span>
-            <span>2025.01</span>
-            <span>2026.01</span>
+            <span>2024.10</span>
+            <span>2025.04</span>
+            <span>2025.10</span>
+            <span>2026.04</span>
             <span>NOW</span>
           </div>
 
-          <p className="mt-5 text-sm text-muted-foreground">
-            Drag the timeline. Chips stay in the same place; skills that had not appeared yet simply fade out.
+          <p className="mt-5 text-sm leading-6 text-muted-foreground">
+            Drag the timeline. Each date is based on the earliest public Git commit evidence found for that technology.
+            Learning may have started earlier than the first commit. Click a chip to inspect its evidence commit.
           </p>
         </section>
 
@@ -196,18 +206,21 @@ export default function StackTimelinePage() {
               <h2 className="font-semibold">{group.label}</h2>
               <div className="flex flex-wrap gap-2">
                 {group.skills.map((skill) => {
-                  const active = selectedMonth >= skill.unlockedAt;
+                  const active = selectedMonth >= firstSeenOffset(skill.firstSeen);
+                  const evidence = `${skill.name} · first seen ${skill.firstSeen.replace('-', '.')} · ${skill.repo}/${skill.path} · ${skill.commit.slice(0, 7)}`;
                   return (
-                    <span
+                    <a
                       key={skill.name}
-                      title={`${skill.name} · prototype unlock ${monthToLabel(skill.unlockedAt)}${skill.firstProject ? ` · ${skill.firstProject}` : ''}`}
-                      className="rounded-md border border-border bg-muted/45 px-2.5 py-1 font-mono text-[13px] transition-opacity duration-300 ease-out sm:text-sm"
-                      style={{
-                        opacity: active ? 1 : 0.13,
-                      }}
+                      href={evidenceUrl(skill)}
+                      target="_blank"
+                      rel="noreferrer"
+                      title={evidence}
+                      aria-label={`${evidence}; open GitHub evidence commit`}
+                      className="rounded-md border border-border bg-muted/45 px-2.5 py-1 font-mono text-[13px] transition-opacity duration-300 ease-out hover:bg-muted sm:text-sm"
+                      style={{ opacity: active ? 1 : 0.13 }}
                     >
                       {skill.name}
-                    </span>
+                    </a>
                   );
                 })}
               </div>
@@ -216,7 +229,7 @@ export default function StackTimelinePage() {
         </section>
 
         <p className="mt-5 text-xs leading-5 text-muted-foreground">
-          Prototype chronology only — the interaction is the test. If this UI is kept, unlock dates can be rebuilt from repository history before publishing it as portfolio evidence.
+          Evidence rule: earliest public commit currently found in oosuhada repositories or preserved imported Git history. Unverified skills are intentionally omitted rather than assigned an estimated date.
         </p>
       </article>
     </div>
