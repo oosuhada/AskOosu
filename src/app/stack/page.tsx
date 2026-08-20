@@ -17,12 +17,11 @@ type StackGroup = {
   skills: Skill[];
 };
 
-const timelineMilestones = ['2024-09', '2025-03', '2026-03', '2026-05', '2026-07', 'NOW'] as const;
+const timelineMilestones = ['2024-09', '2025-03', '2026-03', '2026-05', '2026-07', '2026-08'] as const;
 type TimelineMilestone = (typeof timelineMilestones)[number];
 const MAX_STEP = timelineMilestones.length - 1;
 
 function timelineOffset(timelineAt: TimelineMilestone) {
-  if (timelineAt === 'NOW') return MAX_STEP;
   return timelineMilestones.indexOf(timelineAt);
 }
 
@@ -107,7 +106,7 @@ const stackGroups: StackGroup[] = [
 ];
 
 function milestoneLabel(milestone: TimelineMilestone) {
-  return milestone === 'NOW' ? 'NOW · 2026.08' : milestone.replace('-', '.');
+  return milestone.replace('-', '.');
 }
 
 function evidenceUrl(skill: Skill) {
@@ -172,7 +171,7 @@ export default function StackTimelinePage() {
             <span>2026.03</span>
             <span>2026.05</span>
             <span>2026.07</span>
-            <span>NOW</span>
+            <span>2026.08</span>
           </div>
 
           <p className="mt-5 text-sm leading-6 text-muted-foreground">
