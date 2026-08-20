@@ -1,0 +1,455 @@
+---
+title: "ChatGPT + DevSpace 긴 대화가 RAM을 먹어치울 때, Tampermonkey로 버텨낸 기록"
+date: 2026-08-20
+tags: ["ChatGPT", "DevSpace", "Tampermonkey", "Brave", "macOS", "메모리최적화"]
+description: "ChatGPT 웹에 DevSpace를 연결해 어디서든 코딩 지시를 내리기 시작한 뒤, 길어진 대화 한 탭이 수 GB의 RAM과 swap을 잡아먹는 문제를 겪었다. 브라우저 변경과 여러 userscript 실험 끝에 오래된 DOM을 직접 비우는 RAM Saver v5.0에 정착한 과정을 기록한다."
+slug: "chatgpt-devspace-ram-saver"
+published: true
+---
+
+## TL;DR
+
+- ChatGPT 웹에 DevSpace를 연결하고 나니 노트북을 열지 않아도 스마트폰에서 코딩 작업을 지시하고 결과를 확인할 수 있어서 작업 방식이 꽤 많이 바뀌었다.
+- 대신 한 대화를 오래 이어 갈수록 브라우저 탭의 메모리가 계속 커졌다. 내 환경에서는 한 세션이 1GB를 넘기는 것은 흔했고, 길어진 세션은 3~4GB 이상까지 올라갔다.
+- Brave, Orion, Edge 같은 다른 브라우저와 메모리 절약 설정도 시험했지만 내가 원했던 수준의 차이는 없었다.
+- 저장해 둔 긴 대화 HTML을 확인했을 때 DevSpace 관련 iframe뿐 아니라 SVG, 이미지, 코드블록, 버튼 같은 DOM이 대량으로 남아 있었다.
+- 결국 Tampermonkey userscript에서 **DevSpace iframe을 비우고, 오래된 메시지를 가상화하고, 화면 밖 이미지·SVG·코드블록을 정리하는 방식**으로 방향을 바꿨고, 이 방식으로 실제 사용 중 메모리 압박을 관리할 수 있게 됐다.
+
+이 글은 일반적인 ChatGPT 성능 벤치마크가 아니라 **내가 실제로 ChatGPT 웹 + DevSpace를 장시간 사용하는 환경에서 겪은 문제와 해결 과정**을 기록한 글이다.
+
+---
+
+## DevSpace를 연결하고 나니 작업 방식이 정말 편해졌다
+
+ChatGPT 브라우저에 DevSpace를 연결한 뒤 가장 크게 달라진 것은 장소의 제약이었다.
+
+예전에는 코드를 수정하려면 결국 노트북을 열어야 했다. 하지만 DevSpace를 붙여 두고 나서는 출퇴근 지하철에서도 스마트폰으로 작업을 지시할 수 있었다.
+
+예를 들면 이런 흐름이다.
+
+```text title="mobile-dev-workflow.txt"
+스마트폰에서 ChatGPT 열기
+        ↓
+작업 지시
+        ↓
+DevSpace가 집/사무실 Mac의 실제 저장소 접근
+        ↓
+코드 수정 / 테스트 / Git 작업
+        ↓
+스마트폰에서 결과 확인
+```
+
+노트북을 가방에서 꺼내지 않아도 된다는 것만으로도 생각보다 큰 차이가 있었다.
+
+특히 여러 저장소를 동시에 다루거나, CI 결과를 보고 후속 수정을 지시하거나, 이동 중에 간단한 검증을 맡길 때 편했다.
+
+그런데 대화를 오래 이어가기 시작하면서 다른 문제가 생겼다.
+
+## 문제는 대화가 길어질수록 브라우저 RAM이 너무 커진다는 것
+
+처음에는 그냥 "ChatGPT 웹이 조금 무겁네" 정도였다.
+
+그런데 한 세션에서 DevSpace 호출을 계속 쌓아가며 몇 시간씩 작업하니 상황이 달라졌다.
+
+내 환경에서는 ChatGPT 한 탭이 1GB를 넘어가는 일이 흔했고, 대화가 충분히 길어지면 **3~4GB 이상**을 잡아먹는 경우도 생겼다.
+
+메인 작업 머신으로 쓰던 MacBook Air는 RAM이 24GB였는데, 다른 앱을 함께 띄우고 긴 ChatGPT 세션 몇 개를 유지하면 **swap이 5GB 이상** 생기는 상황도 반복됐다.
+
+64GB RAM의 MacBook Pro로 옮기면 해결될 것 같았지만 그쪽에는 또 다른 문제가 있었다. PR 자동 리뷰를 위해 로컬 LLM을 함께 돌리고 있었기 때문에, 브라우저가 몇 GB씩 가져가는 것이 여전히 부담이었다.
+
+즉 단순히 "RAM이 많은 컴퓨터를 쓰면 된다"로 끝낼 문제가 아니었다.
+
+## Brave와 Orion으로 바꿔 봤지만 드라마틱하지 않았다
+
+처음에는 브라우저 엔진 문제라고 생각했다.
+
+검색하면서 Brave, Orion 같은 브라우저를 후보로 잡았다. Brave는 Chromium 계열이라 무거운 웹앱을 오래 돌릴 때 상대적으로 버티지 않을까 기대했고, Orion은 WebKit 기반의 가벼운 탭 관리가 장점이라고 해서 시험해 봤다. Edge에서도 같은 긴 대화를 열어 비교해 봤다.
+
+브라우저 자체의 메모리 절약 기능, 하드웨어 가속 설정 변경, 백그라운드 탭 정리 같은 것도 함께 시도했다.
+
+하지만 내 사용 패턴에서는 브라우저만 바꾼다고 문제가 사라지지는 않았다.
+
+긴 대화에 들어가면 결국 메모리가 크게 올라갔다.
+
+이때부터 "브라우저가 어떤 엔진인가"보다 **한 대화 안에 무엇이 계속 남아 있는가**를 보기 시작했다.
+
+## 저장된 대화 HTML을 보니 iframe만의 문제가 아니었다
+
+처음 Tampermonkey 스크립트를 만들 때는 DevSpace가 띄우는 iframe이 주범이라고 생각했다.
+
+그래서 초기 버전에서는 DevSpace나 workspace 관련 iframe을 찾아 `about:blank`로 바꾸고 내부를 비우는 방식부터 시도했다.
+
+그런데 저장한 긴 대화 HTML을 확인해 보니 한 시점에 다음처럼 많은 요소가 쌓여 있었다.
+
+| 요소 | 확인한 개수 |
+| --- | ---: |
+| iframe | 288 |
+| SVG | 734 |
+| 이미지 | 290 |
+| 코드블록 | 163 |
+| 버튼 | 1,293 |
+
+이 숫자는 ChatGPT의 일반적인 고정값이 아니다. **내가 길게 사용한 특정 세션을 저장해서 확인한 스냅샷**이다.
+
+중요했던 건 iframe 하나만 지운다고 끝날 구조가 아니었다는 점이다.
+
+툴 호출 결과, 아이콘 SVG, 이미지, syntax highlighting을 위한 수많은 `span`, 과거 메시지 DOM까지 한 페이지에 계속 남아 있었다.
+
+그래서 방향을 바꿨다.
+
+## v1.5 → v2.0 → v3.0, 그리고 결국 v5.0
+
+Tampermonkey 스크립트도 한 번에 완성된 것은 아니었다.
+
+처음에는 React 화면을 완전히 깨뜨리지 않으려고 DOM 노드를 무작정 `remove()`하는 대신 iframe의 `src`를 `about:blank`로 바꾸고 컨테이너 내부를 비우는 방식으로 시작했다.
+
+그 뒤에도 메모리가 충분히 내려가지 않아 더 공격적인 정리를 시도했고, 정리가 실제로 얼마나 일어나고 있는지 확인하려고 우측 하단에 카운터 뱃지도 붙였다.
+
+마지막에는 iframe만이 아니라 다음을 모두 대상으로 삼았다.
+
+- DevSpace / workspace 관련 iframe 비우기
+- 생각 블록과 툴 메시지 내부 비우기
+- 화면 밖 SVG 제거
+- 화면 밖 이미지 `src` 언로드
+- 화면 밖 코드블록의 syntax highlighting용 하위 `span` 제거
+- 오래된 메시지의 전체 DOM을 짧은 preview placeholder로 교체
+- 애니메이션과 transition 비활성화
+- MutationObserver로 새 DOM이 생길 때마다 다시 정리
+
+핵심은 마지막 항목 중 **오래된 메시지 가상화**였다.
+
+최근 메시지 몇 개만 온전하게 남기고, 이미 화면 위로 지나간 오래된 대화는 내용 전체를 들고 있지 않게 만드는 방식이다.
+
+## 최종적으로 정착한 ChatGPT RAM Saver v5.0
+
+아래가 마지막에 정착해서 사용한 버전이다.
+
+```javascript title="chatgpt-ram-saver-v5.user.js"
+// ==UserScript==
+// @name         ChatGPT RAM Saver v5.0 (Total Memory Purge)
+// @namespace    http://tampermonkey.net
+// @version      5.0
+// @description  iframe뿐 아니라 SVG, 이미지, 코드블록, 이벤트리스너, 애니메이션까지 전부 정리하여 ChatGPT RAM을 극한까지 절약합니다.
+// @author       You
+// @match        https://chatgpt.com/*
+// @grant        none
+// @run-at       document-end
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    // ─── 상태 ───
+    let stats = { iframes: 0, svgs: 0, imgs: 0, codeblocks: 0, toolmsgs: 0, thoughts: 0 };
+    let isProcessing = false;
+    const KEEP_LAST_N_MESSAGES = 4; // 최근 N개 메시지만 풀 DOM 유지
+
+    // ─── 1. CSS 주입: 애니메이션 전체 비활성화 + GPU 메모리 절약 ───
+    const injectCSS = () => {
+        if (document.getElementById('ram-saver-css')) return;
+        const style = document.createElement('style');
+        style.id = 'ram-saver-css';
+        style.textContent = `
+            /* 숨길 요소 */
+            div[data-testid="thought-block"],
+            span.group\\/tool-message {
+                display: none !important;
+                height: 0 !important;
+                overflow: hidden !important;
+            }
+
+            /* 모든 CSS 애니메이션/트랜지션 비활성화 → GPU 메모리 절약 */
+            *, *::before, *::after {
+                animation-duration: 0s !important;
+                animation-delay: 0s !important;
+                transition-duration: 0s !important;
+                transition-delay: 0s !important;
+            }
+
+            /* 로딩 shimmer 비활성화 */
+            .loading-results-shimmer {
+                display: none !important;
+                background: none !important;
+            }
+
+            /* 가상화된(비워진) 메시지 placeholder */
+            [data-virtualized="true"] {
+                min-height: 40px;
+                max-height: 40px;
+                overflow: hidden !important;
+                opacity: 0.3;
+            }
+
+            /* 뱃지 */
+            #ram-saver-badge {
+                position: fixed !important;
+                z-index: 2147483647 !important;
+                bottom: 16px !important;
+                right: 16px !important;
+                padding: 6px 10px !important;
+                background: rgba(0,0,0,0.8) !important;
+                color: #00FF88 !important;
+                border-radius: 8px !important;
+                font: 11px/1.4 'SF Mono', Menlo, monospace !important;
+                pointer-events: none !important;
+                white-space: pre-line !important;
+                box-shadow: 0 2px 12px rgba(0,0,0,0.4) !important;
+                display: block !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+            }
+        `;
+        (document.head || document.documentElement).appendChild(style);
+    };
+
+    // ─── 2. UI 뱃지 ───
+    const updateBadge = () => {
+        let b = document.getElementById('ram-saver-badge');
+        if (!b) {
+            b = document.createElement('div');
+            b.id = 'ram-saver-badge';
+            document.documentElement.appendChild(b);
+        }
+        const total = Object.values(stats).reduce((a, c) => a + c, 0);
+        b.textContent = `🧹 RAM Saver v5.0\niframe:${stats.iframes} svg:${stats.svgs} img:${stats.imgs}\ncode:${stats.codeblocks} tool:${stats.toolmsgs} think:${stats.thoughts}\n총 정리: ${total}개`;
+    };
+
+    // ─── 3. iframe 청소 ───
+    const purgeIframes = () => {
+        document.querySelectorAll('iframe:not([data-purged="true"])').forEach(frame => {
+            const t = (frame.getAttribute('title') || '').toLowerCase();
+            const s = (frame.getAttribute('src') || '').toLowerCase();
+
+            // 시스템 필수 iframe 보호 (display:none인 숨겨진 인증용)
+            if (frame.style.display === 'none' && !t && !s.includes('devspace')) return;
+
+            const isTarget = t.includes('devspace') || t.includes('ui://') ||
+                             t.includes('workspace') || s.includes('devspace') ||
+                             s.includes('workspace-app') || s.includes('saved_resource');
+
+            if (isTarget) {
+                try { frame.contentWindow && frame.contentWindow.stop(); } catch(e) {}
+                frame.removeAttribute('src');
+                frame.removeAttribute('srcdoc');
+                frame.src = 'about:blank';
+                frame.setAttribute('data-purged', 'true');
+
+                const wrapper = frame.closest('.no-scrollbar') ||
+                                frame.closest('[class*="overflow-hidden"]') ||
+                                frame.parentElement;
+                if (wrapper && wrapper !== document.body) {
+                    wrapper.innerHTML = '';
+                    wrapper.style.cssText = 'display:none!important;height:0!important;';
+                }
+                stats.iframes++;
+            }
+        });
+    };
+
+    // ─── 4. 화면 밖 SVG 제거 ───
+    const purgeSVGs = () => {
+        // 대화 영역 안의 SVG만 대상 (사이드바/입력창 SVG는 보호)
+        const chatArea = document.querySelector('[class*="react-scroll-to-bottom"]') ||
+                         document.querySelector('main');
+        if (!chatArea) return;
+
+        chatArea.querySelectorAll('svg:not([data-purged="true"])').forEach(svg => {
+            // 화면 밖에 있는 SVG만 제거
+            const rect = svg.getBoundingClientRect();
+            if (rect.bottom < -200 || rect.top > window.innerHeight + 200) {
+                // 부모에 빈 placeholder 남기고 SVG 제거
+                svg.setAttribute('data-purged', 'true');
+                svg.innerHTML = '';
+                svg.style.display = 'none';
+                stats.svgs++;
+            }
+        });
+    };
+
+    // ─── 5. 화면 밖 이미지 언로드 ───
+    const purgeImages = () => {
+        const chatArea = document.querySelector('[class*="react-scroll-to-bottom"]') ||
+                         document.querySelector('main');
+        if (!chatArea) return;
+
+        chatArea.querySelectorAll('img:not([data-purged="true"])').forEach(img => {
+            const rect = img.getBoundingClientRect();
+            if (rect.bottom < -300 || rect.top > window.innerHeight + 300) {
+                if (img.src && !img.getAttribute('data-original-src')) {
+                    img.setAttribute('data-original-src', img.src);
+                }
+                img.removeAttribute('src');
+                img.removeAttribute('srcset');
+                img.setAttribute('data-purged', 'true');
+                img.style.cssText = 'height:20px!important;width:20px!important;';
+                stats.imgs++;
+            }
+        });
+    };
+
+    // ─── 6. 코드블록 구문 강조 제거 (span 노드 대량 절약) ───
+    const simplifyCodeBlocks = () => {
+        const chatArea = document.querySelector('[class*="react-scroll-to-bottom"]') ||
+                         document.querySelector('main');
+        if (!chatArea) return;
+
+        chatArea.querySelectorAll('pre:not([data-simplified="true"])').forEach(pre => {
+            const rect = pre.getBoundingClientRect();
+            // 화면 밖의 코드블록만 단순화
+            if (rect.bottom < -200 || rect.top > window.innerHeight + 200) {
+                const codeEl = pre.querySelector('code');
+                if (codeEl) {
+                    const plainText = codeEl.textContent; // span 다 벗기고 순수 텍스트만
+                    codeEl.innerHTML = '';
+                    codeEl.textContent = plainText;
+                }
+                pre.setAttribute('data-simplified', 'true');
+                stats.codeblocks++;
+            }
+        });
+    };
+
+    // ─── 7. 생각 블록 & 툴 메시지 비우기 ───
+    const purgeThoughtsAndTools = () => {
+        document.querySelectorAll('div[data-testid="thought-block"]:not([data-purged="true"])').forEach(el => {
+            el.innerHTML = '';
+            el.setAttribute('data-purged', 'true');
+            stats.thoughts++;
+        });
+        document.querySelectorAll('span.group\\/tool-message:not([data-purged="true"])').forEach(el => {
+            el.innerHTML = '';
+            el.setAttribute('data-purged', 'true');
+            stats.toolmsgs++;
+        });
+    };
+
+    // ─── 8. 오래된 메시지 가상화 (핵심!) ───
+    const virtualizeOldMessages = () => {
+        const messages = document.querySelectorAll('[data-message-id]:not([data-virtualized="true"])');
+        if (messages.length <= KEEP_LAST_N_MESSAGES) return;
+
+        // 최근 N개를 제외한 오래된 메시지의 내부를 비움
+        const toVirtualize = Array.from(messages).slice(0, messages.length - KEEP_LAST_N_MESSAGES);
+        toVirtualize.forEach(msg => {
+            const rect = msg.getBoundingClientRect();
+            // 화면 밖에 있을 때만 가상화
+            if (rect.bottom < -100) {
+                // 텍스트 요약만 남기고 내부 DOM 비우기
+                const role = msg.getAttribute('data-message-author-role') || 'unknown';
+                const preview = msg.textContent.substring(0, 80).trim();
+                msg.innerHTML = `<div style="padding:8px;color:#888;font-size:11px;">[${role}] ${preview}...</div>`;
+                msg.setAttribute('data-virtualized', 'true');
+            }
+        });
+    };
+
+    // ─── 메인 청소 함수 ───
+    const fullPurge = () => {
+        if (isProcessing) return;
+        isProcessing = true;
+        try {
+            purgeIframes();
+            purgeThoughtsAndTools();
+            purgeSVGs();
+            purgeImages();
+            simplifyCodeBlocks();
+            virtualizeOldMessages();
+            updateBadge();
+        } finally {
+            isProcessing = false;
+        }
+    };
+
+    // ─── MutationObserver (디바운스) ───
+    let timer = null;
+    const observer = new MutationObserver((muts) => {
+        if (muts.every(m => m.target.id === 'ram-saver-badge' || m.target.id === 'ram-saver-css')) return;
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(fullPurge, 400);
+    });
+
+    // ─── 부팅 ───
+    injectCSS();
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+
+    // 초기 실행 (페이지 로딩 직후 시차를 두고 3회)
+    setTimeout(fullPurge, 500);
+    setTimeout(fullPurge, 2000);
+    setTimeout(fullPurge, 5000);
+
+    // 백업: 5초마다 정기 청소 + 뱃지 복구
+    setInterval(() => {
+        fullPurge();
+        updateBadge();
+    }, 5000);
+
+    console.log('🚀 [ChatGPT RAM Saver v5.0] Total Memory Purge 가동!');
+})();
+```
+
+## 왜 이 방식이 효과가 있었나
+
+내 경우에는 브라우저를 바꾸는 것보다 **길어진 대화의 과거 UI를 계속 온전한 DOM으로 유지하지 않는 것**이 훨씬 직접적인 접근이었다.
+
+특히 DevSpace처럼 한 번의 대화에서 툴 호출이 많이 발생하는 사용 패턴에서는 단순 텍스트만 쌓이는 것이 아니다.
+
+각 호출의 UI, 아이콘, 상태 표시, 코드 결과, iframe, syntax highlighting 구조까지 함께 쌓일 수 있다.
+
+v5.0은 "브라우저 메모리 관리가 더 잘 되기를 기다리는 것" 대신, 내가 다시 볼 가능성이 낮은 과거 화면의 DOM을 아예 줄여 버린다.
+
+최근 네 개 메시지만 전체 DOM으로 유지하도록 한 것도 이 때문이다.
+
+```javascript title="important-setting.js"
+const KEEP_LAST_N_MESSAGES = 4;
+```
+
+이 숫자는 정답이 아니다. 과거 대화를 자주 위로 스크롤해서 확인한다면 8이나 12처럼 늘리는 편이 낫다.
+
+나는 장시간 코딩 세션에서 "지금 진행 중인 최근 문맥"을 보는 경우가 대부분이라 4로 두었다.
+
+## 대신 꽤 공격적인 스크립트다
+
+이 스크립트에는 분명한 대가가 있다.
+
+오래된 메시지의 내부 DOM을 직접 비우기 때문에, 위로 스크롤했을 때 원래의 완전한 메시지 UI를 그대로 다시 볼 수 없다. 이미지와 SVG도 unload하거나 비워 버리고, 코드블록의 syntax highlighting도 제거한다.
+
+또 ChatGPT 웹의 내부 `data-testid`, class 이름, 메시지 DOM 구조를 직접 참조한다. ChatGPT UI가 변경되면 selector가 더 이상 맞지 않거나 일부 기능이 깨질 수 있다.
+
+그래서 이 스크립트는 다음 전제로 쓰고 있다.
+
+1. 중요한 과거 대화는 필요하면 페이지를 새로고침하거나 별도로 기록한다.
+2. UI가 이상해지면 Tampermonkey 스크립트를 먼저 끄고 확인한다.
+3. ChatGPT 화면 구조가 바뀌면 selector를 다시 점검한다.
+4. 로그인·인증처럼 정체를 확실히 모르는 iframe은 무조건 삭제하지 않는다.
+
+즉 "모든 사람에게 추천하는 일반 최적화"라기보다, **한 세션에서 DevSpace 툴 호출을 아주 많이 쌓는 내 작업 방식에 맞춘 강제 가상화 스크립트**에 가깝다.
+
+## 결국 새 대화를 자주 여는 것이 가장 단순한 해결책이기도 하다
+
+이 과정에서 얻은 결론이 하나 더 있다.
+
+스크립트 없이 가장 확실하게 가벼운 상태를 유지하려면 한 세션을 끝없이 이어 가지 않는 것이 좋다.
+
+문제가 명확히 끝났다면 다음 작업은 새 대화에서 시작하고, 필요한 컨텍스트는 저장소의 문서나 Git 커밋, PR 설명에 남기는 방식이 훨씬 건강하다.
+
+하지만 실제 작업에서는 한 흐름을 끊기 어려울 때가 있다.
+
+특히 수정 → 테스트 → CI → 리뷰 → 재수정 과정을 한 대화에서 계속 이어갈 때는 세션을 유지하는 편이 편하다.
+
+그럴 때 이 userscript가 일종의 안전장치가 됐다.
+
+## 지금의 결론
+
+DevSpace를 ChatGPT에 연결한 장점은 포기하고 싶지 않았다.
+
+스마트폰에서 실제 개발 머신의 코드를 다루고, 출퇴근 중에도 작업을 이어갈 수 있다는 편리함은 너무 컸다.
+
+문제는 그 편리함을 오래 사용했을 때 브라우저 한 탭이 몇 GB씩 커지는 것이었다.
+
+Brave나 Orion으로 옮기는 것만으로는 내 환경에서 충분하지 않았다. 결국 내가 정착한 방법은 브라우저 선택이 아니라 **오래된 ChatGPT 화면을 적극적으로 버리는 것**이었다.
+
+Tampermonkey로 여러 버전을 만들며 실패하다가, iframe뿐 아니라 과거 메시지 DOM 전체까지 정리하는 v5.0으로 넘어간 뒤에야 24GB MacBook Air에서도 장시간 세션의 RAM과 swap 압박을 이전보다 관리 가능한 수준으로 유지할 수 있었다.
+
+아마 ChatGPT 웹의 DOM 구조는 계속 바뀔 것이다. 그래서 이 코드도 영구적인 해결책은 아니다.
+
+그래도 "AI 에이전트와 브라우저를 하루 종일 붙여 쓰는 시대에는 브라우저 탭 자체도 개발 환경의 일부로 관리해야 한다"는 점은 꽤 오래 남을 것 같다.
