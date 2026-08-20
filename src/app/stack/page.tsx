@@ -201,10 +201,9 @@ export default function StackTimelinePage() {
                     <span
                       key={skill.name}
                       title={`${skill.name} · prototype unlock ${monthToLabel(skill.unlockedAt)}${skill.firstProject ? ` · ${skill.firstProject}` : ''}`}
-                      className="rounded-md border border-border bg-muted/45 px-2.5 py-1 font-mono text-[13px] transition-[opacity,transform] duration-300 ease-out sm:text-sm"
+                      className="rounded-md border border-border bg-muted/45 px-2.5 py-1 font-mono text-[13px] transition-opacity duration-300 ease-out sm:text-sm"
                       style={{
                         opacity: active ? 1 : 0.13,
-                        transform: active ? 'translateY(0)' : 'translateY(1px)',
                       }}
                     >
                       {skill.name}
