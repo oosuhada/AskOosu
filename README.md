@@ -6,6 +6,19 @@ Instead of asking visitors to scroll through a static profile, AskOosu lets them
 
 ![AskOosu desktop preview](public/images/projects/askoosu-cover-desktop.webp)
 
+## 한국어 요약
+
+AskOosu는 정적인 이력서형 포트폴리오 대신, 방문자가 자연어로 질문하면 프로젝트·기술·작업 방식·연락처·근거 자료를 찾아 답변하는 **대화형 AI 포트폴리오**입니다.
+
+- **현재 배포:** [oosu.dev](https://oosu.dev)
+- **Frontend:** Next.js App Router, TypeScript
+- **AI:** AI SDK 기반 다중 provider, FAQ/cache-first routing, 선택적 Vertex/Groq/xAI 경로
+- **Knowledge:** Notion 동기화, 로컬 문서, PostgreSQL/pgvector 기반 RAG
+- **Operations:** Mac mini + Docker Compose + Cloudflare 기반 self-hosted 운영
+- **목표:** 포트폴리오 내용을 단순 나열하지 않고, 질문 의도에 맞는 근거를 찾아 설명하는 사용자 경험을 만드는 것
+
+현재 저장소는 실제 배포에 사용되는 코드와 공개 가능한 운영 문서를 함께 관리하며, 민감한 키와 환경값은 저장소 밖에서 관리합니다.
+
 ## Live Portfolio Links
 
 - Current portfolio: [https://oosu.dev](https://oosu.dev)
