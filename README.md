@@ -1,8 +1,8 @@
 # AskOosu
 
-AskOosu is Oosu Jang's 2026 AI-connected portfolio, deployed at [oosu.dev](https://oosu.dev).
+AskOosu is Oosu Jang's AI portfolio rebuilt around a simple idea: instead of making visitors search through everything I built, let them ask what they want to know and retrieve the evidence behind the answer.
 
-Instead of asking visitors to scroll through a static profile, AskOosu lets them ask natural language questions and receive grounded answers about Oosu's projects, skills, working style, contact links, and portfolio evidence.
+Instead of a static showcase, AskOosu lets visitors ask natural language questions and receive grounded answers about projects, skills, working style, and portfolio evidence.
 
 ## 왜 만들었나 / Why I built it
 
