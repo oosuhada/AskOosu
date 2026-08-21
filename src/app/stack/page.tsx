@@ -17,7 +17,7 @@ type StackGroup = {
   skills: Skill[];
 };
 
-const timelineMilestones = ['2024-09', '2025-03', '2026-03', '2026-05', '2026-07', '2026-08'] as const;
+const timelineMilestones = ['2024-09', '2025-03', '2026-03', '2026-05', '2026-07'] as const;
 type TimelineMilestone = (typeof timelineMilestones)[number];
 const MAX_STEP = timelineMilestones.length - 1;
 
@@ -171,7 +171,6 @@ export default function StackTimelinePage() {
             <span>2026.03</span>
             <span>2026.05</span>
             <span>2026.07</span>
-            <span>2026.08</span>
           </div>
 
           <p className="mt-5 text-sm leading-6 text-muted-foreground">
