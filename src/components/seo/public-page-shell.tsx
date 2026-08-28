@@ -1,10 +1,14 @@
 import Link from 'next/link';
 import { ArrowUpRight } from 'lucide-react';
+import {
+  LocalizedText,
+  type LocalizedValue,
+} from '@/components/localized-content';
 
 type PublicPageShellProps = {
-  eyebrow: string;
-  title: string;
-  summary: string;
+  eyebrow: LocalizedValue;
+  title: LocalizedValue;
+  summary: LocalizedValue;
   children: React.ReactNode;
 };
 
@@ -25,48 +29,54 @@ export function PublicPageShell({
             aria-label="Public pages"
             className="flex items-center gap-3 text-sm"
           >
-            <Link className="text-muted-foreground hover:text-foreground" href="/ask">
+            <Link
+              className="text-muted-foreground hover:text-foreground"
+              href="/ask"
+            >
               AskOosu
             </Link>
             <Link
               className="text-muted-foreground hover:text-foreground"
               href="/projects"
             >
-              Projects
+              <LocalizedText ko="프로젝트" en="Projects" />
             </Link>
             <Link
               className="text-muted-foreground hover:text-foreground"
               href="/faq/ai-competitiveness"
             >
-              FAQ
+              <LocalizedText ko="FAQ" en="FAQ" />
             </Link>
           </nav>
         </div>
       </header>
       <main>
         <section className="mx-auto w-full max-w-5xl px-5 py-16 sm:py-20">
-          <p className="text-muted-foreground text-sm font-semibold uppercase tracking-[0.16em]">
-            {eyebrow}
+          <p className="text-muted-foreground text-sm font-semibold tracking-[0.16em] uppercase">
+            <LocalizedText {...eyebrow} />
           </p>
           <h1 className="mt-5 max-w-4xl text-4xl leading-tight font-bold sm:text-6xl">
-            {title}
+            <LocalizedText {...title} />
           </h1>
           <p className="text-muted-foreground mt-6 max-w-3xl text-lg leading-8">
-            {summary}
+            <LocalizedText {...summary} />
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
               href="/chat"
               className="bg-foreground text-background inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-semibold"
             >
-              Ask Oosu
+              <LocalizedText ko="우수에게 질문하기" en="Ask Oosu" />
               <ArrowUpRight size={16} />
             </Link>
             <Link
               href="/projects/askoosu"
               className="border-border hover:bg-muted inline-flex items-center gap-2 rounded-full border px-5 py-3 text-sm font-semibold transition-colors"
             >
-              View AskOosu project
+              <LocalizedText
+                ko="AskOosu 프로젝트 보기"
+                en="View AskOosu project"
+              />
               <ArrowUpRight size={16} />
             </Link>
           </div>
@@ -81,12 +91,14 @@ export function TextSection({
   title,
   children,
 }: {
-  title: string;
+  title: LocalizedValue;
   children: React.ReactNode;
 }) {
   return (
     <section className="border-border/60 border-t py-10">
-      <h2 className="text-2xl font-bold">{title}</h2>
+      <h2 className="text-2xl font-bold">
+        <LocalizedText {...title} />
+      </h2>
       <div className="text-muted-foreground mt-5 space-y-4 text-base leading-7">
         {children}
       </div>
@@ -97,17 +109,21 @@ export function TextSection({
 export function FaqList({
   items,
 }: {
-  items: Array<{ question: string; answer: string }>;
+  items: Array<{ question: LocalizedValue; answer: LocalizedValue }>;
 }) {
   return (
     <div className="mt-6 grid gap-4">
       {items.map((item) => (
         <article
-          key={item.question}
+          key={String(item.question.en)}
           className="border-border/70 bg-card rounded-lg border p-5"
         >
-          <h3 className="text-lg font-semibold">{item.question}</h3>
-          <p className="text-muted-foreground mt-3 leading-7">{item.answer}</p>
+          <h3 className="text-lg font-semibold">
+            <LocalizedText {...item.question} />
+          </h3>
+          <p className="text-muted-foreground mt-3 leading-7">
+            <LocalizedText {...item.answer} />
+          </p>
         </article>
       ))}
     </div>

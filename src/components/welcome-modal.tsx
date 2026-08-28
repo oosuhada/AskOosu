@@ -35,7 +35,7 @@ export default function WelcomeModal({ trigger }: WelcomeModalProps) {
       variant="ghost"
       className="border-border/60 bg-background/45 hover:bg-background/70 h-auto w-auto cursor-pointer rounded-full border px-3 py-1.5 shadow-none backdrop-blur-lg focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
     >
-      <Link href="/intro">
+      <Link href={`/intro?lang=${language}&theme=${theme}`}>
         <span className="text-sm font-semibold">AskOosu</span>
         <span className="bg-border h-3.5 w-px" aria-hidden />
         <span className="text-muted-foreground text-xs font-medium">

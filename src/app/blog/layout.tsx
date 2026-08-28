@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { LocalizedText } from '@/components/localized-content';
 
 export default function BlogLayout({
   children,
@@ -32,7 +33,7 @@ export default function BlogLayout({
               className="text-muted-foreground hover:text-foreground"
               href="/projects"
             >
-              Projects
+              <LocalizedText ko="프로젝트" en="Projects" />
             </Link>
           </nav>
         </div>
@@ -40,9 +41,17 @@ export default function BlogLayout({
       {children}
       <footer className="border-border/60 border-t">
         <div className="text-muted-foreground mx-auto flex w-full max-w-5xl flex-col gap-2 px-5 py-8 text-sm sm:flex-row sm:items-center sm:justify-between">
-          <p>Development notes by 우수하다(oosuhada).</p>
+          <p>
+            <LocalizedText
+              ko="우수하다(oosuhada)의 개발 기록."
+              en="Development notes by Jang Oosu (oosuhada)."
+            />
+          </p>
           <Link href="/" className="font-medium underline underline-offset-4">
-            포트폴리오 보기 → oosu.dev
+            <LocalizedText
+              ko="포트폴리오 보기 → oosu.dev"
+              en="View portfolio → oosu.dev"
+            />
           </Link>
         </div>
       </footer>

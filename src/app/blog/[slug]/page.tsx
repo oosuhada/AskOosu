@@ -5,6 +5,7 @@ import { MDXRemote } from 'next-mdx-remote/rsc';
 import { ArrowLeft, ArrowUpRight } from 'lucide-react';
 import { BlogCTA } from '@/components/blog/blog-cta';
 import { BlogAuthorBio, BlogAuthorByline } from '@/components/blog/blog-author';
+import { LocalizedText } from '@/components/localized-content';
 import { blogAuthor } from '@/lib/blog-author';
 import { CodeCopyEnhancer } from '@/components/blog/code-copy-enhancer';
 import {
@@ -120,7 +121,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           className="text-muted-foreground hover:text-foreground inline-flex items-center gap-2 text-sm font-semibold"
         >
           <ArrowLeft size={16} />
-          Blog
+          <LocalizedText ko="블로그" en="Blog" />
         </Link>
         <header className="mt-8 border-b pb-8">
           <p className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
@@ -160,7 +161,9 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         </div>
         {relatedPosts.length > 0 ? (
           <section className="border-border mt-14 border-t pt-8">
-            <h2 className="text-2xl font-bold">관련 포스트</h2>
+            <h2 className="text-2xl font-bold">
+              <LocalizedText ko="관련 포스트" en="Related posts" />
+            </h2>
             <div className="mt-5 grid gap-3">
               {relatedPosts.map((relatedPost) => (
                 <Link
