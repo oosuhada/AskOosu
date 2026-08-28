@@ -595,7 +595,11 @@ function hasMultiplePortfolioTopicSignals(question: string) {
     /(연락|이메일|깃허브|링크드인|contact|email|github|linkedin)/i,
   ].filter((pattern) => pattern.test(question)).length;
 
-  return topicSignals >= 2;
+  // Two related portfolio signals are common in one coherent question
+  // (for example, "which projects show growth as a developer?"). Requiring
+  // three distinct topic families keeps those questions single-intent while
+  // still flagging genuinely compound requests.
+  return topicSignals >= 3;
 }
 
 function addModifier(

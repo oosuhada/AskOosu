@@ -10,7 +10,14 @@
     "start": "next start",
     "lint": "next lint",
     "faq:eval": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/eval-rag.ts --faq-only",
-    "rag:eval": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/eval-rag.ts"
+    "rag:eval": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/eval-rag.ts",
+    "test:unit": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --loader ./tests/alias-loader.mjs --test tests/unit/*.test.ts",
+    "test:routing": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --loader ./tests/alias-loader.mjs --test tests/routing/*.test.ts",
+    "test:rag": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --loader ./tests/alias-loader.mjs --test tests/integration/*.test.ts",
+    "test:e2e": "node tests/run-with-app.mjs browser",
+    "test:ai": "node tests/run-with-app.mjs ai",
+    "test:deterministic": "corepack pnpm test:unit && corepack pnpm test:routing",
+    "test:ci": "corepack pnpm test:deterministic && corepack pnpm test:rag"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
