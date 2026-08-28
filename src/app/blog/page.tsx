@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowUpRight, Rss } from 'lucide-react';
 import { BlogAuthorBio } from '@/components/blog/blog-author';
+import { LocalizedText } from '@/components/localized-content';
 import { blogAuthor } from '@/lib/blog-author';
 import { getAllPosts } from '@/lib/blog';
 
@@ -61,11 +62,16 @@ export default async function BlogPage() {
               Blog
             </p>
             <h1 className="mt-5 max-w-3xl text-4xl leading-tight font-bold sm:text-6xl">
-              문제를 고친 흔적을 검색 가능한 글로 남깁니다.
+              <LocalizedText
+                ko="문제를 고친 흔적을 검색 가능한 글로 남깁니다."
+                en="Searchable notes from problems solved in practice."
+              />
             </h1>
             <p className="text-muted-foreground mt-6 max-w-2xl text-lg leading-8">
-              macOS 자동화, AI 제품 개발, 배포 운영처럼 실제로 겪은 문제와 해결
-              과정을 기록합니다.
+              <LocalizedText
+                ko="macOS 자동화, AI 제품 개발, 배포 운영처럼 실제로 겪은 문제와 해결 과정을 기록합니다."
+                en="Practical problem-solving notes on macOS automation, AI product development, deployment, and operations."
+              />
             </p>
           </div>
           <Link
@@ -120,7 +126,10 @@ export default async function BlogPage() {
           </div>
         ) : (
           <p className="text-muted-foreground">
-            아직 공개된 포스트가 없습니다.
+            <LocalizedText
+              ko="아직 공개된 포스트가 없습니다."
+              en="No posts have been published yet."
+            />
           </p>
         )}
       </section>

@@ -1,5 +1,7 @@
 'use client';
 
+/* eslint-disable react-hooks/set-state-in-effect -- browser preferences are hydrated after mount to avoid server/client language mismatches */
+
 import {
   detectBrowserLanguage,
   detectSystemTheme,
@@ -50,6 +52,15 @@ export function useDisplayPreferences() {
     explicitPreferences.theme ?? storedPreferences.theme ?? systemTheme;
   const language =
     explicitPreferences.lang ?? storedPreferences.lang ?? browserLanguage;
+
+  useEffect(() => {
+    if (!explicitPreferences.lang && !explicitPreferences.theme) return;
+
+    writeStoredDisplayPreferences({
+      ...readStoredDisplayPreferences(),
+      ...explicitPreferences,
+    });
+  }, [explicitPreferences]);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', theme === 'dark');
