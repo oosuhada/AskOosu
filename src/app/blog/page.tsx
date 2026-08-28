@@ -1,19 +1,59 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowUpRight, Rss } from 'lucide-react';
+import { BlogAuthorBio } from '@/components/blog/blog-author';
+import { blogAuthor } from '@/lib/blog-author';
 import { getAllPosts } from '@/lib/blog';
 
 export const metadata: Metadata = {
-  title: 'Blog | oosu.dev',
-  description: '개발하면서 겪은 문제 해결 과정을 기록합니다.',
+  title: '우수하다(oosuhada) 개발 블로그 | 장우수',
+  description: blogAuthor.description,
+  authors: [{ name: blogAuthor.name, url: blogAuthor.url }],
   alternates: { canonical: 'https://oosu.dev/blog' },
+  openGraph: {
+    type: 'website',
+    locale: 'ko_KR',
+    url: 'https://oosu.dev/blog',
+    siteName: 'Oosu.dev',
+    title: '우수하다(oosuhada) 개발 블로그 | 장우수',
+    description: blogAuthor.description,
+  },
 };
 
 export default async function BlogPage() {
   const posts = await getAllPosts();
+  const blogJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Blog',
+    '@id': 'https://oosu.dev/blog#blog',
+    name: '우수하다(oosuhada) 개발 블로그',
+    url: 'https://oosu.dev/blog',
+    description: blogAuthor.description,
+    inLanguage: 'ko-KR',
+    author: {
+      '@type': 'Person',
+      '@id': 'https://oosu.dev/#person',
+      name: blogAuthor.name,
+      alternateName: ['Oosu', 'oosuhada', '우수하다'],
+      url: blogAuthor.url,
+    },
+    blogPost: posts.map((post) => ({
+      '@type': 'BlogPosting',
+      headline: post.title,
+      url: `https://oosu.dev/blog/${post.slug}`,
+      datePublished: post.date,
+      author: { '@id': 'https://oosu.dev/#person' },
+    })),
+  };
 
   return (
     <main>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(blogJsonLd).replace(/</g, '\\u003c'),
+        }}
+      />
       <section className="mx-auto w-full max-w-5xl px-5 py-14 sm:py-20">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -24,7 +64,8 @@ export default async function BlogPage() {
               문제를 고친 흔적을 검색 가능한 글로 남깁니다.
             </h1>
             <p className="text-muted-foreground mt-6 max-w-2xl text-lg leading-8">
-              macOS 자동화, AI 제품 개발, 배포 운영처럼 실제로 겪은 문제와 해결 과정을 기록합니다.
+              macOS 자동화, AI 제품 개발, 배포 운영처럼 실제로 겪은 문제와 해결
+              과정을 기록합니다.
             </p>
           </div>
           <Link
@@ -37,12 +78,15 @@ export default async function BlogPage() {
         </div>
       </section>
       <section className="mx-auto w-full max-w-5xl px-5 pb-20">
+        <div className="mb-10">
+          <BlogAuthorBio compact />
+        </div>
         {posts.length > 0 ? (
           <div className="grid gap-4">
             {posts.map((post) => (
               <article
                 key={post.slug}
-                className="border-border/70 bg-card rounded-lg border p-5 transition-colors hover:border-foreground/30"
+                className="border-border/70 bg-card hover:border-foreground/30 rounded-lg border p-5 transition-colors"
               >
                 <Link href={`/blog/${post.slug}`} className="block">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -52,7 +96,10 @@ export default async function BlogPage() {
                       </p>
                       <h2 className="mt-2 text-2xl font-bold">{post.title}</h2>
                     </div>
-                    <ArrowUpRight className="mt-1 hidden shrink-0 sm:block" size={20} />
+                    <ArrowUpRight
+                      className="mt-1 hidden shrink-0 sm:block"
+                      size={20}
+                    />
                   </div>
                   <p className="text-muted-foreground mt-4 leading-7">
                     {post.description}
@@ -72,7 +119,9 @@ export default async function BlogPage() {
             ))}
           </div>
         ) : (
-          <p className="text-muted-foreground">아직 공개된 포스트가 없습니다.</p>
+          <p className="text-muted-foreground">
+            아직 공개된 포스트가 없습니다.
+          </p>
         )}
       </section>
     </main>

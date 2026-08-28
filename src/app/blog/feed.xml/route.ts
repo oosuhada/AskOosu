@@ -1,19 +1,20 @@
 import { Feed } from 'feed';
+import { blogAuthor } from '@/lib/blog-author';
 import { getAllPosts } from '@/lib/blog';
 
 export async function GET() {
   const posts = (await getAllPosts()).slice(0, 20);
   const feed = new Feed({
     title: 'oosu.dev Blog',
-    description: '개발하면서 겪은 문제 해결 과정을 기록합니다.',
+    description: blogAuthor.description,
     id: 'https://oosu.dev/blog',
     link: 'https://oosu.dev/blog',
     language: 'ko',
     favicon: 'https://oosu.dev/favicon.svg',
-    copyright: `All rights reserved ${new Date().getFullYear()}, Gabriel`,
+    copyright: `All rights reserved ${new Date().getFullYear()}, ${blogAuthor.name}`,
     author: {
-      name: 'Gabriel',
-      link: 'https://oosu.dev',
+      name: `${blogAuthor.name} (${blogAuthor.displayName})`,
+      link: blogAuthor.url,
     },
   });
 
@@ -25,6 +26,12 @@ export async function GET() {
       link: url,
       description: post.description,
       date: new Date(post.date),
+      author: [
+        {
+          name: `${blogAuthor.name} (${blogAuthor.displayName})`,
+          link: blogAuthor.url,
+        },
+      ],
       category: post.tags.map((tag) => ({ name: tag })),
     });
   });

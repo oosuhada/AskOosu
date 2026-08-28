@@ -1,5 +1,6 @@
 import { PreferenceSync } from '@/components/preference-sync';
 import { VisitorTracker } from '@/components/analytics/visitor-tracker';
+import { SiteJsonLd } from '@/components/seo/json-ld';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
 import {
@@ -81,12 +82,12 @@ export const metadata: Metadata = {
   keywords: seoKeywords,
   authors: [
     {
-      name: 'Oosu Jang',
-      url: 'https://github.com/oosuhada',
+      name: '장우수 (Oosu)',
+      url: '/about',
     },
   ],
-  creator: 'Oosu Jang',
-  publisher: 'Oosu Jang',
+  creator: '장우수 (Oosu)',
+  publisher: '장우수 (Oosu)',
   alternates: {
     canonical: '/',
   },
@@ -172,6 +173,7 @@ export default function RootLayout({
           inter.variable
         )}
       >
+        <SiteJsonLd />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
