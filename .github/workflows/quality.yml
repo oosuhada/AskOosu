@@ -1,0 +1,74 @@
+name: Quality gates
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-and-rag:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: askoosu_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d askoosu_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/askoosu_test
+      ASKOOSU_RAG_STORE: postgres
+      ASKOOSU_RAG_RETRIEVAL: lexical
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Install dependencies
+        run: corepack pnpm install --frozen-lockfile
+
+      - name: Unit tests
+        run: corepack pnpm test:unit
+
+      - name: Routing contract tests
+        run: corepack pnpm test:routing
+
+      - name: PostgreSQL and pgvector RAG integration tests
+        run: corepack pnpm test:rag
+
+      - name: Production build
+        run: corepack pnpm build
+
+      - name: Set up Chrome
+        id: chrome
+        uses: browser-actions/setup-chrome@v1
+
+      - name: Browser E2E
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.chrome-path }}
+        run: corepack pnpm test:e2e
+
+      - name: FAQ and failure-mode AI evals
+        run: corepack pnpm test:ai

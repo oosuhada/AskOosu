@@ -101,6 +101,26 @@ export async function routeFaqIntent({
     return emptyRouteResult('empty_question', 'token_fallback');
   }
 
+  const resumeLinkMatch = getUnavailableResumeLinkMatch({
+    question: normalizedQuestion,
+    language,
+  });
+
+  if (resumeLinkMatch) {
+    return {
+      answer: resumeLinkMatch,
+      matchedFaqId: resumeLinkMatch.id,
+      intentScore: 0.99,
+      intentSecondScore: 0,
+      intentMargin: 0.99,
+      routeDecision: {
+        mode: 'direct',
+        reason: 'resume_link_phrase_match',
+        router: 'token_fallback',
+      },
+    };
+  }
+
   const candidateProfileMatch = getCandidateProfileMatch({
     question: normalizedQuestion,
     language,
@@ -116,6 +136,26 @@ export async function routeFaqIntent({
       routeDecision: {
         mode: 'direct',
         reason: 'candidate_profile_phrase_match',
+        router: 'token_fallback',
+      },
+    };
+  }
+
+  const portfolioCreatorMatch = getPortfolioCreatorMatch({
+    question: normalizedQuestion,
+    language,
+  });
+
+  if (portfolioCreatorMatch) {
+    return {
+      answer: portfolioCreatorMatch,
+      matchedFaqId: portfolioCreatorMatch.id,
+      intentScore: 0.99,
+      intentSecondScore: 0,
+      intentMargin: 0.99,
+      routeDecision: {
+        mode: 'direct',
+        reason: 'portfolio_creator_phrase_match',
         router: 'token_fallback',
       },
     };
@@ -272,6 +312,23 @@ export async function routeFaqIntent({
       reason: 'embedding_error',
     });
   }
+}
+
+function getUnavailableResumeLinkMatch({
+  question,
+  language,
+}: {
+  question: string;
+  language: ChatLanguage;
+}) {
+  if (
+    /(resume|cv).*(url|link|download|send|show)/i.test(question) ||
+    /(이력서|레주메).*(url|링크|다운로드|보내|줘|알려|바로)/i.test(question)
+  ) {
+    return findFaqAnswerById('faq.link.resume.default', language);
+  }
+
+  return null;
 }
 
 export function buildFaqCandidateText(answer: FaqAnswer) {
@@ -474,6 +531,24 @@ function getCandidateProfileMatch({
     )
   ) {
     return findFaqAnswerById('faq.profile.intro.default', language);
+  }
+
+  return null;
+}
+
+function getPortfolioCreatorMatch({
+  question,
+  language,
+}: {
+  question: string;
+  language: ChatLanguage;
+}) {
+  if (
+    /(?:포트폴리오오?|사이트|웹사이트|askoosu|ask\s+oosu).*(?:누가\s*(?:만들|개발)|만든\s*사람|제작자)|(?:누가\s*(?:만들|개발)|만든\s*사람|제작자).*(?:포트폴리오오?|사이트|웹사이트|askoosu|ask\s+oosu)|who\s+(?:made|built|created|developed).*(?:portfolio|site|askoosu)|(?:creator|developer).*(?:portfolio|site|askoosu)/i.test(
+      question
+    )
+  ) {
+    return findFaqAnswerById('faq.portfolio.creator.default', language);
   }
 
   return null;
