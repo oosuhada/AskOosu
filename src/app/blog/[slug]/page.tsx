@@ -4,8 +4,15 @@ import { notFound } from 'next/navigation';
 import { MDXRemote } from 'next-mdx-remote/rsc';
 import { ArrowLeft, ArrowUpRight } from 'lucide-react';
 import { BlogCTA } from '@/components/blog/blog-cta';
+import { BlogAuthorBio, BlogAuthorByline } from '@/components/blog/blog-author';
+import { blogAuthor } from '@/lib/blog-author';
 import { CodeCopyEnhancer } from '@/components/blog/code-copy-enhancer';
-import { getAllPosts, getPostBySlug, getRelatedPosts, mdxOptions } from '@/lib/blog';
+import {
+  getAllPosts,
+  getPostBySlug,
+  getRelatedPosts,
+  mdxOptions,
+} from '@/lib/blog';
 
 type BlogPostPageProps = {
   params: Promise<{ slug: string }>;
@@ -31,6 +38,7 @@ export async function generateMetadata({
   return {
     title: `${post.title} | oosu.dev`,
     description: post.description,
+    authors: [{ name: blogAuthor.name, url: blogAuthor.url }],
     openGraph: {
       title: post.title,
       description: post.description,
@@ -39,6 +47,15 @@ export async function generateMetadata({
       type: 'article',
       publishedTime: post.date,
       tags: post.tags,
+      authors: [blogAuthor.url],
+      images: [
+        {
+          url: 'https://oosu.dev/opengraph-image',
+          width: 1200,
+          height: 630,
+          alt: post.title,
+        },
+      ],
     },
     twitter: {
       card: 'summary_large_image',
@@ -62,21 +79,27 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   const relatedPosts = await getRelatedPosts(post);
   const jsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'TechArticle',
+    '@type': 'BlogPosting',
     headline: post.title,
     description: post.description,
     datePublished: post.date,
     dateModified: post.date,
     author: {
       '@type': 'Person',
-      name: 'Gabriel',
-      url: 'https://oosu.dev',
+      '@id': 'https://oosu.dev/#person',
+      name: blogAuthor.name,
+      alternateName: ['Oosu', 'oosuhada', '우수하다'],
+      url: blogAuthor.url,
     },
     publisher: {
       '@type': 'Person',
-      name: 'Gabriel',
-      url: 'https://oosu.dev',
+      '@id': 'https://oosu.dev/#person',
+      name: blogAuthor.name,
+      url: blogAuthor.url,
     },
+    image: 'https://oosu.dev/opengraph-image',
+    inLanguage: 'ko-KR',
+    keywords: post.tags.join(', '),
     mainEntityOfPage: {
       '@type': 'WebPage',
       '@id': `https://oosu.dev/blog/${post.slug}`,
@@ -100,8 +123,10 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           Blog
         </Link>
         <header className="mt-8 border-b pb-8">
-          <p className="text-muted-foreground text-sm">
+          <p className="text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
             <time dateTime={post.date}>{post.date}</time>
+            <span aria-hidden>·</span>
+            <BlogAuthorByline />
           </p>
           <h1 className="mt-4 text-4xl leading-tight font-bold sm:text-5xl">
             {post.title}
@@ -129,6 +154,9 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
             }}
           />
           <CodeCopyEnhancer />
+        </div>
+        <div className="mt-14">
+          <BlogAuthorBio />
         </div>
         {relatedPosts.length > 0 ? (
           <section className="border-border mt-14 border-t pt-8">

@@ -10,7 +10,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     url: absoluteUrl(route),
     lastModified: now,
     changeFrequency: route === '/' ? ('weekly' as const) : ('monthly' as const),
-    priority: route === '/' ? 1 : route === '/chat' || route === '/ask' ? 0.9 : route === '/blog' ? 0.8 : 0.7,
+    priority:
+      route === '/'
+        ? 1
+        : route === '/chat' || route === '/ask'
+          ? 0.9
+          : route === '/blog'
+            ? 0.8
+            : 0.7,
   }));
 
   const blogPosts = posts.map((post) => ({

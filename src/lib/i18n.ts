@@ -38,13 +38,13 @@ export const uiText = {
     feedback: '좋게 보셨다면 공유해 주세요. 피드백도 언제든 환영합니다.',
     contactMe: '연락하기',
     welcomeTitle: 'AskOosu 소개',
-    welcomeDescription: 'Oosu Jang의 AI-connected 포트폴리오',
+    welcomeDescription: '우수하다(oosuhada), 장우수의 AI-connected 포트폴리오',
     whatIsAskOosu: 'AskOosu는 무엇인가요?',
     whatIsAskOosuBody:
-      '우수에게 뭐든 물어보세요. 프로젝트가 궁금해도, 기술 스택이 궁금해도, 그냥 어떤 사람인지 궁금해도 — 스크롤 대신 대화로 알아가는 포트폴리오예요.',
+      '우수하다(oosuhada)라는 이름으로 활동하는 AI·풀스택 개발자 장우수에게 뭐든 물어보세요. 프로젝트가 궁금해도, 기술 스택이 궁금해도, 그냥 어떤 사람인지 궁금해도 — 스크롤 대신 대화로 알아가는 포트폴리오예요.',
     whyThisFormat: '왜 대화형 포트폴리오인가요?',
     whyThisFormatBody:
-      '2025년 Portfoli-Oh!에서 우수는 인터랙션과 프론트엔드로 자신을 소개했어요. AskOosu는 그 다음 챕터 — 프론트엔드, 백엔드, AI를 하나로 연결한 시스템을 포트폴리오 자체로 증명합니다.',
+      '2025년 Portfoli-Oh!에서 장우수는 우수하다(Oosu)라는 이름과 인터랙션, 프론트엔드로 자신을 소개했어요. AskOosu는 그 다음 챕터 — 프론트엔드, 백엔드, AI를 하나로 연결한 시스템을 포트폴리오 자체로 증명합니다.',
     visitorProcessQuestion: localizedQuestions.ko.Process,
     internalWikiQuestion: 'Notion API 기반 지식 연결 구조를 설명해줘',
     englishIntroQuestion: 'Can you introduce Oosu in English?',
@@ -129,10 +129,11 @@ export const uiText = {
     feedback: 'If this was useful, sharing and feedback are always welcome.',
     contactMe: 'Contact me',
     welcomeTitle: 'Welcome to AskOosu',
-    welcomeDescription: "Oosu Jang's AI-connected portfolio",
+    welcomeDescription:
+      'The AI-connected portfolio of Jang Oosu, who works as oosuhada',
     whatIsAskOosu: 'What is AskOosu?',
     whatIsAskOosuBody:
-      'Ask Oosu anything. Whether visitors are curious about projects, the tech stack, or the person behind the work, this portfolio lets them learn through conversation instead of scrolling.',
+      'Ask Jang Oosu anything. Working as oosuhada, he is an AI-connected fullstack developer. Whether visitors are curious about projects, the tech stack, or the person behind the work, this portfolio lets them learn through conversation instead of scrolling.',
     whyThisFormat: 'Why this format?',
     whyThisFormatBody:
       'In Portfoli-Oh! 2025, Oosu introduced himself through frontend interaction. AskOosu is the next chapter: a portfolio that proves frontend, backend, and AI can work together as one system.',
