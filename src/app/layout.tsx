@@ -1,4 +1,6 @@
 import { PreferenceSync } from '@/components/preference-sync';
+import { VisitorTracker } from '@/components/analytics/visitor-tracker';
+import { SiteJsonLd } from '@/components/seo/json-ld';
 import { ThemeProvider } from '@/components/theme-provider';
 import { Toaster } from '@/components/ui/sonner';
 import {
@@ -80,12 +82,12 @@ export const metadata: Metadata = {
   keywords: seoKeywords,
   authors: [
     {
-      name: 'Oosu Jang',
-      url: 'https://github.com/oosuhada',
+      name: '장우수 (Oosu)',
+      url: '/about',
     },
   ],
-  creator: 'Oosu Jang',
-  publisher: 'Oosu Jang',
+  creator: '장우수 (Oosu)',
+  publisher: '장우수 (Oosu)',
   alternates: {
     canonical: '/',
   },
@@ -126,11 +128,15 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       {
+        url: '/favicon.ico',
+        sizes: 'any',
+      },
+      {
         url: '/favicon.svg',
         sizes: 'any',
       },
     ],
-    shortcut: '/favicon.svg?v=2',
+    shortcut: '/favicon.ico',
     apple: '/apple-touch-icon.png?v=2',
   },
 };
@@ -156,6 +162,7 @@ export default function RootLayout({
   return (
     <html lang="ko" suppressHydrationWarning>
       <head>
+        <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/favicon.svg" sizes="any" />
         <script dangerouslySetInnerHTML={{ __html: preferenceInitScript }} />
       </head>
@@ -166,6 +173,7 @@ export default function RootLayout({
           inter.variable
         )}
       >
+        <SiteJsonLd />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -174,6 +182,7 @@ export default function RootLayout({
         >
           <Suspense fallback={null}>
             <PreferenceSync />
+            <VisitorTracker />
           </Suspense>
           <main className="flex min-h-screen flex-col">{children}</main>
           <Toaster />

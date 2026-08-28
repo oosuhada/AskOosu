@@ -14,6 +14,7 @@ import { buildChatHref } from '@/lib/navigation';
 import { useDisplayPreferences } from '@/lib/use-display-preferences';
 import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
+import Link from 'next/link';
 import { useState } from 'react';
 
 // Added a trigger prop to accept custom triggers
@@ -30,16 +31,18 @@ export default function WelcomeModal({ trigger }: WelcomeModalProps) {
   // Default trigger is the logo
   const defaultTrigger = (
     <Button
+      asChild
       variant="ghost"
       className="border-border/60 bg-background/45 hover:bg-background/70 h-auto w-auto cursor-pointer rounded-full border px-3 py-1.5 shadow-none backdrop-blur-lg focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
-      onClick={() => setIsOpen(true)}
     >
-      <span className="text-sm font-semibold">AskOosu</span>
-      <span className="bg-border h-3.5 w-px" aria-hidden />
-      <span className="text-muted-foreground text-xs font-medium">
-        {introLabel}
-      </span>
-      <span className="sr-only">{text.welcomeTitle}</span>
+      <Link href={`/intro?lang=${language}&theme=${theme}`}>
+        <span className="text-sm font-semibold">AskOosu</span>
+        <span className="bg-border h-3.5 w-px" aria-hidden />
+        <span className="text-muted-foreground text-xs font-medium">
+          {introLabel}
+        </span>
+        <span className="sr-only">{text.welcomeTitle}</span>
+      </Link>
     </Button>
   );
 

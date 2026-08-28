@@ -1,0 +1,1010 @@
+---
+title: "DevSpace 팀 온보딩: ChatGPT 웹에서 로컬 코드를 직접 다루기"
+date: 2026-08-13
+tags: ["DevSpace", "ChatGPT", "MCP", "ngrok", "Tailscale", "Cloudflare Tunnel", "팀협업"]
+description: "4명이 그대로 따라 할 수 있도록 DevSpace 설치부터 고정 HTTPS 주소, ChatGPT MCP 연결, 첫 저장소 테스트와 보안 규칙까지 10~15분 실전 절차로 정리한다."
+slug: "devspace-team-onboarding"
+published: true
+---
+
+## TL;DR
+
+- DevSpace는 ChatGPT가 내 컴퓨터의 실제 프로젝트 폴더를 읽고, 수정하고, 테스트 명령까지 실행하게 해 주는 self-hosted MCP 서버다.
+- DevSpace 자체가 Codex 사용량이나 ChatGPT 토큰 한도를 늘려 주는 것은 아니다. 대신 코드를 계속 복사해서 붙여넣는 대신 필요한 파일만 직접 읽게 할 수 있어서 컨텍스트 낭비와 작업 전환 비용을 줄이는 데 유용하다.
+- 내 Mac mini는 `127.0.0.1:7676`에서 DevSpace를 실행하고 `https://devspace.oosu.dev`라는 고정 Cloudflare Tunnel 주소를 붙여 사용하고 있다.
+- 개인 도메인이 없는 팀원은 **ngrok 무료 계정의 자동 할당 dev domain**을 기본 선택으로 추천한다. 계정에 할당된 `*.ngrok-free.app` 주소를 재사용할 수 있어서 집, 교육장, 카페처럼 네트워크가 바뀌어도 ChatGPT 쪽 MCP URL을 계속 바꿀 필요가 없다.
+- 이미 Tailscale을 쓰고 있다면 **Tailscale Funnel**도 좋은 대안이다. `machine-name.tailnet-name.ts.net` 형태의 예측 가능한 주소를 계속 사용할 수 있다.
+- Cloudflare Quick Tunnel은 계정이나 도메인 없이 바로 쓸 수 있지만 실행할 때마다 랜덤 `*.trycloudflare.com` 주소가 만들어지므로 이번 목적에는 적합하지 않다.
+
+이 글은 우리 4명 팀이 각자 자신의 컴퓨터에 DevSpace를 설치하고, ChatGPT 웹에서 실제 로컬 저장소를 직접 다루기 위한 팀 온보딩 문서다.
+
+Node와 Git이 이미 설치돼 있다면 10~15분을 목표로 한다.
+
+---
+
+## 먼저 중요한 것: DevSpace가 해결하는 문제와 해결하지 않는 문제
+
+현재 팀원들은 Codex Desktop으로 작업하면서 큰 저장소를 오래 다룰 때 사용량과 컨텍스트 압박을 자주 겪고 있다.
+
+DevSpace를 쓰는 이유를 여기서 정확히 구분해야 한다.
+
+DevSpace는 Codex 요금제의 사용량을 늘려 주거나 제한을 우회하는 도구가 아니다.
+
+대신 이런 작업을 줄여 준다.
+
+- 파일 내용을 매번 채팅에 붙여넣기
+- 저장소 구조를 매 세션 설명하기
+- AI가 수정한 코드를 다시 로컬에 복사하기
+- 테스트 명령을 사람이 대신 실행한 뒤 결과를 다시 붙여넣기
+- 병렬 작업 때문에 checkout이 꼬이는 문제
+
+연결이 끝난 뒤에는 ChatGPT가 승인된 프로젝트 폴더 안에서 필요한 파일을 직접 읽고, 검색하고, 수정하고, 테스트를 실행할 수 있다.
+
+즉 목표는 다음 구조다.
+
+```text title="architecture.txt"
+ChatGPT Web
+    ↓ HTTPS
+고정 공개 주소
+    ↓
+DevSpace MCP Server
+    ↓
+내가 허용한 로컬 프로젝트 폴더
+    ↓
+Git / 테스트 / 빌드 / 로컬 도구
+```
+
+---
+
+## 0. 시작 전에 ChatGPT 권한부터 확인하기
+
+설치보다 먼저 해야 할 일이 있다.
+
+2026년 8월 13일 기준 OpenAI 공식 안내에서는 **Developer mode와 full MCP 지원이 ChatGPT Business, Enterprise, Edu의 ChatGPT 웹에서 제공**되고 있다. Plugin Directory 자체는 더 넓은 플랜에서 보일 수 있지만, custom MCP를 만들고 실제 write/modify tool을 쓰는 권한은 플랜, 워크스페이스 설정, 사용자 역할에 따라 달라진다.
+
+제품 제공 범위와 UI는 베타 기간에 바뀔 수 있으므로 각자 계정에서 먼저 확인한다.
+
+### 왜 어떤 문서에는 Apps, 내 화면에는 Plugins라고 나오나?
+
+이 부분이 특히 헷갈린다.
+
+OpenAI는 **2026년 7월 9일 App Directory를 Plugin Directory로 변경**했다. 현재 Plugin은 workflow를 묶어 보여 주는 상위 단위이고, 실제 외부 MCP 서버에 연결되는 integration은 내부적으로 App으로 관리된다.
+
+그래서 다음 두 표현이 동시에 등장할 수 있다.
+
+```text title="plugin-vs-app.txt"
+현재 ChatGPT 화면
+Plugins / 새 플러그인
+
+OpenAI 공식 MCP 설정 문서
+Apps / Create
+```
+
+둘이 완전히 다른 기능이라는 뜻이 아니다. 우리 팀에서 실제로 DevSpace를 등록할 때는 **Plugins 메뉴의 새 플러그인 흐름**을 사용했고, 그 안에서 DevSpace MCP endpoint와 OAuth 인증을 연결했다.
+
+### Developer mode를 실제로 켜는 위치
+
+먼저 ChatGPT **웹**을 연다. 모바일 앱에서 설정하려고 하지 않는다.
+
+Business 워크스페이스의 관리자/소유자라면 다음 경로를 먼저 확인한다.
+
+```text title="chatgpt-menu.txt"
+Settings
+→ Apps
+→ Advanced Settings
+→ Developer mode
+```
+
+화면 구성에 따라 아래 custom app 생성 화면에 들어가면서 Developer mode를 활성화할 수도 있다.
+
+```text title="chatgpt-workspace-menu.txt"
+Workspace Settings
+→ Apps
+→ Create
+```
+
+Enterprise/Edu에서 일반 개발자 계정으로 사용하는 경우에는 관리자가 먼저 권한을 열어 줘야 한다.
+
+```text title="chatgpt-enterprise-admin.txt"
+관리자
+Workspace Settings
+→ Permissions & Roles
+→ Connected Data
+→ Developer mode / Create custom MCP connectors 허용
+```
+
+그다음 권한을 받은 사용자가 자신의 계정에서 켠다.
+
+```text title="chatgpt-enterprise-user.txt"
+사용자
+Settings
+→ Apps
+→ Advanced Settings
+→ Developer mode ON
+```
+
+메뉴가 안 보이면 DevSpace 설치 문제부터 의심하지 말고 먼저 **내 ChatGPT 플랜, 워크스페이스 역할, 관리자 정책**을 확인한다.
+
+쓰기 권한이 없는 계정에서는 DevSpace 설치 자체가 ChatGPT 플랜 제한을 우회해 주지 않는다.
+
+공식 안내:
+
+- [OpenAI - Developer mode and MCP apps in ChatGPT](https://help.openai.com/en/articles/12584461-developer-mode-and-full-mcp-connectors-in-chatgpt-beta)
+- [OpenAI - Plugins in ChatGPT and Codex](https://help.openai.com/en/articles/20001256-plugins-in-codexOpenAI)
+
+---
+
+## 1. 준비물 확인
+
+DevSpace 공식 요구사항은 다음과 같다.
+
+- Node `>=22.19 <27`
+- npm
+- Git
+- Bash
+- 외부에서 접근 가능한 HTTPS 주소
+
+macOS와 Linux는 일반적인 Bash 환경이면 된다.
+
+Windows는 PowerShell이나 `cmd.exe`만 있는 환경은 아직 지원 대상이 아니다. Git Bash, WSL, MSYS2, Cygwin Bash 중 하나를 준비한다. 가장 간단한 선택은 Git Bash다.
+
+먼저 확인한다.
+
+```bash title="terminal"
+node -v
+npm -v
+git --version
+bash --version
+```
+
+내 현재 Mac mini에서는 Node 24 계열과 DevSpace 1.0.7을 사용하고 있다.
+
+버전 숫자를 내 환경과 똑같이 맞출 필요는 없고 DevSpace 공식 범위 안이면 된다.
+
+---
+
+## 2. DevSpace 설치
+
+가장 단순한 설치 방법이다.
+
+```bash title="terminal"
+npm install -g @waishnav/devspace
+
+devspace --version
+```
+
+전역 설치가 싫다면 `npx`로도 사용할 수 있다.
+
+```bash title="terminal"
+npx @waishnav/devspace init
+npx @waishnav/devspace serve
+```
+
+이 글에서는 읽기 편하게 이후 명령을 `devspace` 기준으로 적는다.
+
+공식 문서:
+
+- [DevSpace Setup Guide](https://github.com/Waishnav/devspace/blob/main/docs/setup.md)
+
+---
+
+## 3. 제일 중요한 부분: 고정 HTTPS 주소 만들기
+
+처음 DevSpace를 쓸 때 내가 가장 불편했던 부분이 이 부분이었다.
+
+처음에는 임시 터널 주소를 사용했고, 집과 다른 장소를 오가거나 터널을 다시 띄울 때 주소가 달라졌다.
+
+DevSpace는 자신의 public URL을 기준으로 OAuth metadata와 Host allowlist를 만들기 때문에 공개 주소가 달라지면 설정과 인증 흐름을 다시 맞춰야 한다.
+
+그래서 지금 내 환경은 이렇게 고정해 두었다.
+
+```text title="my-current-devspace.txt"
+DevSpace local host: 127.0.0.1
+DevSpace local port: 7676
+Public base URL: https://devspace.oosu.dev
+
+Cloudflare Tunnel
+devspace.oosu.dev
+    → http://localhost:7676
+```
+
+이 방식의 장점은 집 Wi-Fi에서 교육장 Wi-Fi로 바뀌어 로컬 IP가 달라져도 외부에서 보는 주소는 계속 `devspace.oosu.dev`라는 것이다.
+
+하지만 팀원 모두가 개인 도메인을 가지고 있을 필요는 없다.
+
+### 추천 A. 개인 도메인이 없다면 ngrok 무료 dev domain
+
+우리 팀 기본값으로는 이 방법이 가장 간단하다.
+
+ngrok 무료 계정에는 자동으로 할당되는 dev domain 하나가 제공된다.
+
+예를 들면 이런 형태다.
+
+```text title="ngrok-domain.txt"
+https://example-name.ngrok-free.app
+```
+
+무료 플랜에서는 이름을 마음대로 고르거나 개인 도메인을 붙일 수는 없지만, 계정에 할당된 dev domain을 로컬 endpoint에 사용할 수 있다.
+
+### macOS
+
+```bash title="terminal"
+brew install ngrok
+
+ngrok config add-authtoken "<YOUR_NGROK_AUTHTOKEN>"
+
+ngrok http 7676
+```
+
+### Windows
+
+ngrok 공식 Windows 다운로드 페이지에서 Microsoft Store, WinGet, Scoop 중 하나로 설치한 뒤 Git Bash에서 다음을 실행한다.
+
+```bash title="git-bash"
+ngrok config add-authtoken "<YOUR_NGROK_AUTHTOKEN>"
+
+ngrok http 7676
+```
+
+처음 실행하면 다음처럼 HTTPS 주소가 출력된다.
+
+```text title="ngrok-output.txt"
+Forwarding
+https://example-name.ngrok-free.app
+→ http://localhost:7676
+```
+
+이 주소를 기억한다.
+
+중요한 포인트는 **DevSpace 설정에는 `/mcp`를 붙이지 않는 것**이다.
+
+```text title="correct-url.txt"
+DevSpace publicBaseUrl
+https://example-name.ngrok-free.app
+
+ChatGPT MCP endpoint
+https://example-name.ngrok-free.app/mcp
+```
+
+ngrok 무료 플랜 공식 설명:
+
+- [ngrok Free Plan Limits](https://ngrok.com/docs/pricing-limits/free-plan-limits)
+- [ngrok Share Localhost Quickstart](https://ngrok.com/docs/guides/share-localhost/quickstart)
+
+### 왜 Wi-Fi가 바뀌어도 괜찮나?
+
+ngrok agent는 집 공유기나 교육장 공유기에서 외부로 직접 포트를 여는 구조가 아니다.
+
+로컬 컴퓨터에서 ngrok cloud로 outbound 연결을 만들고, ngrok의 공개 주소가 그 연결을 `localhost:7676`으로 전달한다.
+
+따라서 네트워크가 바뀌었을 때 중요한 것은 로컬 IP 주소가 아니라 다음 두 가지다.
+
+- ngrok agent가 새 네트워크에서 인터넷에 다시 연결될 수 있는가
+- 같은 계정의 할당 dev domain을 계속 사용하는가
+
+이 두 조건을 만족하면 ChatGPT에 저장한 MCP URL은 그대로 둘 수 있다.
+
+### 컴퓨터 재부팅까지 자동 복구하고 싶다면
+
+ngrok은 macOS, Windows, Linux에서 OS background service로 설치할 수 있다.
+
+endpoint 설정을 `ngrok.yml`에 저장한 뒤 다음처럼 서비스로 등록할 수 있다.
+
+```bash title="terminal"
+ngrok service install --config /path/to/ngrok.yml
+ngrok service start
+```
+
+macOS에서는 `launchd`, Windows에서는 Windows Service로 등록된다.
+
+처음 팀 온보딩에서는 수동 `ngrok http 7676`으로 연결을 성공시킨 뒤, 필요할 때 background service까지 적용하는 것을 추천한다.
+
+공식 문서:
+
+- [ngrok Agent background service](https://ngrok.com/docs/agent)
+
+---
+
+## 4. 대안: 이미 Tailscale을 쓰고 있다면 Funnel
+
+Tailscale을 이미 설치해서 쓰는 팀원이라면 Funnel도 좋다.
+
+Funnel은 로컬 서비스를 인터넷에 HTTPS로 공개하면서 다음처럼 tailnet 기반 주소를 사용한다.
+
+```text title="tailscale-url.txt"
+https://my-mac.my-tailnet.ts.net
+```
+
+Tailscale 공식 문서에서도 Funnel DNS 이름을 predictable, stable한 주소로 설명한다.
+
+기본 흐름은 다음과 같다.
+
+```bash title="terminal"
+tailscale funnel 7676
+```
+
+환경에 따라 관리자 권한이 필요하면 다음처럼 실행한다.
+
+```bash title="terminal"
+sudo tailscale funnel 7676
+```
+
+출력 예시는 이런 형태다.
+
+```text title="tailscale-output.txt"
+Available on the internet:
+https://my-mac.my-tailnet.ts.net
+
+|-- / proxy http://127.0.0.1:7676
+```
+
+그다음 DevSpace에는 origin만 저장한다.
+
+```text title="tailscale-devspace.txt"
+publicBaseUrl
+https://my-mac.my-tailnet.ts.net
+
+ChatGPT endpoint
+https://my-mac.my-tailnet.ts.net/mcp
+```
+
+주의할 점도 있다.
+
+- Funnel은 MagicDNS와 HTTPS 설정이 필요하다.
+- Funnel용 tailnet policy 권한이 필요하다.
+- macOS는 Tailscale 배포 방식에 따라 CLI 사용 조건이 다르므로 공식 문서를 먼저 확인한다.
+
+공식 문서:
+
+- [Tailscale Funnel](https://tailscale.com/kb/1223/funnel)
+- [Tailscale Funnel examples](https://tailscale.com/docs/reference/examples/funnel)
+
+---
+
+## 5. Cloudflare Quick Tunnel은 왜 추천하지 않나?
+
+개인 도메인도 없고 계정도 만들기 싫다면 다음 명령으로 Cloudflare Quick Tunnel을 만들 수 있다.
+
+```bash title="terminal"
+cloudflared tunnel --url http://localhost:7676
+```
+
+문제는 주소다.
+
+```text title="quick-tunnel.txt"
+https://random-words.trycloudflare.com
+```
+
+Cloudflare 공식 문서상 Quick Tunnel은 실행할 때 랜덤 `*.trycloudflare.com` hostname을 만든다.
+
+프로세스를 새로 띄우면 URL이 달라질 수 있다.
+
+그러면 다음 값도 다시 맞춰야 한다.
+
+- DevSpace `publicBaseUrl`
+- ChatGPT custom MCP endpoint
+- 경우에 따라 OAuth 승인
+
+잠깐 테스트할 때는 매우 편하지만, 우리가 원하는 것은 "집에서도 교육장에서도 같은 ChatGPT MCP 연결을 계속 쓰는 것"이므로 팀 기본값으로는 맞지 않는다.
+
+공식 문서:
+
+- [Cloudflare Quick Tunnels](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/trycloudflare/)
+
+개인 도메인이 이미 있다면 내 환경처럼 Named Cloudflare Tunnel을 쓰는 것이 좋다.
+
+---
+
+## 6. DevSpace 초기화
+
+고정 HTTPS 주소를 만들었으면 이제 DevSpace를 초기화한다.
+
+```bash title="terminal"
+devspace init
+```
+
+설정 중 중요한 항목은 세 가지다.
+
+### Project roots
+
+ChatGPT가 접근할 수 있는 로컬 폴더다.
+
+내 환경에서는 여러 프로젝트 때문에 허용 범위를 넓게 둔 적이 있지만, 팀원들에게는 처음부터 좁게 잡는 것을 추천한다.
+
+예를 들어 팀 저장소가 여기 모여 있다면:
+
+```text title="project-root-example.txt"
+~/Documents/team-repos
+```
+
+이 상위 폴더만 허용한다.
+
+이렇게 하면 아래 저장소들을 모두 열 수 있다.
+
+```text title="team-repos.txt"
+team-repos/
+├── ontology_dashboard
+└── gen_data
+```
+
+다음처럼 홈 전체를 허용하는 것은 피한다.
+
+```text title="avoid-roots.txt"
+~
+/
+C:\
+```
+
+### Local port
+
+기본값을 그대로 쓴다.
+
+```text title="port.txt"
+7676
+```
+
+### Public base URL
+
+ngrok을 쓴다면:
+
+```text title="public-base-url.txt"
+https://example-name.ngrok-free.app
+```
+
+Tailscale이라면:
+
+```text title="public-base-url-tailscale.txt"
+https://my-mac.my-tailnet.ts.net
+```
+
+여기에는 `/mcp`를 붙이지 않는다.
+
+초기화가 끝나면 Owner password가 출력된다.
+
+이 비밀번호는 다음 위치에도 저장된다.
+
+```text title="devspace-auth-file.txt"
+~/.devspace/auth.json
+```
+
+이 파일과 Owner password는 각자 자기 컴퓨터에서만 관리한다.
+
+팀 Slack, Discord, Notion, GitHub Issue에 올리지 않는다.
+
+---
+
+## 7. DevSpace 실행과 진단
+
+먼저 설정을 진단한다.
+
+```bash title="terminal"
+devspace doctor
+```
+
+문제가 없다면 서버를 실행한다.
+
+```bash title="terminal"
+devspace serve
+```
+
+기본 로컬 endpoint는 다음과 같다.
+
+```text title="local-mcp.txt"
+http://127.0.0.1:7676/mcp
+```
+
+하지만 ChatGPT는 내 컴퓨터의 `127.0.0.1`에 직접 접근할 수 없으므로 실제 ChatGPT 설정에는 공개 HTTPS endpoint를 사용한다.
+
+---
+
+## 8. ChatGPT에 DevSpace 연결
+
+여기가 실제 연결에서 가장 중요한 부분이다.
+
+앞 단계에서 ChatGPT 웹의 Developer mode를 켰고, DevSpace 서버와 고정 HTTPS 주소가 모두 살아 있어야 한다.
+
+### 8-1. 현재 UI에서는 Plugins에서 시작한다
+
+우리 팀에서 실제로 연결할 때 확인한 흐름은 다음과 같다.
+
+```text title="chatgpt-plugin-create.txt"
+ChatGPT 웹 왼쪽 사이드바
+→ Plugins
+→ 새 플러그인(New plugin)
+```
+
+OpenAI 공식 도움말에는 같은 underlying MCP integration 설정을 `Settings → Apps → Create`라고 설명하는 부분도 있다. 2026년 7월 Plugin Directory 전환 이후 UI와 문서 용어가 같이 존재하고 있으므로, **현재 화면에 Plugins가 보이면 Plugins → 새 플러그인 흐름을 우선 사용**하면 된다.
+
+Plugins 메뉴가 보이지 않지만 Developer mode 권한이 있는 관리형 워크스페이스라면 아래 경로도 확인한다.
+
+
+```text title="chatgpt-create-app.txt"
+Settings
+→ Apps
+→ Create
+```
+
+또는 관리자 계정에서는:
+
+```text title="chatgpt-workspace-create-app.txt"
+Workspace Settings
+→ Apps
+→ Create
+```
+
+### 8-2. DevSpace MCP 정보를 입력한다
+
+새 플러그인 또는 custom app 생성 화면에서 이름은 팀에서 통일하면 찾기 편하다.
+
+```text title="app-name.txt"
+devspace-codex
+```
+
+Endpoint에는 이번에는 `/mcp`까지 붙인다.
+
+```text title="mcp-endpoint.txt"
+https://example-name.ngrok-free.app/mcp
+```
+
+내 환경이라면:
+
+```text title="my-mcp-endpoint.txt"
+https://devspace.oosu.dev/mcp
+```
+
+### 8-3. Authentication은 OAuth를 선택한다
+
+DevSpace는 MCP endpoint를 OAuth로 보호한다. 따라서 인증 방식 선택 항목이 나오면 **OAuth**를 선택한다.
+
+```text title="chatgpt-auth.txt"
+Authentication
+→ OAuth
+```
+
+이 OAuth는 Google/GitHub 로그인 같은 별도 서비스 계정 인증이 아니다. DevSpace가 제공하는 OAuth 승인 페이지가 열리고, 여기서 `devspace init` 때 발급된 **Owner password**로 이 ChatGPT 연결을 승인하는 구조다.
+
+Owner password는 다음 위치에도 저장돼 있다.
+
+```text title="devspace-owner-password.txt"
+~/.devspace/auth.json
+```
+
+파일 전체를 팀 채팅에 올리거나 password를 다른 팀원과 공유하면 안 된다. 네 명이 각각 자신의 DevSpace를 설치했다면 각자 서로 다른 Owner password를 사용한다.
+
+### 8-4. 실제 OAuth 승인과 Tool Scan
+
+현재 ChatGPT UI에서는 대략 다음 순서로 진행된다.
+
+1. 플러그인 이름을 `devspace-codex`로 입력한다.
+2. MCP endpoint에 `https://고정주소/mcp`를 입력한다.
+3. Authentication을 `OAuth`로 선택한다.
+4. `Scan Tools` 또는 연결 검사를 실행한다.
+5. 브라우저에 DevSpace OAuth 승인 페이지가 열리면 **내 Owner password**를 입력한다.
+6. ChatGPT로 돌아와 tool scan이 끝날 때까지 기다린다.
+7. `Create`, `Save` 또는 현재 UI의 생성 완료 버튼을 누른다.
+8. 새 채팅에서 `@devspace-codex`가 선택되는지 확인한다.
+
+정상이라면 ChatGPT가 DevSpace의 `open_workspace`, `read`, `apply_patch`, `exec_command` 같은 MCP tool을 스캔해 사용할 수 있게 된다.
+
+OAuth 승인이 끝났는데 다시 인증을 반복해서 요구한다면 다음부터 확인한다.
+
+```text title="oauth-troubleshooting.txt"
+1. DevSpace publicBaseUrl이 현재 고정 hostname과 같은가?
+2. ChatGPT endpoint 끝에 /mcp가 있는가?
+3. DevSpace 서버를 재시작한 뒤 OAuth client 상태가 바뀌지 않았는가?
+4. Owner password를 내 ~/.devspace/auth.json 기준으로 입력했는가?
+```
+
+DevSpace 공식 문서상 MCP client가 연결될 때 Owner password 승인 페이지가 열리며, OAuth redirect host와 public URL도 서버 설정의 일부다.
+
+여기서 가장 흔한 실수는 URL 두 개를 반대로 쓰는 것이다.
+
+```text title="url-rule.txt"
+DevSpace 설정
+https://host.example.com
+
+ChatGPT 설정
+https://host.example.com/mcp
+```
+
+DevSpace 공식 troubleshooting에도 별도 항목으로 나오는 실수다.
+
+---
+
+## 9. 처음에는 코드를 수정시키지 말고 연결만 확인하기
+
+첫 테스트는 읽기 전용으로 한다.
+
+ChatGPT 새 채팅에서 연결한 DevSpace app을 선택하거나 이름으로 호출한다.
+
+그리고 다음 프롬프트를 그대로 사용한다.
+
+```text title="first-test-prompt.txt"
+@devspace-codex
+
+내 로컬 팀 저장소를 checkout 모드로 열어줘.
+
+<내 절대경로>/team-repos/ontology_dashboard
+
+코드는 수정하지 말고 아래만 확인해줘.
+1. 현재 branch
+2. git status
+3. origin remote
+4. 최근 commit 3개
+```
+
+이 결과가 실제 로컬 저장소와 같으면 연결 성공이다.
+
+다음으로 `gen_data`도 같은 방식으로 확인한다.
+
+```text title="gen-data-test-prompt.txt"
+@devspace-codex
+
+<내 절대경로>/team-repos/gen_data 를 열고
+코드는 수정하지 말고 git status와 최근 commit만 확인해줘.
+```
+
+---
+
+## 10. 실제 팀 작업에서는 worktree를 기본으로 쓰기
+
+우리 팀은 같은 저장소를 여러 명, 여러 세션이 병렬로 작업할 일이 많다.
+
+기존 checkout branch를 직접 바꾸게 하면 다른 작업과 충돌하기 쉽다.
+
+그래서 실제 코드 작업을 맡길 때는 다음 문장을 기본으로 붙이는 것을 추천한다.
+
+```text title="worktree-prompt.txt"
+@devspace-codex
+
+기존 checkout branch는 변경하지 마.
+
+최신 origin 상태를 fetch한 뒤
+이번 작업용 독립 DevSpace worktree를 만들어서 작업해줘.
+
+작업 후에는
+1. 테스트
+2. git diff 확인
+3. git status 확인
+까지 진행해줘.
+```
+
+커밋과 push까지 맡길 작업이라면 그 부분을 명시적으로 추가한다.
+
+---
+
+## 11. Wi-Fi가 바뀌었는데 갑자기 연결이 안 될 때
+
+고정 주소를 제대로 썼다면 ChatGPT 설정부터 지우지 않는다.
+
+다음 순서로 확인한다.
+
+### 1. DevSpace 확인
+
+```bash title="terminal"
+devspace doctor
+```
+
+### 2. DevSpace 서버 확인
+
+```bash title="terminal"
+devspace serve
+```
+
+### 3. ngrok 확인
+
+```bash title="terminal"
+ngrok http 7676
+```
+
+출력되는 domain이 기존에 ChatGPT에 등록한 domain과 같은지 본다.
+
+### Tailscale 사용자라면
+
+```bash title="terminal"
+tailscale funnel status
+```
+
+고정 hostname이 그대로라면 ChatGPT app 설정은 그대로 둔다.
+
+---
+
+## 12. 정말 URL이 바뀐 경우
+
+Quick Tunnel 같은 임시 주소를 사용했다면 URL 자체가 바뀔 수 있다.
+
+그때는 DevSpace 설정부터 바꾼다.
+
+```bash title="terminal"
+devspace config set publicBaseUrl https://NEW-HOST.example.com
+```
+
+그리고 다시 실행한다.
+
+```bash title="terminal"
+devspace serve
+```
+
+ChatGPT custom MCP endpoint도 새 주소의 `/mcp`로 수정하거나 다시 만든다.
+
+```text title="new-chatgpt-url.txt"
+https://NEW-HOST.example.com/mcp
+```
+
+이 번거로움을 피하려고 처음부터 ngrok 할당 dev domain, Tailscale Funnel, Named Cloudflare Tunnel처럼 고정 hostname을 쓰는 것이다.
+
+---
+
+## 13. `unknown workspaceId`는 인증 실패가 아니다
+
+DevSpace를 재시작하거나 세션 상태가 바뀐 뒤 ChatGPT가 예전 `workspaceId`를 다시 사용하면 다음과 비슷한 오류가 날 수 있다.
+
+```text title="workspace-error.txt"
+unknown workspaceId
+```
+
+이 경우 Owner password나 tunnel 설정을 처음부터 다시 만들 필요는 없다.
+
+해당 프로젝트를 다시 `open_workspace` 하면 된다.
+
+`workspaceId`는 프로젝트 자체의 영구 ID가 아니라 작업 세션을 위한 식별자로 보는 편이 맞다.
+
+---
+
+## 14. 자주 막히는 문제
+
+### `devspace` command not found
+
+전역 npm bin 경로 문제일 수 있다.
+
+일단 `npx`로 확인한다.
+
+```bash title="terminal"
+npx @waishnav/devspace doctor
+```
+
+### Node version 오류
+
+```bash title="terminal"
+node --version
+```
+
+DevSpace 공식 범위인 `>=22.19 <27`인지 확인한다.
+
+### 403 또는 Host header 오류
+
+DevSpace의 `publicBaseUrl`과 실제 tunnel hostname이 같은지 본다.
+
+```bash title="terminal"
+devspace doctor
+```
+
+### ChatGPT에서 MCP tool scan 실패
+
+다시 한번 URL을 확인한다.
+
+```text title="scan-check.txt"
+잘못된 예
+DevSpace publicBaseUrl = https://host.example.com/mcp
+
+올바른 예
+DevSpace publicBaseUrl = https://host.example.com
+ChatGPT endpoint = https://host.example.com/mcp
+```
+
+### Owner password가 안 맞음
+
+자기 컴퓨터에서만 다음 파일을 확인한다.
+
+```text title="owner-password.txt"
+~/.devspace/auth.json
+```
+
+필요하면 setup을 다시 생성할 수 있다.
+
+```bash title="terminal"
+devspace init --force
+```
+
+공식 troubleshooting:
+
+- [DevSpace Gotchas](https://github.com/Waishnav/devspace/blob/main/docs/gotchas.md)
+
+---
+
+## 15. 보안 규칙은 꼭 지키기
+
+DevSpace는 단순한 파일 뷰어가 아니다.
+
+연결된 MCP 클라이언트는 승인된 workspace 안에서 파일을 수정할 수 있고, shell 명령도 실행할 수 있다.
+
+DevSpace 공식 문서도 이를 선택한 개발 머신에 대한 remote access로 취급하라고 안내한다.
+
+우리 팀에서는 다음 규칙을 지키는 것이 좋다.
+
+### Allowed root는 좁게
+
+좋은 예:
+
+```text title="good-roots.txt"
+~/Documents/team-repos
+~/work/Biz-CollabCraft
+```
+
+피해야 할 예:
+
+```text title="bad-roots.txt"
+~
+/
+C:\
+```
+
+### Owner password 공유 금지
+
+다음 파일은 Git에 올리지 않는다.
+
+```text title="private-file.txt"
+~/.devspace/auth.json
+```
+
+### `.env`, SSH key, cloud credential 주의
+
+가능하면 협업 저장소와 민감한 개인 credential 디렉터리를 같은 allowed root 안에 두지 않는다.
+
+### Shell 권한을 가볍게 보지 않기
+
+DevSpace file tool에는 경로 제한이 적용되지만 shell 명령은 로컬 사용자 권한으로 실행되는 강력한 기능이다.
+
+연결하는 ChatGPT 계정과 MCP 앱을 신뢰할 수 있는 코딩 파트너처럼 취급해야 한다.
+
+공식 보안 문서:
+
+- [DevSpace Security Model](https://github.com/Waishnav/devspace/security)
+
+---
+
+## 16. 우리 팀 권장 조합
+
+### 개인 도메인이 없는 대부분의 팀원
+
+```text title="recommended-default.txt"
+DevSpace
++ ngrok 무료 계정
++ 자동 할당 *.ngrok-free.app
++ ChatGPT custom MCP app
+```
+
+가장 설치가 빠르고 네트워크가 바뀌어도 공개 hostname을 유지하기 쉽다.
+
+### 이미 Tailscale을 쓰는 팀원
+
+```text title="recommended-tailscale.txt"
+DevSpace
++ Tailscale Funnel
++ *.ts.net
++ ChatGPT custom MCP app
+```
+
+### 개인 도메인을 이미 관리하는 경우
+
+```text title="recommended-cloudflare.txt"
+DevSpace
++ Named Cloudflare Tunnel
++ devspace.example.com
++ ChatGPT custom MCP app
+```
+
+이게 현재 내 Mac mini에서 사용하는 방식과 가장 가깝다.
+
+---
+
+## 17. 실제로 써보면 좋은 점: 코딩 화면이 한 컴퓨터에 묶이지 않는다
+
+DevSpace의 장점은 단순히 "ChatGPT가 로컬 파일을 읽는다"에서 끝나지 않는다.
+
+Codex Desktop만 사용할 때는 보통 코딩 작업과 대화가 그 컴퓨터의 데스크톱 앱을 중심으로 돌아간다. DevSpace를 ChatGPT 웹에 연결하면 **실제 코드는 내 컴퓨터에 그대로 두면서 ChatGPT 대화를 작업 제어 화면처럼 사용할 수 있다.**
+
+예를 들어 교육장에서 노트북으로 다음과 같이 작업할 수 있다.
+
+```text title="cross-device-example.txt"
+노트북의 DevSpace 서버
+        ↓
+ChatGPT 웹에서
+"PR 리뷰 반영 → 테스트 → commit → push까지 진행해줘"
+        ↓
+작업 결과와 대화가 ChatGPT 계정의 같은 conversation에 남음
+        ↓
+이동 중 휴대폰에서 같은 conversation을 열어
+진행 결과, diff 요약, 에러 내용을 확인
+        ↓
+후속 요구사항이나 다음 작업 방향을 바로 메시지로 남김
+```
+
+즉, 프로젝트 폴더를 휴대폰에 복사하거나 원격 데스크톱으로 작은 화면을 조작하지 않아도 **같은 ChatGPT 대화 흐름을 여러 기기에서 확인하고 이어갈 수 있다는 점**이 꽤 편하다.
+
+특히 우리 팀처럼 여러 PR과 저장소를 병렬로 다루는 경우에는 다음 장점이 있다.
+
+- 자리를 비운 뒤에도 휴대폰에서 작업 결과와 실패 원인을 확인하기 쉽다.
+- 팀 채팅에서 새 요구사항이 나오면 같은 ChatGPT conversation에 바로 추가해 다음 작업 컨텍스트로 남길 수 있다.
+- 데스크톱 Codex 앱의 특정 로컬 UI에만 작업 기록이 갇히지 않고 ChatGPT conversation을 기준으로 이어가기 쉽다.
+- 다음에 컴퓨터 앞에 돌아왔을 때 앞에서 무슨 작업을 했는지 다시 설명하는 비용이 줄어든다.
+
+다만 **2026년 8월 13일 현재 OpenAI 공식 안내에서 MCP apps는 web-only**다. Plugin Directory는 ChatGPT 웹과 데스크톱에서 사용할 수 있지만, 모바일 앱에서 DevSpace MCP tool을 직접 호출하는 흐름까지 공식 지원되는 것은 아니다.
+
+따라서 현재 기준으로는 이렇게 이해하는 게 정확하다.
+
+```text title="mobile-boundary.txt"
+모바일에서 잘하는 것
+→ 같은 ChatGPT conversation 열기
+→ 이전 작업 내용과 결과 확인
+→ 다음 요구사항과 수정 방향 전달
+→ 작업 지시를 대화 컨텍스트에 남기기
+
+현재 공식 지원을 전제로 하면 웹에서 하는 것
+→ DevSpace MCP를 실제 호출
+→ 로컬 파일 읽기/수정
+→ shell 명령 실행
+→ 테스트, commit, push
+```
+
+그리고 당연하지만 **DevSpace가 설치된 컴퓨터가 꺼져 있거나 잠자기 상태로 네트워크 연결이 끊기면 로컬 작업은 실행할 수 없다.** DevSpace 서버와 tunnel이 살아 있어야 ChatGPT 웹에서 그 컴퓨터에 접근할 수 있다.
+
+### macOS 팁: 이동 중에도 DevSpace 작업을 계속 돌리고 싶다면
+
+나는 MacBook을 들고 이동할 때도 DevSpace 작업이 중간에 끊기지 않도록 **시스템 잠자기를 임시로 비활성화**해서 사용한다. 배터리와 전원 연결 상태에 모두 적용하려면 Terminal에서 다음 명령을 실행한다.
+
+```bash title="macos-disable-sleep.sh"
+sudo pmset -a disablesleep 1
+```
+
+그다음 화면 밝기는 가능한 한 낮춰 두고, DevSpace 서버와 tunnel이 계속 실행되는 상태로 둔다. 이렇게 해 두면 이동 중에도 MacBook이 잠들어서 장시간 작업이나 테스트가 중간에 끊기는 상황을 줄일 수 있다.
+
+사용을 마쳤다면 **반드시 원래 설정으로 복구**한다.
+
+```bash title="macos-restore-sleep.sh"
+sudo pmset -a disablesleep 0
+```
+
+이 설정은 macOS 전체의 자동 잠자기를 막는 것이므로 상시 켜 두는 용도로 사용하지 않는 편이 좋다. 특히 다음은 꼭 주의한다.
+
+- 잠자기를 막아 두면 배터리 소모가 계속된다.
+- 빌드, 테스트, Docker 같은 작업이 돌아가는 동안에는 CPU 사용량과 발열이 올라갈 수 있다.
+- **작동 중인 MacBook을 백팩, 파우치, 서랍처럼 통풍이 거의 없는 밀폐 공간에 넣어 두지 않는다.** 덮개를 닫아 둘 때도 열이 빠질 수 있는 곳에 둔다.
+- 작업이 끝났거나 장시간 사용하지 않을 때는 `sudo pmset -a disablesleep 0`으로 되돌린다.
+
+즉, 이 방법은 "이동하는 동안 잠깐 원격 작업을 계속 돌려야 할 때" 쓰는 임시 운용 팁으로 생각하는 게 좋다.
+
+그래도 "로컬 코드는 내 컴퓨터에 두고, 작업 대화는 어디서든 확인한다"는 구조 자체가 기존 데스크톱 전용 코딩 에이전트와 비교했을 때 실사용에서 꽤 큰 차이다.
+
+---
+
+## 설치 완료 체크리스트
+
+- Node, npm, Git, Bash 버전 확인
+- DevSpace 설치
+- `devspace doctor` 통과
+- 고정 HTTPS hostname 확보
+- DevSpace `publicBaseUrl`에는 `/mcp` 없이 저장
+- ChatGPT endpoint에는 `/mcp` 포함
+- Owner password로 본인 연결만 승인
+- `ontology_dashboard` 읽기 전용 테스트 성공
+- `gen_data` 읽기 전용 테스트 성공
+- allowed roots가 필요한 협업 폴더 범위로 제한됨
+
+여기까지 되면 팀원이 Codex Desktop만 사용하지 않고, ChatGPT 웹에서도 자신의 실제 로컬 Git 저장소를 직접 연결해서 작업할 수 있는 기본 환경이 준비된 것이다.
+
+---
+
+## 참고 문서
+
+- [DevSpace GitHub](https://github.com/Waishnav/devspace)
+- [DevSpace Setup Guide](https://github.com/Waishnav/devspace/blob/main/docs/setup.md)
+- [DevSpace Troubleshooting Gotchas](https://github.com/Waishnav/devspace/blob/main/docs/gotchas.md)
+- [DevSpace Security Model](https://github.com/Waishnav/devspace/security)
+- [OpenAI Developer mode and MCP apps](https://help.openai.com/en/articles/12584461-developer-mode-and-full-mcp-connectors-in-chatgpt-beta)
+- [OpenAI Plugins in ChatGPT and Codex](https://help.openai.com/en/articles/20001256-plugins-in-codexOpenAI)
+- [ngrok Free Plan Limits](https://ngrok.com/docs/pricing-limits/free-plan-limits)
+- [ngrok Share Localhost Quickstart](https://ngrok.com/docs/guides/share-localhost/quickstart)
+- [ngrok Agent background service](https://ngrok.com/docs/agent)
+- [Tailscale Funnel](https://tailscale.com/kb/1223/funnel)
+- [Cloudflare Quick Tunnels](https://developers.cloudflare.com/cloudflare-one/networks/connectors/cloudflare-tunnel/do-more-with-tunnels/trycloudflare/)
