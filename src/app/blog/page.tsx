@@ -85,7 +85,7 @@ export default async function BlogPage() {
       </section>
       <section className="mx-auto w-full max-w-5xl px-5 pb-20">
         <div className="mb-10">
-          <BlogAuthorBio compact />
+          <BlogAuthorBio />
         </div>
         {posts.length > 0 ? (
           <div className="grid gap-4">

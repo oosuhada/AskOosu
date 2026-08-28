@@ -17,21 +17,24 @@ export function BlogAuthorByline() {
   );
 }
 
-export function BlogAuthorBio({ compact = false }: { compact?: boolean }) {
+export function BlogAuthorBio() {
   return (
-    <section
-      aria-labelledby={compact ? 'blog-author-heading' : 'post-author-heading'}
-      className="border-border/70 bg-card rounded-lg border p-5 sm:p-6"
-    >
-      <p className="text-muted-foreground text-xs font-semibold tracking-[0.12em] uppercase">
-        <LocalizedText ko="작성자" en="Author" />
+    <div className="border-border/70 bg-card rounded-lg border p-5 sm:p-6">
+      <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        <span className="text-muted-foreground text-xs font-semibold tracking-[0.12em] uppercase">
+          <LocalizedText ko="작성자" en="Author" />
+        </span>
+        <Link
+          href="/about"
+          rel="author"
+          className="text-foreground font-semibold underline-offset-4 hover:underline"
+        >
+          <LocalizedText
+            ko={blogAuthor.displayName}
+            en="Jang Oosu (oosuhada)"
+          />
+        </Link>
       </p>
-      <h2
-        id={compact ? 'blog-author-heading' : 'post-author-heading'}
-        className="mt-2 text-xl font-bold"
-      >
-        <LocalizedText ko="작성자 소개" en="About the author" />
-      </h2>
       <p className="text-muted-foreground mt-3 leading-7">
         <span className="lang-ko" lang="ko">
           <Link
@@ -56,6 +59,6 @@ export function BlogAuthorBio({ compact = false }: { compact?: boolean }) {
           .
         </span>
       </p>
-    </section>
+    </div>
   );
 }
