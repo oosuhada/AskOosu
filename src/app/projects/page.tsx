@@ -221,7 +221,7 @@ function GithubRepositoryCard({
             <h2 className="truncate text-xl font-bold">{repository.name}</h2>
             <p className="text-muted-foreground mt-1 text-xs">
               <LocalizedText ko="업데이트" en="Updated" />{' '}
-              {formatGithubDate(repository.updatedAt)}
+              {formatGithubDate(repository.createdAt)}
             </p>
           </div>
           <div className="text-muted-foreground flex shrink-0 items-center gap-3 text-xs">

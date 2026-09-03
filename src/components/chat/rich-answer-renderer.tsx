@@ -94,7 +94,7 @@ type ProjectItem = {
   tags: string[];
   href?: string;
   githubHref?: string;
-  updatedAt?: string;
+  createdAt?: string;
   languages: ProjectLanguage[];
 };
 
@@ -560,10 +560,15 @@ function ProjectShowcaseCards({
                 ))}
               </div>
               <div className="flex flex-wrap gap-2 pt-1">
-                {surfaceForProject(project.id) && (
+                {(surfaceForProject(project.id) ||
+                  project.id.startsWith('github:')) && (
                   <button
                     type="button"
-                    onClick={() => switchQuestionSurface(project.id)}
+                    onClick={() =>
+                      project.id.startsWith('github:')
+                        ? askDynamicProjectQuestion(project.title, language)
+                        : switchQuestionSurface(project.id)
+                    }
                     data-project-action="questions"
                     className={cn(
                       'bg-background/70 hover:bg-accent hover:text-accent-foreground focus-visible:ring-primary/50 inline-flex h-8 max-w-full min-w-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition focus-visible:ring-2 focus-visible:outline-none',
@@ -1496,7 +1501,7 @@ function parseProjectItem(value: unknown): ProjectItem | null {
     tags: parseStringArray(value.tags),
     href: parseString(value.href) ?? undefined,
     githubHref: parseString(value.githubHref) ?? undefined,
-    updatedAt: parseString(value.updatedAt) ?? undefined,
+    createdAt: parseString(value.createdAt) ?? undefined,
     languages: Array.isArray(value.languages)
       ? value.languages.map(parseProjectLanguage).filter(isDefined)
       : [],
@@ -1620,6 +1625,21 @@ function switchQuestionSurface(projectId: string) {
   window.dispatchEvent(
     new CustomEvent('askoosu:question-surface', {
       detail: { surface },
+    })
+  );
+}
+
+function askDynamicProjectQuestion(title: string, language: 'ko' | 'en') {
+  if (typeof window === 'undefined') return;
+
+  const query =
+    language === 'ko'
+      ? `${title} 프로젝트가 무엇을 만드는 프로젝트인지, README 근거와 사용 언어 비율을 포함해서 자세히 설명해줘.`
+      : `Tell me more about the ${title} project, including what it builds, README evidence, and its language breakdown.`;
+
+  window.dispatchEvent(
+    new CustomEvent('askoosu:project-question', {
+      detail: { query },
     })
   );
 }

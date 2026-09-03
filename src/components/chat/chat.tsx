@@ -477,6 +477,23 @@ const Chat = () => {
   );
 
   useEffect(() => {
+    const handleProjectQuestion = (event: Event) => {
+      const detail = (event as CustomEvent<{ query?: string }>).detail;
+      const query = detail?.query?.trim();
+      if (!query) return;
+      submitQuery(query);
+    };
+
+    window.addEventListener('askoosu:project-question', handleProjectQuestion);
+    return () => {
+      window.removeEventListener(
+        'askoosu:project-question',
+        handleProjectQuestion
+      );
+    };
+  }, [submitQuery]);
+
+  useEffect(() => {
     setAnonymousSessionId(getOrCreateAnonymousSessionId());
   }, []);
 
