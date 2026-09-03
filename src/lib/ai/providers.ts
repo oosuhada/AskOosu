@@ -54,7 +54,7 @@ declare global {
 const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini';
 const DEFAULT_XAI_MODEL = 'grok-4';
 const DEFAULT_GROQ_MODEL = 'llama-3.3-70b-versatile';
-const DEFAULT_GOOGLE_GEMINI_MODEL = 'gemini-flash-latest';
+const DEFAULT_GOOGLE_GEMINI_MODEL = 'gemini-3.6-flash';
 const DEFAULT_GOOGLE_VERTEX_MODEL = 'gemini-2.5-flash';
 const DEFAULT_GOOGLE_VERTEX_LOCATION = 'us-central1';
 const DEFAULT_OPENROUTER_MODEL = 'google/gemini-2.5-flash';
