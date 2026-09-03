@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { APICallError, RetryError, type LanguageModel } from 'ai';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { createVertex } from '@ai-sdk/google-vertex';
 import { createGroq } from '@ai-sdk/groq';
 import { createOpenAI, openai } from '@ai-sdk/openai';
@@ -63,8 +64,6 @@ const DEFAULT_GROQ_QUOTA_COOLDOWN_MS = 60 * 60 * 1000;
 const XAI_BASE_URL = 'https://api.x.ai/v1';
 const GROQ_BASE_URL = 'https://api.groq.com/openai/v1';
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
-const GOOGLE_GEMINI_OPENAI_BASE_URL =
-  'https://generativelanguage.googleapis.com/v1beta/openai';
 
 export function getChatModel(): ChatModelSelection {
   return getChatModelForProvider(getChatProviderName());
@@ -279,16 +278,14 @@ function getGoogleGeminiChatModel(): ChatModelSelection {
     );
   }
 
-  const googleGemini = createOpenAI({
+  const googleGemini = createGoogleGenerativeAI({
     apiKey,
-    baseURL:
-      process.env.GEMINI_OPENAI_BASE_URL ?? GOOGLE_GEMINI_OPENAI_BASE_URL,
     name: 'google-gemini',
   });
   const modelName = process.env.GEMINI_MODEL ?? DEFAULT_GOOGLE_GEMINI_MODEL;
 
   return {
-    model: googleGemini.chat(modelName),
+    model: googleGemini(modelName),
     provider: 'google_gemini',
     modelName,
   };
