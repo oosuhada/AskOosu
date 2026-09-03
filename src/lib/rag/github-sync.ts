@@ -3,6 +3,7 @@ import {
   type GithubRepositorySyncManifest,
 } from '@/lib/github-portfolio';
 import { invalidateCachedAnswersForEntities } from '@/lib/chat/database';
+import { prewarmGithubAnswerCache } from '@/lib/chat/github-answer-prewarm';
 import { getPostgresPool, hasPostgresDatabaseUrl } from '@/lib/db/postgres';
 import { replaceStoredRagChunks } from './database';
 import { fetchGithubRagChunks } from './github-source';
@@ -78,6 +79,21 @@ export async function syncGithubRagIfNeeded({ force = false } = {}) {
         'github_rag_sync_changed_entities'
       )
     : 0;
+  const repositoriesToPrewarm = force
+    ? github.repositories.map((repository) => repository.name)
+    : changedRepositoryNames;
+  const answerPrewarm =
+    repositoriesToPrewarm.length > 0
+      ? await prewarmGithubAnswerCache({
+          repositoryNames: repositoriesToPrewarm,
+        })
+      : {
+          repositoryCount: 0,
+          answerCount: 0,
+          upserted: 0,
+          provider: 'manual-prewarm',
+          model: 'assistant-authored-v1',
+        };
   await saveGithubSyncState({
     fingerprint: manifest.live ? fingerprint : state?.fingerprint ?? fingerprint,
     manifest: manifest.live ? manifest.repositories : state?.manifest ?? [],
@@ -102,6 +118,7 @@ export async function syncGithubRagIfNeeded({ force = false } = {}) {
     deleted: sum(persistences.map((item) => item.deleted)) + staleDeleted.count,
     skipped: sum(persistences.map((item) => item.skipped)),
     answerCacheInvalidated,
+    answerCachePrewarmed: answerPrewarm.upserted,
   };
 }
 
