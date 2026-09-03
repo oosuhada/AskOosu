@@ -1,4 +1,6 @@
 import { getGithubRagRepositories } from '@/lib/github-portfolio';
+import { githubPortfolioSnapshot } from '@/data/github-portfolio-snapshot';
+import { getPostgresPool, hasPostgresDatabaseUrl } from '@/lib/db/postgres';
 import { chunkLongText, createRagChunk, normalizeText } from './text';
 import type { RagChunk } from './types';
 
@@ -27,6 +29,12 @@ function buildRepositoryChunks(
     sourceKind: 'github_project',
     entityId: `github:${repository.name}`,
     repository: repository.fullName,
+    description: repository.description,
+    url: repository.url,
+    homepage: repository.homepage,
+    languages: repository.languages,
+    readmeImages: repository.readmeImages,
+    topics: repository.topics,
     createdAt: repository.createdAt,
     updatedAt: repository.updatedAt,
     pushedAt: repository.pushedAt,
@@ -108,4 +116,77 @@ function splitReadmeSections(markdown: string) {
 
 export function getGithubSourceKey(fullName: string) {
   return `github:${fullName}`;
+}
+
+export async function getIndexedGithubProjects(limit = 12) {
+  if (!hasPostgresDatabaseUrl()) return getSnapshotProjects(limit);
+
+  try {
+    const pool = await getPostgresPool();
+    const result = await pool.query<{
+      metadata: Record<string, unknown>;
+    }>(
+      `
+        SELECT c.metadata
+        FROM rag_chunks c
+        JOIN rag_sources s ON s.id = c.source_id
+        WHERE s.type = 'static'
+          AND s.source_key LIKE 'github:%'
+          AND c.chunk_id LIKE 'github-project-%-overview'
+          AND c.visibility = 'public'
+        ORDER BY c.metadata->>'createdAt' DESC, c.title ASC
+        LIMIT $1
+      `,
+      [limit]
+    );
+
+    if (result.rows.length === 0) return getSnapshotProjects(limit);
+    return result.rows.map(({ metadata }) => ({
+      name: getMetadataString(metadata, 'repository').split('/').at(-1) ?? '',
+      description: getMetadataNullableString(metadata, 'description'),
+      url: getMetadataString(metadata, 'url'),
+      homepage: getMetadataNullableString(metadata, 'homepage'),
+      createdAt: getMetadataString(metadata, 'createdAt'),
+      updatedAt: getMetadataString(metadata, 'updatedAt'),
+      languages: getMetadataArray(metadata, 'languages'),
+      readmeImages: getMetadataArray(metadata, 'readmeImages'),
+    }));
+  } catch (error) {
+    console.warn('Unable to read indexed GitHub projects; using snapshot.', error);
+    return getSnapshotProjects(limit);
+  }
+}
+
+function getSnapshotProjects(limit: number) {
+  return [...githubPortfolioSnapshot]
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+    .slice(0, limit)
+    .map((repository) => ({
+      name: repository.name,
+      description: repository.description,
+      url: repository.url,
+      homepage: repository.homepage,
+      createdAt: repository.createdAt,
+      updatedAt: repository.updatedAt,
+      languages: repository.languages,
+      readmeImages: repository.readmeImages,
+    }));
+}
+
+function getMetadataString(metadata: Record<string, unknown>, key: string) {
+  const value = metadata[key];
+  return typeof value === 'string' ? value : '';
+}
+
+function getMetadataNullableString(
+  metadata: Record<string, unknown>,
+  key: string
+) {
+  const value = metadata[key];
+  return typeof value === 'string' && value.trim() ? value : null;
+}
+
+function getMetadataArray(metadata: Record<string, unknown>, key: string) {
+  const value = metadata[key];
+  return Array.isArray(value) ? value : [];
 }
