@@ -138,8 +138,8 @@ GITHUB_PORTFOLIO_REPO_LIMIT=12
 NEXT_PUBLIC_ASKOOSU_DEBUG_UI_ENABLED=false
 
 # Optional ordered fallback chain
-# ASKOOSU_AI_PROVIDER=google_gemini
-# ASKOOSU_FALLBACK_AI_PROVIDERS=groq,openrouter
+# ASKOOSU_AI_PROVIDER=groq
+# ASKOOSU_FALLBACK_AI_PROVIDERS=google_gemini,openrouter
 # ASKOOSU_FALLBACK_AI_PROVIDER= # legacy single fallback
 
 # Optional Grok/xAI mode

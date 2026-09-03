@@ -63,7 +63,7 @@ Model selection is isolated in `src/lib/ai/providers.ts` with a compatibility re
 - API mode: `XAI_API_MODE=responses` by default, or `chat` for the older Chat Completions-style xAI path
 - Groq provider: set `ASKOOSU_AI_PROVIDER=groq`
 - Required for Groq: `GROQ_API_KEYS` or `GROQ_API_KEY`
-- Ordered fallback chain: set `ASKOOSU_FALLBACK_AI_PROVIDERS=groq,openrouter` to try Groq before OpenRouter after the primary provider fails or is cooling down. `ASKOOSU_FALLBACK_AI_PROVIDER` remains supported for legacy single-fallback deployments.
+- Ordered fallback chain: set `ASKOOSU_AI_PROVIDER=groq` and `ASKOOSU_FALLBACK_AI_PROVIDERS=google_gemini,openrouter` to use the low-latency Groq path first, then Gemini and OpenRouter when the primary provider fails or is cooling down. `ASKOOSU_FALLBACK_AI_PROVIDER` remains supported for legacy single-fallback deployments.
 - Optional for Groq: `GROQ_MODEL`, `GROQ_BASE_URL`, `GROQ_REQUEST_TIMEOUT_MS`, `GROQ_KEY_FAILURE_THRESHOLD`, `GROQ_KEY_COOLDOWN_MS`, `GROQ_KEY_QUOTA_COOLDOWN_MS`
 - Google Vertex provider/fallback: set `ASKOOSU_AI_PROVIDER=google_vertex`, or configure `GOOGLE_VERTEX_API_KEY`/`GOOGLE_APPLICATION_CREDENTIALS`/`GOOGLE_VERTEX_PROJECT` so it can be used when Groq selection is unavailable
 - Optional for Google Vertex: `GOOGLE_VERTEX_MODEL`, `GOOGLE_VERTEX_LOCATION`, `GOOGLE_VERTEX_PROJECT`
