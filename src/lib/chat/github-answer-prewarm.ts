@@ -167,8 +167,6 @@ function buildOverviewAnswer(project: IndexedGithubProject, language: 'ko' | 'en
       ...highlights.map((highlight) => `- **${highlight.title}**: ${highlight.summary}`),
       githubUrl ? `- **GitHub**: ${githubUrl}` : '',
       homepage ? `- **Live**: ${homepage}` : '',
-      '',
-      '이 답변은 AskOosu에 사전 인덱싱된 GitHub README와 저장소 메타데이터를 기준으로 정리했습니다.',
     ]
       .filter(Boolean)
       .join('\n');
@@ -184,8 +182,6 @@ function buildOverviewAnswer(project: IndexedGithubProject, language: 'ko' | 'en
     ...highlights.map((highlight) => `- **${highlight.title}**: ${highlight.summary}`),
     githubUrl ? `- **GitHub**: ${githubUrl}` : '',
     homepage ? `- **Live**: ${homepage}` : '',
-    '',
-    'This answer is precomputed from the GitHub README and repository metadata indexed by AskOosu.',
   ]
     .filter(Boolean)
     .join('\n');
@@ -199,16 +195,14 @@ function buildReadmeAnswer(project: IndexedGithubProject, language: 'ko' | 'en')
     return [
       `**${project.name}**의 README를 구조적으로 보면 다음 흐름으로 정리할 수 있습니다.`,
       '',
-      ...sections.map(
-        (section, index) => `${index + 1}. **${section.title}** — ${section.summary}`
+      ...sections.flatMap((section, index) =>
+        formatReadmeSectionItem(section, index, 'ko')
       ),
       sections.length === 0
         ? '1. 공개 README 본문이 짧아 저장소 설명과 GitHub 메타데이터를 중심으로 확인할 수 있습니다.'
         : '',
       '',
       `**주요 기술 구성**: ${languageSummary || 'GitHub 저장소 메타데이터 기준'}`,
-      '',
-      '핵심은 README 전체를 매번 외부에서 다시 읽는 것이 아니라, AskOosu가 미리 Postgres에 저장한 README section chunk를 근거로 답변한다는 점입니다.',
     ]
       .filter(Boolean)
       .join('\n');
@@ -217,19 +211,45 @@ function buildReadmeAnswer(project: IndexedGithubProject, language: 'ko' | 'en')
   return [
     `The indexed README for **${project.name}** can be summarized as the following structure.`,
     '',
-    ...sections.map(
-      (section, index) => `${index + 1}. **${section.title}** — ${section.summary}`
+    ...sections.flatMap((section, index) =>
+      formatReadmeSectionItem(section, index, 'en')
     ),
     sections.length === 0
       ? '1. The public README is brief, so the repository description and GitHub metadata provide most of the available structure.'
       : '',
     '',
     `**Main language mix**: ${languageSummary || 'Based on the indexed GitHub metadata.'}`,
-    '',
-    'AskOosu serves this from README section chunks already stored in Postgres rather than fetching GitHub on each question.',
   ]
     .filter(Boolean)
     .join('\n');
+}
+
+function formatReadmeSectionItem(
+  section: { title: string; summary: string },
+  index: number,
+  language: 'ko' | 'en'
+) {
+  const summaryLines = splitSummaryLines(section.summary);
+  const number = index + 1;
+
+  if (summaryLines.length === 0) {
+    return [`${number}. **${section.title}**`, ''];
+  }
+
+  if (summaryLines.length === 1 && !isListLikeSummary(section.summary)) {
+    return [`${number}. **${section.title}** — ${summaryLines[0]}`, ''];
+  }
+
+  const fallbackLead =
+    language === 'ko'
+      ? 'README에서 다음 항목을 확인할 수 있습니다.'
+      : 'The README documents the following items.';
+
+  return [
+    `${number}. **${section.title}** — ${fallbackLead}`,
+    ...summaryLines.map((line) => `   - ${line}`),
+    '',
+  ];
 }
 
 function buildLanguagesAnswer(project: IndexedGithubProject, language: 'ko' | 'en') {
@@ -249,7 +269,7 @@ function buildLanguagesAnswer(project: IndexedGithubProject, language: 'ko' | 'e
       topics.length > 0 ? `**주요 기술/주제**: ${topics.join(', ')}` : '',
       ...techSections.map((section) => `- **${section.title}**: ${section.summary}`),
       '',
-      '언어 비율은 GitHub Linguist byte 통계를 동기화해 저장한 값이고, 기술 선택 설명은 README와 공개 메타데이터 범위 안에서만 정리했습니다.',
+      '언어 비율은 GitHub Linguist 기준이며, 기술 선택 설명은 README와 공개 메타데이터 범위 안에서만 정리했습니다.',
     ]
       .filter(Boolean)
       .join('\n');
@@ -266,7 +286,7 @@ function buildLanguagesAnswer(project: IndexedGithubProject, language: 'ko' | 'e
     topics.length > 0 ? `**Main technologies/topics**: ${topics.join(', ')}` : '',
     ...techSections.map((section) => `- **${section.title}**: ${section.summary}`),
     '',
-    'The percentages come from the synchronized GitHub Linguist byte counts; the technology interpretation is limited to the indexed README and public repository metadata.',
+    'The percentages follow GitHub Linguist byte counts; the technology interpretation is limited to the README and public repository metadata.',
   ]
     .filter(Boolean)
     .join('\n');
@@ -326,12 +346,16 @@ function getReadmeHighlights(
   limit: number,
   preferredPattern?: RegExp
 ) {
-  return selectReadmeChunks(project, limit, preferredPattern).map((chunk) => ({
-    title:
+  return selectReadmeChunks(project, limit, preferredPattern).map((chunk) => {
+    const title =
       getMetadataString(chunk.metadata, 'readmeSection') ||
-      chunk.title.replace(`${project.name} README · `, ''),
-    summary: summarizeChunk(chunk.content),
-  }));
+      chunk.title.replace(`${project.name} README · `, '');
+
+    return {
+      title,
+      summary: summarizeChunk(chunk.content, title),
+    };
+  });
 }
 
 function selectReadmeChunks(
@@ -370,19 +394,66 @@ function getReadmeSectionNames(project: IndexedGithubProject) {
     .filter(Boolean);
 }
 
-function summarizeChunk(content: string) {
-  const cleaned = content
+function summarizeChunk(content: string, sectionTitle = '') {
+  const cleaned = removeLeadingDuplicateSectionTitle(
+    content
     .replace(/```[\s\S]*?```/g, ' ')
     .replace(/`([^`]+)`/g, '$1')
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
     .replace(/<[^>]*>/g, ' ')
     .replace(/https?:\/\/\S+/g, '')
-    .replace(/[#>*_|]/g, ' ')
+      .replace(/[#>*_|]/g, ' ')
     .replace(/\s+/g, ' ')
-    .trim();
+      .trim(),
+    sectionTitle
+  );
   if (!cleaned) return 'README에 이 섹션의 구현 정보가 정리되어 있습니다.';
+
+  if (isListLikeSummary(cleaned)) {
+    return cleaned.slice(0, 420).trim();
+  }
+
   const sentence = cleaned.match(/^.{1,260}?(?:[.!?](?=\s|$)|$)/)?.[0] ?? cleaned;
   return sentence.slice(0, 260).trim();
+}
+
+function removeLeadingDuplicateSectionTitle(content: string, sectionTitle: string) {
+  const cleaned = content.trim();
+  if (!sectionTitle) return cleaned;
+
+  const titlePattern = escapeRegExp(sectionTitle.trim());
+  return cleaned
+    .replace(new RegExp(`^${titlePattern}\\s*(?:[-—:：])?\\s*`, 'i'), '')
+    .trim();
+}
+
+function splitSummaryLines(summary: string) {
+  const normalized = summary.trim();
+  if (!normalized) return [];
+
+  const numberedItems = Array.from(
+    normalized.matchAll(/(?:^|\s)(\d+)\.\s+(.+?)(?=\s+\d+\.\s+|$)/g)
+  )
+    .map((match) => match[2]?.trim())
+    .filter(Boolean);
+  if (numberedItems.length >= 2) return numberedItems.slice(0, 5);
+
+  const bulletSource = normalized.replace(/^[-•]\s*/, '');
+  const bulletItems = bulletSource
+    .split(/\s+[-•]\s+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  if (bulletItems.length >= 2) return bulletItems.slice(0, 6);
+
+  return [normalized];
+}
+
+function isListLikeSummary(summary: string) {
+  return /(?:^|\s)\d+\.\s+\S/.test(summary) || /(?:^|\s)[-•]\s+\S/.test(summary);
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function rankReadmeChunks(chunks: GithubIndexedChunk[]) {
