@@ -5,6 +5,7 @@ import { hashQuestion, truncateText } from './text';
 
 const DEFAULT_ANSWER_CACHE_TTL_HOURS = 24;
 const MIN_CACHEABLE_CONFIDENCE = 0.7;
+const MIN_GITHUB_CACHEABLE_CONFIDENCE = 0.55;
 const MAX_ANSWER_CACHE_TEXT_LENGTH = 8000;
 const MAX_MODEL_LENGTH = 120;
 const MAX_PROVIDER_LENGTH = 80;
@@ -227,6 +228,13 @@ export async function getCachedAnswer({
   await ensureChatRuntimeSchema();
   const pool = await getPostgresPool();
   const ttlHours = getAnswerCacheTtlHours();
+  const cacheIdentity = getAnswerCacheIdentity(normalizedQuestion);
+  const githubEntityId = cacheIdentity.githubRepository
+    ? `github:${cacheIdentity.githubRepository}`
+    : null;
+  const minimumConfidence = githubEntityId
+    ? MIN_GITHUB_CACHEABLE_CONFIDENCE
+    : MIN_CACHEABLE_CONFIDENCE;
   const result = await pool.query<{
     answer: string;
     answer_source: ChatAnswerSource;
@@ -252,18 +260,29 @@ export async function getCachedAnswer({
         AND invalidated_at IS NULL
         AND confidence >= $4
         AND answer_source <> ALL($5::text[])
-        AND created_at > now() - ($6::text || ' hours')::interval
-        AND (expires_at IS NULL OR expires_at > now())
+        AND (
+          (
+            $7::text IS NOT NULL
+            AND matched_entity_ids @> ARRAY[$7::text]
+          )
+          OR
+          (
+            $7::text IS NULL
+            AND created_at > now() - ($6::text || ' hours')::interval
+            AND (expires_at IS NULL OR expires_at > now())
+          )
+        )
       ORDER BY updated_at DESC
       LIMIT 1
     `,
     [
-      hashQuestion(normalizedQuestion),
+      hashQuestion(cacheIdentity.key),
       language,
       getWikiVersion(),
-      MIN_CACHEABLE_CONFIDENCE,
+      minimumConfidence,
       UNSAFE_CACHE_ANSWER_SOURCES,
       String(ttlHours),
+      githubEntityId,
     ]
   );
   const row = result.rows[0];
@@ -287,7 +306,9 @@ export async function upsertCachedAnswer(input: AnswerCacheInput) {
   await ensureChatRuntimeSchema();
   const pool = await getPostgresPool();
   const ttlHours = getAnswerCacheTtlHours();
-  const expiresAtSql = `now() + ($12::text || ' hours')::interval`;
+  const cacheIdentity = getAnswerCacheIdentity(input.normalizedQuestion);
+  const isGithubGrounded = isGithubGroundedAnswer(input);
+  const expiresAtSql = `CASE WHEN $13::boolean THEN NULL ELSE now() + ($12::text || ' hours')::interval END`;
 
   await pool.query(
     `
@@ -324,7 +345,7 @@ export async function upsertCachedAnswer(input: AnswerCacheInput) {
     `,
     [
       input.normalizedQuestion,
-      hashQuestion(input.normalizedQuestion),
+      hashQuestion(cacheIdentity.key),
       input.language,
       truncateText(input.answer, MAX_ANSWER_CACHE_TEXT_LENGTH),
       input.answerSource,
@@ -335,6 +356,7 @@ export async function upsertCachedAnswer(input: AnswerCacheInput) {
       input.model ? truncateText(input.model, MAX_MODEL_LENGTH) : null,
       getWikiVersion(),
       String(ttlHours),
+      isGithubGrounded,
     ]
   );
 
@@ -571,17 +593,106 @@ function getAnswerCacheTtlHours() {
 }
 
 export function shouldCacheAnswer(input: AnswerCacheInput) {
-  if (normalizeConfidence(input.confidence) < MIN_CACHEABLE_CONFIDENCE) {
+  const githubGrounded = isGithubGroundedAnswer(input);
+  const minimumConfidence = githubGrounded
+    ? MIN_GITHUB_CACHEABLE_CONFIDENCE
+    : MIN_CACHEABLE_CONFIDENCE;
+
+  if (normalizeConfidence(input.confidence) < minimumConfidence) {
     return false;
   }
 
   if (input.hasTodoEvidence) return false;
-  if ((input.warnings?.length ?? 0) > 0) return false;
+  if (!githubGrounded && (input.warnings?.length ?? 0) > 0) return false;
   if (UNSAFE_CACHE_ANSWER_SOURCES.includes(input.answerSource)) return false;
   if (input.routeDecision?.mode === 'safe_fallback') return false;
   if (input.errorCode === PROMPT_LEAK_DETECTED_ERROR_CODE) return false;
 
   return true;
+}
+
+function isGithubGroundedAnswer(input: AnswerCacheInput) {
+  return (
+    input.matchedEntityIds.some((entityId) => entityId.startsWith('github:')) &&
+    input.sourceChunkIds.some((chunkId) => chunkId.startsWith('github-project-'))
+  );
+}
+
+type AnswerCacheIdentity = {
+  key: string;
+  githubRepository: string | null;
+};
+
+function getAnswerCacheIdentity(normalizedQuestion: string): AnswerCacheIdentity {
+  const githubRepository = extractGithubRepositoryFromQuestion(normalizedQuestion);
+  const githubQuickIntent = githubRepository
+    ? getGithubQuickQuestionIntent(normalizedQuestion)
+    : null;
+
+  return {
+    key:
+      githubRepository && githubQuickIntent
+        ? `github-project:${githubRepository}:${githubQuickIntent}`
+        : normalizedQuestion,
+    githubRepository,
+  };
+}
+
+function extractGithubRepositoryFromQuestion(question: string) {
+  const patterns = [
+    /^([a-z0-9][a-z0-9._-]{0,99})(?=의|에서|이|가|은|는|\s+프로젝트|\s+readme)/i,
+    /^what does the ([a-z0-9][a-z0-9._-]{0,99}) project\b/i,
+    /\barchitecture of ([a-z0-9][a-z0-9._-]{0,99})\b/i,
+    /\bchoices in ([a-z0-9][a-z0-9._-]{0,99})\b/i,
+    /\bdoes ([a-z0-9][a-z0-9._-]{0,99}) fit\b/i,
+  ];
+
+  for (const pattern of patterns) {
+    const match = question.match(pattern);
+    if (match?.[1]) return match[1].toLowerCase();
+  }
+
+  return null;
+}
+
+function getGithubQuickQuestionIntent(question: string) {
+  if (
+    /프로젝트는 무엇을 만드는 프로젝트인가요\??$/i.test(question) ||
+    /^what does the [a-z0-9._-]+ project build\??$/i.test(question)
+  ) {
+    return 'overview';
+  }
+
+  if (
+    /의 readme 근거를 바탕으로 핵심 기능과 구조를 설명해 주세요\.?$/i.test(
+      question
+    ) ||
+    /^explain the core features and architecture of [a-z0-9._-]+ using its readme evidence\.?$/i.test(
+      question
+    )
+  ) {
+    return 'readme';
+  }
+
+  if (
+    /에서 사용한 언어 비율과 주요 기술 선택을 설명해 주세요\.?$/i.test(question) ||
+    /^explain the language breakdown and main technology choices in [a-z0-9._-]+\.?$/i.test(
+      question
+    )
+  ) {
+    return 'languages';
+  }
+
+  if (
+    /이 우수님의 개발 성장 흐름에서 어떤 의미가 있나요\??$/i.test(question) ||
+    /^how does [a-z0-9._-]+ fit into oosu's growth as a developer\??$/i.test(
+      question
+    )
+  ) {
+    return 'growth';
+  }
+
+  return null;
 }
 
 function normalizeCacheTextArray(values: string[]) {

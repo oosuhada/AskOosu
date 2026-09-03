@@ -14,6 +14,7 @@ const DEFAULT_WEEKLY_REFRESH_MS = 7 * 24 * 60 * 60 * 1000;
 type GithubSyncState = {
   fingerprint: string;
   lastFullSyncAt: string | null;
+  manifest: GithubRepositorySyncManifest['repositories'];
 };
 
 export async function syncGithubRagIfNeeded({ force = false } = {}) {
@@ -27,6 +28,9 @@ export async function syncGithubRagIfNeeded({ force = false } = {}) {
     getGithubSyncState(),
   ]);
   const fingerprint = createManifestFingerprint(manifest);
+  const changedRepositoryNames = manifest.live
+    ? getChangedRepositoryNames(state?.manifest ?? [], manifest.repositories)
+    : [];
   const weeklyDue = isWeeklyRefreshDue(state?.lastFullSyncAt ?? null);
   const changed = manifest.live
     ? state?.fingerprint !== fingerprint
@@ -36,6 +40,7 @@ export async function syncGithubRagIfNeeded({ force = false } = {}) {
   if (!shouldFullSync) {
     await saveGithubSyncState({
       fingerprint: state?.fingerprint ?? fingerprint,
+      manifest: manifest.live ? manifest.repositories : state?.manifest ?? [],
       fullSync: false,
     });
     return {
@@ -60,7 +65,11 @@ export async function syncGithubRagIfNeeded({ force = false } = {}) {
   const staleDeleted = await deleteStaleGithubSources(github.sourceKeys);
   const changedEntityIds = Array.from(
     new Set(
-      persistences.flatMap((persistence) => persistence.changedEntityIds)
+      [
+        ...persistences.flatMap((persistence) => persistence.changedEntityIds),
+        ...changedRepositoryNames.map((name) => `github:${name}`),
+        ...staleDeleted.entityIds,
+      ]
     )
   );
   const answerCacheInvalidated = changedEntityIds.length
@@ -71,6 +80,7 @@ export async function syncGithubRagIfNeeded({ force = false } = {}) {
     : 0;
   await saveGithubSyncState({
     fingerprint: manifest.live ? fingerprint : state?.fingerprint ?? fingerprint,
+    manifest: manifest.live ? manifest.repositories : state?.manifest ?? [],
     fullSync: true,
   });
 
@@ -89,7 +99,7 @@ export async function syncGithubRagIfNeeded({ force = false } = {}) {
     chunkCount: github.chunks.length,
     inserted: sum(persistences.map((item) => item.inserted)),
     updated: sum(persistences.map((item) => item.updated)),
-    deleted: sum(persistences.map((item) => item.deleted)) + staleDeleted,
+    deleted: sum(persistences.map((item) => item.deleted)) + staleDeleted.count,
     skipped: sum(persistences.map((item) => item.skipped)),
     answerCacheInvalidated,
   };
@@ -101,20 +111,25 @@ async function ensureGithubSyncStateSchema() {
     CREATE TABLE IF NOT EXISTS rag_external_sync_state (
       source_key text PRIMARY KEY,
       fingerprint text NOT NULL DEFAULT '',
+      manifest jsonb NOT NULL DEFAULT '[]'::jsonb,
       last_checked_at timestamptz,
       last_full_sync_at timestamptz,
       updated_at timestamptz NOT NULL DEFAULT now()
     )
   `);
+  await pool.query(
+    "ALTER TABLE rag_external_sync_state ADD COLUMN IF NOT EXISTS manifest jsonb NOT NULL DEFAULT '[]'::jsonb"
+  );
 }
 
 async function getGithubSyncState(): Promise<GithubSyncState | null> {
   const pool = await getPostgresPool();
   const result = await pool.query<{
     fingerprint: string;
+    manifest: GithubRepositorySyncManifest['repositories'] | null;
     last_full_sync_at: Date | null;
   }>(
-    `SELECT fingerprint, last_full_sync_at
+    `SELECT fingerprint, manifest, last_full_sync_at
      FROM rag_external_sync_state
      WHERE source_key = $1
      LIMIT 1`,
@@ -125,14 +140,17 @@ async function getGithubSyncState(): Promise<GithubSyncState | null> {
   return {
     fingerprint: row.fingerprint,
     lastFullSyncAt: row.last_full_sync_at?.toISOString() ?? null,
+    manifest: Array.isArray(row.manifest) ? row.manifest : [],
   };
 }
 
 async function saveGithubSyncState({
   fingerprint,
+  manifest,
   fullSync,
 }: {
   fingerprint: string;
+  manifest?: GithubRepositorySyncManifest['repositories'];
   fullSync: boolean;
 }) {
   const pool = await getPostgresPool();
@@ -141,14 +159,19 @@ async function saveGithubSyncState({
       INSERT INTO rag_external_sync_state (
         source_key,
         fingerprint,
+        manifest,
         last_checked_at,
         last_full_sync_at,
         updated_at
       )
-      VALUES ($1, $2, now(), CASE WHEN $3 THEN now() ELSE NULL END, now())
+      VALUES ($1, $2, $4::jsonb, now(), CASE WHEN $3 THEN now() ELSE NULL END, now())
       ON CONFLICT (source_key)
       DO UPDATE SET
         fingerprint = EXCLUDED.fingerprint,
+        manifest = CASE
+          WHEN jsonb_array_length(EXCLUDED.manifest) > 0 THEN EXCLUDED.manifest
+          ELSE rag_external_sync_state.manifest
+        END,
         last_checked_at = now(),
         last_full_sync_at = CASE
           WHEN $3 THEN now()
@@ -156,12 +179,23 @@ async function saveGithubSyncState({
         END,
         updated_at = now()
     `,
-    [GITHUB_SYNC_STATE_KEY, fingerprint, fullSync]
+    [GITHUB_SYNC_STATE_KEY, fingerprint, fullSync, JSON.stringify(manifest ?? [])]
   );
 }
 
 async function deleteStaleGithubSources(activeSourceKeys: string[]) {
   const pool = await getPostgresPool();
+  const staleEntities = await pool.query<{ entity_id: string | null }>(
+    `
+      SELECT DISTINCT c.entity_id
+      FROM rag_sources s
+      JOIN rag_chunks c ON c.source_id = s.id
+      WHERE s.type = 'static'
+        AND s.source_key LIKE 'github:%'
+        AND NOT (s.source_key = ANY($1::text[]))
+    `,
+    [activeSourceKeys]
+  );
   const result = await pool.query(
     `
       DELETE FROM rag_sources
@@ -171,7 +205,36 @@ async function deleteStaleGithubSources(activeSourceKeys: string[]) {
     `,
     [activeSourceKeys]
   );
-  return result.rowCount ?? 0;
+  return {
+    count: result.rowCount ?? 0,
+    entityIds: staleEntities.rows
+      .map((row) => row.entity_id)
+      .filter((entityId): entityId is string => Boolean(entityId)),
+  };
+}
+
+function getChangedRepositoryNames(
+  previous: GithubRepositorySyncManifest['repositories'],
+  current: GithubRepositorySyncManifest['repositories']
+) {
+  const previousByName = new Map(
+    previous.map((repository) => [repository.name, repository])
+  );
+  const currentByName = new Map(
+    current.map((repository) => [repository.name, repository])
+  );
+  const names = new Set([...previousByName.keys(), ...currentByName.keys()]);
+
+  return Array.from(names).filter((name) => {
+    const before = previousByName.get(name);
+    const after = currentByName.get(name);
+    if (!before || !after) return true;
+    return (
+      before.defaultBranch !== after.defaultBranch ||
+      before.updatedAt !== after.updatedAt ||
+      before.pushedAt !== after.pushedAt
+    );
+  });
 }
 
 function createManifestFingerprint(manifest: GithubRepositorySyncManifest) {
