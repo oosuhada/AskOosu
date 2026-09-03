@@ -240,13 +240,8 @@ function formatReadmeSectionItem(
     return [`${number}. **${section.title}** — ${summaryLines[0]}`, ''];
   }
 
-  const fallbackLead =
-    language === 'ko'
-      ? 'README에서 다음 항목을 확인할 수 있습니다.'
-      : 'The README documents the following items.';
-
   return [
-    `${number}. **${section.title}** — ${fallbackLead}`,
+    `${number}. **${section.title}**`,
     ...summaryLines.map((line) => `   - ${line}`),
     '',
   ];

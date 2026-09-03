@@ -22,3 +22,12 @@ export function hashQuestion(input: string) {
 export function truncateText(value: string, maxLength: number) {
   return value.trim().replace(/\s+/g, ' ').slice(0, maxLength);
 }
+
+export function truncateMultilineText(value: string, maxLength: number) {
+  return value
+    .trim()
+    .replace(/\r\n/g, '\n')
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .slice(0, maxLength);
+}

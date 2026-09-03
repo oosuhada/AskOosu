@@ -1,7 +1,7 @@
 import { getPostgresPool, hasPostgresDatabaseUrl } from '@/lib/db/postgres';
 import type { ChatLanguage } from '@/lib/i18n/detect-language';
 import type { AnswerRouteDecision, ChatAnswerSource } from './types';
-import { hashQuestion, truncateText } from './text';
+import { hashQuestion, truncateMultilineText, truncateText } from './text';
 
 const DEFAULT_ANSWER_CACHE_TTL_HOURS = 24;
 const MIN_CACHEABLE_CONFIDENCE = 0.7;
@@ -347,7 +347,7 @@ export async function upsertCachedAnswer(input: AnswerCacheInput) {
       input.normalizedQuestion,
       hashQuestion(cacheIdentity.key),
       input.language,
-      truncateText(input.answer, MAX_ANSWER_CACHE_TEXT_LENGTH),
+      truncateMultilineText(input.answer, MAX_ANSWER_CACHE_TEXT_LENGTH),
       input.answerSource,
       normalizeCacheTextArray(input.matchedEntityIds),
       normalizeCacheTextArray(input.sourceChunkIds),
