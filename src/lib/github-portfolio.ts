@@ -4,6 +4,7 @@ const GITHUB_OWNER = 'oosuhada';
 const DEFAULT_REPOSITORY_LIMIT = 12;
 const MAX_REPOSITORY_LIMIT = 45;
 const GITHUB_REVALIDATE_SECONDS = 60 * 60;
+const MAX_README_EVIDENCE_CHARS = 12_000;
 
 type GithubRepositoryApi = {
   name: string;
@@ -56,6 +57,17 @@ export type GithubPortfolioRepository = {
   readmeImages: GithubReadmeImage[];
 };
 
+export type GithubRepositoryEvidence = {
+  name: string;
+  url: string;
+  homepage: string | null;
+  description: string | null;
+  defaultBranch: string;
+  createdAt: string | null;
+  languages: GithubLanguageShare[];
+  readmeText: string | null;
+};
+
 export async function getGithubPortfolioRepositories(): Promise<
   GithubPortfolioRepository[]
 > {
@@ -63,7 +75,7 @@ export async function getGithubPortfolioRepositories(): Promise<
 
   try {
     const repositories = await fetchGithubJson<GithubRepositoryApi[]>(
-      `https://api.github.com/users/${GITHUB_OWNER}/repos?per_page=100&sort=updated&type=owner`
+      `https://api.github.com/users/${GITHUB_OWNER}/repos?per_page=100&sort=created&direction=desc&type=owner`
     );
     const candidates = repositories
       .filter(isPortfolioCandidate)
@@ -73,8 +85,76 @@ export async function getGithubPortfolioRepositories(): Promise<
     return Promise.all(candidates.map(enrichRepository));
   } catch (error) {
     console.warn('Unable to refresh GitHub portfolio repositories.', error);
-    return githubPortfolioSnapshot.slice(0, limit);
+    return [...githubPortfolioSnapshot]
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+      .slice(0, limit);
   }
+}
+
+export async function getGithubRepositoryEvidence(
+  repositoryName: string
+): Promise<GithubRepositoryEvidence | null> {
+  const normalizedName = repositoryName.trim();
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(normalizedName)) {
+    return null;
+  }
+
+  const snapshot = githubPortfolioSnapshot.find(
+    (repository) => repository.name.toLowerCase() === normalizedName.toLowerCase()
+  );
+  let repository: GithubRepositoryApi | null = null;
+
+  try {
+    repository = await fetchGithubJson<GithubRepositoryApi>(
+      `https://api.github.com/repos/${GITHUB_OWNER}/${encodeURIComponent(normalizedName)}`
+    );
+  } catch {
+    // The public GitHub API may be rate-limited. README retrieval below uses
+    // raw.githubusercontent.com so project-specific evidence still works.
+  }
+
+  const defaultBranch =
+    repository?.default_branch ?? snapshot?.defaultBranch ?? 'main';
+  const readme = await fetchRepositoryReadmeByName(normalizedName, [
+    defaultBranch,
+    snapshot?.defaultBranch,
+    'main',
+    'master',
+  ]);
+
+  let languages = snapshot?.languages ?? [];
+  if (repository) {
+    try {
+      languages = toLanguageShares(
+        await fetchGithubJson<GithubLanguagesApi>(
+          `https://api.github.com/repos/${GITHUB_OWNER}/${encodeURIComponent(normalizedName)}/languages`
+        )
+      );
+    } catch {
+      if (languages.length === 0 && repository.language) {
+        languages = [
+          { name: repository.language, bytes: 0, percentage: 100 },
+        ];
+      }
+    }
+  }
+
+  if (!repository && !snapshot && !readme) return null;
+
+  return {
+    name: repository?.name ?? snapshot?.name ?? normalizedName,
+    url:
+      repository?.html_url ??
+      snapshot?.url ??
+      `https://github.com/${GITHUB_OWNER}/${encodeURIComponent(normalizedName)}`,
+    homepage:
+      normalizeHomepage(repository?.homepage ?? snapshot?.homepage ?? null),
+    description: repository?.description ?? snapshot?.description ?? null,
+    defaultBranch,
+    createdAt: repository?.created_at ?? snapshot?.createdAt ?? null,
+    languages,
+    readmeText: readme ? normalizeReadmeEvidence(readme) : null,
+  };
 }
 
 async function enrichRepository(
@@ -128,19 +208,33 @@ async function fetchRepositoryLanguages(repository: GithubRepositoryApi) {
 }
 
 async function fetchRepositoryReadme(repository: GithubRepositoryApi) {
-  const encodedRepository = encodeURIComponent(repository.name);
-  const encodedBranch = encodeURIComponent(repository.default_branch);
-  const candidates = ['README.md', 'README.MD', 'readme.md'];
+  return fetchRepositoryReadmeByName(repository.name, [
+    repository.default_branch,
+  ]);
+}
 
-  for (const filename of candidates) {
-    const url = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${encodedRepository}/${encodedBranch}/${filename}`;
-    try {
-      const response = await fetch(url, {
-        next: { revalidate: GITHUB_REVALIDATE_SECONDS },
-      });
-      if (response.ok) return response.text();
-    } catch {
-      // Try the next conventional README filename.
+async function fetchRepositoryReadmeByName(
+  repositoryName: string,
+  branches: Array<string | null | undefined>
+) {
+  const encodedRepository = encodeURIComponent(repositoryName);
+  const candidates = ['README.md', 'README.MD', 'readme.md'];
+  const uniqueBranches = Array.from(
+    new Set(branches.map((branch) => branch?.trim()).filter(Boolean))
+  ) as string[];
+
+  for (const branch of uniqueBranches) {
+    const encodedBranch = encodeURIComponent(branch);
+    for (const filename of candidates) {
+      const url = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${encodedRepository}/${encodedBranch}/${filename}`;
+      try {
+        const response = await fetch(url, {
+          next: { revalidate: GITHUB_REVALIDATE_SECONDS },
+        });
+        if (response.ok) return response.text();
+      } catch {
+        // Try the next branch/README filename.
+      }
     }
   }
 
@@ -185,9 +279,8 @@ function compareRepositories(
   left: GithubRepositoryApi,
   right: GithubRepositoryApi
 ) {
-  const leftFeatured = (left.topics ?? []).includes('portfolio-featured');
-  const rightFeatured = (right.topics ?? []).includes('portfolio-featured');
-  if (leftFeatured !== rightFeatured) return leftFeatured ? -1 : 1;
+  const createdOrder = right.created_at.localeCompare(left.created_at);
+  if (createdOrder !== 0) return createdOrder;
   return right.updated_at.localeCompare(left.updated_at);
 }
 
@@ -313,4 +406,15 @@ function imagePriority(image: GithubReadmeImage) {
   if (/\.gif(?:$|\?)/.test(value)) return 2;
   if (/image|screen|ui|dashboard|app/.test(value)) return 1;
   return 0;
+}
+
+function normalizeReadmeEvidence(markdown: string) {
+  return markdown
+    .replace(/<!--([\s\S]*?)-->/g, ' ')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+    .replace(/<img\b[^>]*>/gi, ' ')
+    .replace(/<picture\b[\s\S]*?<\/picture>/gi, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+    .slice(0, MAX_README_EVIDENCE_CHARS);
 }

@@ -67,7 +67,7 @@ Notion source: ${oosuProfile.notionSourceUrl}
             repository.description ?? '',
             `GitHub: ${repository.url}`,
             repository.homepage ? `Live: ${repository.homepage}` : '',
-            `Updated: ${repository.updatedAt}`,
+            `Created: ${repository.createdAt}`,
             `Languages: ${repository.languages
               .map((language) => `${language.name} ${language.percentage}%`)
               .join(', ')}`,
@@ -85,7 +85,7 @@ Notion source: ${oosuProfile.notionSourceUrl}
         metadata: {
           sourceKind: 'github_project',
           repository: repository.fullName,
-          updatedAt: repository.updatedAt,
+          createdAt: repository.createdAt,
         },
       })
     ),

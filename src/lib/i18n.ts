@@ -23,7 +23,7 @@ export const uiText = {
     askAnything: 'Oosu에게 무엇이든 물어보세요...',
     thinking: '질문을 나눠 근거를 확인하는 중...',
     chatLoadingMessages: [
-      'Wiki에서 관련 근거를 찾는 중...',
+      'Wiki·GitHub에서 관련 근거를 찾는 중...',
       '질문을 나눠 근거를 확인하는 중...',
       '근거를 확인하고 있어요...',
     ],

@@ -133,7 +133,11 @@ async function generateWithModel({
       messages,
       tools,
       stopWhen,
-      maxRetries: selection.provider === 'groq' ? 0 : undefined,
+      maxRetries:
+        selection.provider === 'groq' || selection.provider === 'google_gemini'
+          ? 0
+          : undefined,
+      abortSignal: AbortSignal.timeout(getProviderRequestTimeoutMs(selection.provider)),
     });
   } catch (error) {
     const latencyMs = Date.now() - startedAt;
@@ -312,6 +316,22 @@ function getProviderCooldownMs(provider: string) {
   }
 
   return 60 * 1000;
+}
+
+function getProviderRequestTimeoutMs(provider: string) {
+  const providerEnvName =
+    provider === 'google_gemini'
+      ? 'GOOGLE_GEMINI_REQUEST_TIMEOUT_MS'
+      : provider === 'google_vertex'
+        ? 'GOOGLE_VERTEX_REQUEST_TIMEOUT_MS'
+        : provider === 'openrouter'
+          ? 'OPENROUTER_REQUEST_TIMEOUT_MS'
+          : 'AI_PROVIDER_REQUEST_TIMEOUT_MS';
+
+  return getPositiveIntegerEnv(
+    providerEnvName,
+    getPositiveIntegerEnv('AI_PROVIDER_REQUEST_TIMEOUT_MS', 30_000)
+  );
 }
 
 function normalizeUsage(usage: unknown) {

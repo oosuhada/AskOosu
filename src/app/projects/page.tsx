@@ -111,8 +111,8 @@ export default async function ProjectsPage() {
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <p className="text-muted-foreground max-w-3xl leading-7">
             <LocalizedText
-              ko="공개 GitHub 저장소를 자동으로 읽어 최근 업데이트 순으로 보여줍니다. 각 카드의 언어 비율은 GitHub Linguist 통계의 byte 비율이며, README에 실제 이미지가 있으면 배지 이미지를 제외하고 함께 표시합니다."
-              en="Public GitHub repositories are refreshed automatically and ordered by recent activity. Language shares use GitHub Linguist byte totals, and meaningful README images are shown when available while badge-style images are filtered out."
+              ko="공개 GitHub 저장소를 자동으로 읽어 생성일이 가장 최신인 프로젝트부터 보여줍니다. 각 카드의 언어 비율은 GitHub Linguist 통계의 byte 비율이며, README에 실제 이미지가 있으면 배지 이미지를 제외하고 함께 표시합니다."
+              en="Public GitHub repositories are refreshed automatically and ordered newest-first by repository creation date. Language shares use GitHub Linguist byte totals, and meaningful README images are shown when available while badge-style images are filtered out."
             />
           </p>
           <a

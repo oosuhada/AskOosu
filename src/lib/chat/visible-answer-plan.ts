@@ -24,7 +24,8 @@ const TOPIC_RULES: TopicRule[] = [
   {
     ko: '메모리 사용량 해석',
     en: 'Interpret memory usage',
-    pattern: /(메모리|램|RAM|GB|프로세스|memory|pressure|swap)/i,
+    pattern:
+      /(메모리\s*(사용|사용량|압박|누수)|램|RAM|GB|프로세스\s*메모리|memory\s*(usage|pressure|leak)|swap)/i,
   },
   {
     ko: '프로젝트 근거 확인',
@@ -121,8 +122,8 @@ function getQuestionSplitLabel(language: ChatLanguage, question: string) {
 
 function getDefaultVisiblePlan(language: ChatLanguage) {
   return language === 'ko'
-    ? ['질문 의도 확인', 'Wiki/FAQ 근거 확인', '답변 구조 정리']
-    : ['Check intent', 'Review Wiki/FAQ evidence', 'Shape the answer'];
+    ? ['질문 의도 확인', 'Wiki/GitHub/FAQ 근거 확인', '답변 구조 정리']
+    : ['Check intent', 'Review Wiki/GitHub/FAQ evidence', 'Shape the answer'];
 }
 
 function getLongQuestionPlan(language: ChatLanguage) {
