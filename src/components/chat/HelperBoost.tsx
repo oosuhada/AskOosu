@@ -4,9 +4,11 @@ import { getUiText } from '@/lib/i18n';
 import type { SuggestedQuestion } from '@/lib/suggested-questions';
 import { useDisplayPreferences } from '@/lib/use-display-preferences';
 import {
+  ArrowLeft,
   BriefcaseBusiness,
   ChevronDown,
   ChevronUp,
+  FolderGit2,
   Layers,
   LibraryBig,
   Mail,
@@ -78,10 +80,24 @@ export default function HelperBoost({
       ? dynamicQuestions
       : visibleQuestions;
   const askedQuestionSet = new Set(askedQuestionIds);
+  const projectQuestionScope = getProjectQuestionScope(
+    activeSurface,
+    dynamicProjectName
+  );
 
   useEffect(() => {
     setIsVisible(true);
-  }, [activeSurface]);
+    quickQuestionRailRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
+  }, [activeSurface, dynamicProjectName]);
+
+  const returnToGlobalQuestions = () => {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(
+      new CustomEvent('askoosu:question-surface', {
+        detail: { surface: 'home', projectName: null },
+      })
+    );
+  };
 
   const handleQuickQuestionWheel = (
     event: ReactWheelEvent<HTMLDivElement>
@@ -157,6 +173,38 @@ export default function HelperBoost({
 
   return (
     <div className="w-full">
+      {projectQuestionScope ? (
+        <div
+          key={`${activeSurface}:${projectQuestionScope}`}
+          className="animate-in fade-in slide-in-from-bottom-1 mx-auto mb-2 flex w-fit max-w-[calc(100%-1rem)] items-center gap-2 rounded-full border border-slate-200/70 bg-white/70 px-2 py-1.5 shadow-sm backdrop-blur-xl duration-200 dark:border-white/10 dark:bg-white/[0.06]"
+          aria-live="polite"
+        >
+          <div className="flex min-w-0 items-center gap-1.5 px-1.5">
+            <FolderGit2 className="text-primary shrink-0" size={14} />
+            <span className="text-muted-foreground shrink-0 text-[11px] font-medium">
+              {language === 'ko' ? '프로젝트 질문' : 'Project questions'}
+            </span>
+            <span className="text-border shrink-0">·</span>
+            <strong className="text-foreground max-w-[42vw] truncate text-xs font-semibold md:max-w-[22rem]">
+              {projectQuestionScope}
+            </strong>
+          </div>
+          <button
+            type="button"
+            onClick={returnToGlobalQuestions}
+            className="text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:ring-ring/50 inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors outline-none focus-visible:ring-2"
+            aria-label={
+              language === 'ko'
+                ? '전체 질문으로 돌아가기'
+                : 'Back to all questions'
+            }
+          >
+            <ArrowLeft size={12} />
+            {language === 'ko' ? '전체 질문' : 'All questions'}
+          </button>
+        </div>
+      ) : null}
+
       {isVisible && (
         <div
           ref={quickQuestionRailRef}
@@ -255,6 +303,22 @@ export default function HelperBoost({
       </div>
     </div>
   );
+}
+
+function getProjectQuestionScope(
+  surface: QuestionSurface,
+  dynamicProjectName: string | null
+) {
+  if (surface === 'project.dynamic') return dynamicProjectName?.trim() || null;
+
+  const labels: Partial<Record<QuestionSurface, string>> = {
+    'project.askoosu': 'AskOosu',
+    'project.instagram': 'Aigram',
+    'project.sticks': 'Sticks & Stones',
+    'project.portfoliooh': 'Portfoli-Oh!',
+  };
+
+  return labels[surface] ?? null;
 }
 
 function buildDynamicProjectQuestions(
