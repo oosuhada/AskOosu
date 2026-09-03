@@ -1,5 +1,7 @@
+import { githubPortfolioSnapshot } from '@/data/github-portfolio-snapshot';
+
 const GITHUB_OWNER = 'oosuhada';
-const DEFAULT_REPOSITORY_LIMIT = 24;
+const DEFAULT_REPOSITORY_LIMIT = 12;
 const MAX_REPOSITORY_LIMIT = 45;
 const GITHUB_REVALIDATE_SECONDS = 60 * 60;
 
@@ -57,11 +59,12 @@ export type GithubPortfolioRepository = {
 export async function getGithubPortfolioRepositories(): Promise<
   GithubPortfolioRepository[]
 > {
+  const limit = getRepositoryLimit();
+
   try {
     const repositories = await fetchGithubJson<GithubRepositoryApi[]>(
       `https://api.github.com/users/${GITHUB_OWNER}/repos?per_page=100&sort=updated&type=owner`
     );
-    const limit = getRepositoryLimit();
     const candidates = repositories
       .filter(isPortfolioCandidate)
       .sort(compareRepositories)
@@ -70,7 +73,7 @@ export async function getGithubPortfolioRepositories(): Promise<
     return Promise.all(candidates.map(enrichRepository));
   } catch (error) {
     console.warn('Unable to refresh GitHub portfolio repositories.', error);
-    return [];
+    return githubPortfolioSnapshot.slice(0, limit);
   }
 }
 
