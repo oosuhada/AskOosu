@@ -92,6 +92,23 @@ The GitHub profile is intentionally curated around public evidence:
 - Private repositories can still appear in AskOosu as portfolio context when the public claim is backed by screenshots, case-study notes, or sanitized summaries.
 - Duplicate or early learning repositories should not be over-positioned as production-ready work.
 
+### Automatic GitHub + Blog Portfolio Feed
+
+`/projects` now keeps the curated representative-project section and adds a live portfolio feed underneath it.
+
+- Public, non-fork, non-archived repositories from `oosuhada` are refreshed every hour.
+- New repositories automatically enter the recent-project feed without editing `oosu-profile.ts`.
+- GitHub Linguist byte totals are converted into language percentages instead of showing only one primary language.
+- README Markdown/HTML images are inspected automatically; common badge/status images are filtered out and up to three meaningful README visuals are retained per repository.
+- Repositories tagged `portfolio-hidden` are excluded. Repositories tagged `portfolio-featured` are sorted ahead of ordinary recent repositories.
+- The default dynamic repository limit is 24 and can be adjusted with `GITHUB_PORTFOLIO_REPO_LIMIT` up to 45.
+- `GITHUB_TOKEN` is optional for the public feed but recommended when a higher GitHub API rate limit is needed.
+- Published MDX posts from `content/blog` automatically appear in the latest-writing section.
+- `/api/portfolio` exposes the same GitHub and blog data as machine-readable JSON.
+- RAG static evidence also includes the refreshed GitHub repository metadata, language percentages, README image URLs, and published blog metadata.
+
+This keeps the editorial distinction intentional: the top section remains hand-curated, while recent public work and writing stay current automatically.
+
 ## Runtime Stack
 
 - Framework: Next.js App Router, React, TypeScript
@@ -115,6 +132,7 @@ Create `.env.local` with:
 OPENAI_API_KEY=your_openai_api_key_here
 OPENAI_MODEL=gpt-4o-mini
 GITHUB_TOKEN=your_github_token_here
+GITHUB_PORTFOLIO_REPO_LIMIT=24
 NEXT_PUBLIC_ASKOOSU_DEBUG_UI_ENABLED=false
 
 # Optional Grok/xAI mode

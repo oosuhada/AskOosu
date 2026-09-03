@@ -83,7 +83,7 @@ export async function searchPortfolioKnowledge(
 
   return rankChunksLexically({
     query: trimmedQuery,
-    chunks: getStaticChunks(),
+    chunks: await getStaticChunks(),
   }).slice(0, limit);
 }
 
@@ -113,7 +113,7 @@ async function syncPortfolioKnowledgeBaseOnce(): Promise<RagSyncSummary> {
   const sourceChunks = dedupeChunks([
     ...(await fetchNotionChunks()),
     ...localMarkdown.chunks,
-    ...getStaticChunks(),
+    ...(await getStaticChunks()),
   ]);
   let chunks = sourceChunks;
   let skippedEmbeddings = !shouldUseEmbeddings();
