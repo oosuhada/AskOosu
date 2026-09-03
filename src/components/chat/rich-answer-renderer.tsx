@@ -566,7 +566,7 @@ function ProjectShowcaseCards({
                     type="button"
                     onClick={() =>
                       project.id.startsWith('github:')
-                        ? askDynamicProjectQuestion(project.title, language)
+                        ? switchDynamicProjectQuestionSurface(project.title)
                         : switchQuestionSurface(project.id)
                     }
                     data-project-action="questions"
@@ -1629,17 +1629,11 @@ function switchQuestionSurface(projectId: string) {
   );
 }
 
-function askDynamicProjectQuestion(title: string, language: 'ko' | 'en') {
+function switchDynamicProjectQuestionSurface(title: string) {
   if (typeof window === 'undefined') return;
-
-  const query =
-    language === 'ko'
-      ? `${title} 프로젝트가 무엇을 만드는 프로젝트인지, README 근거와 사용 언어 비율을 포함해서 자세히 설명해줘.`
-      : `Tell me more about the ${title} project, including what it builds, README evidence, and its language breakdown.`;
-
   window.dispatchEvent(
-    new CustomEvent('askoosu:project-question', {
-      detail: { query },
+    new CustomEvent('askoosu:question-surface', {
+      detail: { surface: 'project.dynamic', projectName: title },
     })
   );
 }

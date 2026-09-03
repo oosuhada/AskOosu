@@ -105,6 +105,9 @@ const Chat = () => {
   );
   const [input, setInput] = useState('');
   const [activeSurface, setActiveSurface] = useState<QuestionSurface>('home');
+  const [dynamicProjectName, setDynamicProjectName] = useState<string | null>(
+    null
+  );
   const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const conversationEndRef = useRef<HTMLDivElement>(null);
@@ -253,10 +256,19 @@ const Chat = () => {
 
   useEffect(() => {
     const handleSurfaceChange = (event: Event) => {
-      const detail = (event as CustomEvent<{ surface?: QuestionSurface }>)
-        .detail;
+      const detail = (
+        event as CustomEvent<{
+          surface?: QuestionSurface;
+          projectName?: string | null;
+        }>
+      ).detail;
       if (!detail?.surface) return;
       setActiveSurface(detail.surface);
+      setDynamicProjectName(
+        detail.surface === 'project.dynamic'
+          ? detail.projectName?.trim() || null
+          : null
+      );
     };
 
     window.addEventListener('askoosu:question-surface', handleSurfaceChange);
@@ -477,23 +489,6 @@ const Chat = () => {
   );
 
   useEffect(() => {
-    const handleProjectQuestion = (event: Event) => {
-      const detail = (event as CustomEvent<{ query?: string }>).detail;
-      const query = detail?.query?.trim();
-      if (!query) return;
-      submitQuery(query);
-    };
-
-    window.addEventListener('askoosu:project-question', handleProjectQuestion);
-    return () => {
-      window.removeEventListener(
-        'askoosu:project-question',
-        handleProjectQuestion
-      );
-    };
-  }, [submitQuery]);
-
-  useEffect(() => {
     setAnonymousSessionId(getOrCreateAnonymousSessionId());
   }, []);
 
@@ -562,6 +557,7 @@ const Chat = () => {
     setInput('');
     setActiveConversationId(null);
     setActiveSurface('home');
+    setDynamicProjectName(null);
     setLastSubmittedQuery(null);
     setChatErrorNotice(null);
     setLoadingSubmit(false);
@@ -849,6 +845,7 @@ const Chat = () => {
             submitQuery={submitQuery}
             setInput={setInput}
             activeSurface={activeSurface}
+            dynamicProjectName={dynamicProjectName}
             conversationId={activeConversationId}
             hasReachedLimit={isToolInProgress}
           />

@@ -25,9 +25,17 @@ interface HelperBoostProps {
   submitQuery?: (query: string, suggestedQuestion?: SuggestedQuestion) => void;
   setInput?: (value: string) => void;
   activeSurface?: QuestionSurface;
+  dynamicProjectName?: string | null;
   conversationId?: string | null;
   hasReachedLimit?: boolean;
 }
+
+type DynamicProjectQuestion = {
+  id: string;
+  quickLabel: string;
+  displayQuestion: string;
+  dynamic: true;
+};
 
 const questionConfig: Record<string, { color: string; icon: ElementType }> = {
   'home.projects.top3': { color: '#246BFE', icon: BriefcaseBusiness },
@@ -44,6 +52,7 @@ const questionConfig: Record<string, { color: string; icon: ElementType }> = {
 export default function HelperBoost({
   submitQuery,
   activeSurface = 'home',
+  dynamicProjectName = null,
   conversationId = null,
   hasReachedLimit = false,
 }: HelperBoostProps) {
@@ -60,6 +69,14 @@ export default function HelperBoost({
     activeSurface,
     conversationId
   );
+  const dynamicQuestions = buildDynamicProjectQuestions(
+    dynamicProjectName,
+    language
+  );
+  const displayQuestions: Array<SuggestedQuestion | DynamicProjectQuestion> =
+    activeSurface === 'project.dynamic' && dynamicProjectName
+      ? dynamicQuestions
+      : visibleQuestions;
   const askedQuestionSet = new Set(askedQuestionIds);
 
   useEffect(() => {
@@ -154,8 +171,10 @@ export default function HelperBoost({
           onClickCapture={handleQuickQuestionClickCapture}
         >
           <div className="flex w-max min-w-full flex-nowrap justify-center gap-2 md:gap-3">
-            {visibleQuestions.map((question) => {
-              const isAsked = askedQuestionSet.has(question.id);
+            {displayQuestions.map((question) => {
+              const isDynamicQuestion = 'dynamic' in question;
+              const isAsked =
+                !isDynamicQuestion && askedQuestionSet.has(question.id);
               const { color, icon: Icon } = questionConfig[question.id] ?? {
                 color: '#64748B',
                 icon: Sparkles,
@@ -167,7 +186,10 @@ export default function HelperBoost({
                   key={question.id}
                   onClick={() => {
                     if (!submitQuery) return;
-                    submitQuery(question.displayQuestion, question);
+                    submitQuery(
+                      question.displayQuestion,
+                      isDynamicQuestion ? undefined : question
+                    );
                   }}
                   className={`focus-visible:border-ring focus-visible:ring-ring/50 relative inline-flex h-auto w-fit max-w-[82vw] shrink-0 snap-center items-center justify-start gap-2.5 overflow-hidden rounded-2xl border bg-clip-padding px-3.5 py-2.5 text-left whitespace-nowrap backdrop-blur-2xl backdrop-contrast-125 backdrop-saturate-150 transition-all outline-none before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[radial-gradient(circle_at_18%_0%,rgba(255,255,255,0.22),transparent_52%)] before:opacity-60 focus-visible:ring-[3px] md:max-w-[25rem] md:px-4 md:py-3 dark:before:bg-[radial-gradient(circle_at_18%_0%,rgba(255,255,255,0.12),transparent_52%)] ${
                     hasReachedLimit
@@ -233,4 +255,67 @@ export default function HelperBoost({
       </div>
     </div>
   );
+}
+
+function buildDynamicProjectQuestions(
+  projectName: string | null,
+  language: 'ko' | 'en'
+): DynamicProjectQuestion[] {
+  if (!projectName) return [];
+
+  if (language === 'ko') {
+    return [
+      {
+        id: `dynamic:${projectName}:overview`,
+        quickLabel: '프로젝트 개요',
+        displayQuestion: `${projectName} 프로젝트는 무엇을 만드는 프로젝트인가요?`,
+        dynamic: true,
+      },
+      {
+        id: `dynamic:${projectName}:readme`,
+        quickLabel: 'README / 구조',
+        displayQuestion: `${projectName}의 README 근거를 바탕으로 핵심 기능과 구조를 설명해 주세요.`,
+        dynamic: true,
+      },
+      {
+        id: `dynamic:${projectName}:languages`,
+        quickLabel: '언어 / 기술',
+        displayQuestion: `${projectName}에서 사용한 언어 비율과 주요 기술 선택을 설명해 주세요.`,
+        dynamic: true,
+      },
+      {
+        id: `dynamic:${projectName}:growth`,
+        quickLabel: '성장 포인트',
+        displayQuestion: `${projectName}이 우수님의 개발 성장 흐름에서 어떤 의미가 있나요?`,
+        dynamic: true,
+      },
+    ];
+  }
+
+  return [
+    {
+      id: `dynamic:${projectName}:overview`,
+      quickLabel: 'Overview',
+      displayQuestion: `What does the ${projectName} project build?`,
+      dynamic: true,
+    },
+    {
+      id: `dynamic:${projectName}:readme`,
+      quickLabel: 'README / Architecture',
+      displayQuestion: `Explain the core features and architecture of ${projectName} using its README evidence.`,
+      dynamic: true,
+    },
+    {
+      id: `dynamic:${projectName}:languages`,
+      quickLabel: 'Languages / Stack',
+      displayQuestion: `Explain the language breakdown and main technology choices in ${projectName}.`,
+      dynamic: true,
+    },
+    {
+      id: `dynamic:${projectName}:growth`,
+      quickLabel: 'Growth',
+      displayQuestion: `How does ${projectName} fit into Oosu's growth as a developer?`,
+      dynamic: true,
+    },
+  ];
 }

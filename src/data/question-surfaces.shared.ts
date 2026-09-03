@@ -4,6 +4,7 @@ export type QuestionSurface =
   | 'project.instagram'
   | 'project.sticks'
   | 'project.portfoliooh'
+  | 'project.dynamic'
   | 'profile'
   | 'skills'
   | 'fun'

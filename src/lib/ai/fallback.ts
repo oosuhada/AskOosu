@@ -289,6 +289,7 @@ async function isProviderCoolingDown(provider: string, requestId?: string) {
 
 function getGeneratedAnswerSource(provider: string): ChatAnswerSource {
   if (provider === 'groq') return 'rag_groq';
+  if (provider === 'google_gemini') return 'rag_google';
   if (provider === 'google_vertex') return 'rag_google';
   if (provider === 'xai') return 'rag_xai';
   if (provider === 'openrouter') return 'rag_openrouter';
