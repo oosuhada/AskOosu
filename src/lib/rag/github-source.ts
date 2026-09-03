@@ -1,4 +1,7 @@
-import { getGithubRagRepositories } from '@/lib/github-portfolio';
+import {
+  getGithubRagRepositories,
+  type GithubPortfolioRepository,
+} from '@/lib/github-portfolio';
 import { githubPortfolioSnapshot } from '@/data/github-portfolio-snapshot';
 import { getPostgresPool, hasPostgresDatabaseUrl } from '@/lib/db/postgres';
 import { chunkLongText, createRagChunk, normalizeText } from './text';
@@ -29,12 +32,16 @@ function buildRepositoryChunks(
     sourceKind: 'github_project',
     entityId: `github:${repository.name}`,
     repository: repository.fullName,
+    defaultBranch: repository.defaultBranch,
+    primaryLanguage: repository.primaryLanguage,
     description: repository.description,
     url: repository.url,
     homepage: repository.homepage,
     languages: repository.languages,
     readmeImages: repository.readmeImages,
     topics: repository.topics,
+    stars: repository.stars,
+    forks: repository.forks,
     createdAt: repository.createdAt,
     updatedAt: repository.updatedAt,
     pushedAt: repository.pushedAt,
@@ -118,7 +125,9 @@ export function getGithubSourceKey(fullName: string) {
   return `github:${fullName}`;
 }
 
-export async function getIndexedGithubProjects(limit = 12) {
+export async function getIndexedGithubProjects(
+  limit = 12
+): Promise<GithubPortfolioRepository[]> {
   if (!hasPostgresDatabaseUrl()) return getSnapshotProjects(limit);
 
   try {
@@ -143,13 +152,20 @@ export async function getIndexedGithubProjects(limit = 12) {
     if (result.rows.length === 0) return getSnapshotProjects(limit);
     return result.rows.map(({ metadata }) => ({
       name: getMetadataString(metadata, 'repository').split('/').at(-1) ?? '',
+      fullName: getMetadataString(metadata, 'repository'),
       description: getMetadataNullableString(metadata, 'description'),
       url: getMetadataString(metadata, 'url'),
       homepage: getMetadataNullableString(metadata, 'homepage'),
+      defaultBranch: getMetadataString(metadata, 'defaultBranch') || 'main',
+      primaryLanguage: getMetadataNullableString(metadata, 'primaryLanguage'),
+      topics: getMetadataStringArray(metadata, 'topics'),
+      stars: getMetadataNumber(metadata, 'stars'),
+      forks: getMetadataNumber(metadata, 'forks'),
       createdAt: getMetadataString(metadata, 'createdAt'),
       updatedAt: getMetadataString(metadata, 'updatedAt'),
-      languages: getMetadataArray(metadata, 'languages'),
-      readmeImages: getMetadataArray(metadata, 'readmeImages'),
+      pushedAt: getMetadataString(metadata, 'pushedAt'),
+      languages: getMetadataArray(metadata, 'languages') as GithubPortfolioRepository['languages'],
+      readmeImages: getMetadataArray(metadata, 'readmeImages') as GithubPortfolioRepository['readmeImages'],
     }));
   } catch (error) {
     console.warn('Unable to read indexed GitHub projects; using snapshot.', error);
@@ -160,17 +176,7 @@ export async function getIndexedGithubProjects(limit = 12) {
 function getSnapshotProjects(limit: number) {
   return [...githubPortfolioSnapshot]
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
-    .slice(0, limit)
-    .map((repository) => ({
-      name: repository.name,
-      description: repository.description,
-      url: repository.url,
-      homepage: repository.homepage,
-      createdAt: repository.createdAt,
-      updatedAt: repository.updatedAt,
-      languages: repository.languages,
-      readmeImages: repository.readmeImages,
-    }));
+    .slice(0, limit) as GithubPortfolioRepository[];
 }
 
 function getMetadataString(metadata: Record<string, unknown>, key: string) {
@@ -189,4 +195,15 @@ function getMetadataNullableString(
 function getMetadataArray(metadata: Record<string, unknown>, key: string) {
   const value = metadata[key];
   return Array.isArray(value) ? value : [];
+}
+
+function getMetadataStringArray(metadata: Record<string, unknown>, key: string) {
+  return getMetadataArray(metadata, key).filter(
+    (value): value is string => typeof value === 'string'
+  );
+}
+
+function getMetadataNumber(metadata: Record<string, unknown>, key: string) {
+  const value = metadata[key];
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
 }

@@ -1,8 +1,6 @@
 import type { FaqAnswer, FaqMediaRef, FaqVisualBlock } from './answers';
-import {
-  getGithubPortfolioRepositories,
-  type GithubPortfolioRepository,
-} from '@/lib/github-portfolio';
+import type { GithubPortfolioRepository } from '@/lib/github-portfolio';
+import { getIndexedGithubProjects } from '@/lib/rag/github-source';
 
 const MAX_LATEST_PROJECTS = 12;
 
@@ -11,7 +9,7 @@ export async function hydrateDynamicProjectAnswer(
 ): Promise<FaqAnswer> {
   if (faqAnswer.intentId !== 'project.representative') return faqAnswer;
 
-  const repositories = await getGithubPortfolioRepositories();
+  const repositories = await getIndexedGithubProjects(MAX_LATEST_PROJECTS);
   if (repositories.length === 0) return faqAnswer;
 
   const latestRepositories = repositories.slice(0, MAX_LATEST_PROJECTS);

@@ -1,6 +1,6 @@
 import { oosuProfile, oosuProjects } from '@/lib/oosu-profile';
 import { getAllPosts } from '@/lib/blog';
-import { getGithubPortfolioRepositories } from '@/lib/github-portfolio';
+import { getIndexedGithubProjects } from './github-source';
 import { chunkLongText, normalizeText } from './text';
 import type { RagChunk } from './types';
 
@@ -20,7 +20,7 @@ Notion source: ${oosuProfile.notionSourceUrl}
   `);
 
   const [githubRepositories, blogPosts] = await Promise.all([
-    getGithubPortfolioRepositories(),
+    getIndexedGithubProjects(12),
     getAllPosts(),
   ]);
 

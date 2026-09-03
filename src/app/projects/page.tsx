@@ -11,7 +11,7 @@ import type {
   GithubLanguageShare,
   GithubPortfolioRepository,
 } from '@/lib/github-portfolio';
-import { getGithubPortfolioRepositories } from '@/lib/github-portfolio';
+import { getIndexedGithubProjects } from '@/lib/rag/github-source';
 import { oosuProjects } from '@/lib/oosu-profile';
 import { createPageMetadata } from '@/lib/seo';
 
@@ -42,7 +42,7 @@ const projectDescriptionsKo: Record<string, string> = {
 
 export default async function ProjectsPage() {
   const [githubRepositories, blogPosts] = await Promise.all([
-    getGithubPortfolioRepositories(),
+    getIndexedGithubProjects(12),
     getAllPosts(),
   ]);
 
