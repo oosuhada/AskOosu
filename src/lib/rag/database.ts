@@ -1098,12 +1098,13 @@ function getRagChunkSource(chunk: RagChunk): RagSourceInput {
     type: chunk.source,
     sourceKey,
     title:
-      chunk.source === 'notion'
+      getMetadataString(chunk.metadata, 'sourceTitle') ||
+      (chunk.source === 'notion'
         ? `Notion source ${sourceKey.slice(0, 12)}`
         : chunk.source === 'markdown'
           ? getMetadataString(chunk.metadata, 'sourceTitle') ||
             `Markdown source ${sourceKey}`
-          : 'Static portfolio fallback',
+          : 'Static portfolio fallback'),
     url: chunk.url,
     language: getMetadataLanguage(chunk.metadata),
   };

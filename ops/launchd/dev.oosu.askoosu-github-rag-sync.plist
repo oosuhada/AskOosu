@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>dev.oosu.askoosu-github-rag-sync</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-lc</string>
+    <string>cd /Users/gabrieljang/Services/askoosu-orbstack &amp;&amp; ASKOOSU_BASE_URL=https://oosu.dev ./scripts/prod-github-rag-sync.sh</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/gabrieljang/Services/askoosu-orbstack</string>
+
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>StartInterval</key>
+  <integer>86400</integer>
+
+  <key>ProcessType</key>
+  <string>Background</string>
+
+  <key>StandardOutPath</key>
+  <string>/Users/gabrieljang/Services/askoosu-orbstack/logs/github-rag-sync.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/gabrieljang/Services/askoosu-orbstack/logs/github-rag-sync.log</string>
+</dict>
+</plist>

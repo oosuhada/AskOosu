@@ -1,7 +1,6 @@
 import { getRagTopK } from './config';
 import { searchRagChunks, type RagChunkSearchResult } from './search';
 import type { ChatLanguage } from '@/lib/i18n/detect-language';
-import { getGithubRepositoryEvidence } from '@/lib/github-portfolio';
 
 const GUARDRAIL_ENTITY_ID = 'policy.guardrail';
 
@@ -53,7 +52,7 @@ export async function buildRagChatContext(
   }
 
   const repositoryName = extractGithubRepositoryName(normalizedQuestion);
-  const [primarySearch, guardrailSearch, githubEvidence] = await Promise.all([
+  const [primarySearch, guardrailSearch, githubSearch] = await Promise.all([
     searchRagChunks({
       q: normalizedQuestion,
       limit: getRagTopK(),
@@ -66,17 +65,18 @@ export async function buildRagChatContext(
       includeContent: true,
     }),
     repositoryName
-      ? getGithubRepositoryEvidence(repositoryName)
+      ? searchRagChunks({
+          entityId: `github:${repositoryName}`,
+          limit: Math.max(4, getRagTopK()),
+          includeContent: true,
+        })
       : Promise.resolve(null),
   ]);
 
   warnings.push(...primarySearch.warnings, ...guardrailSearch.warnings);
-
-  const liveGithubChunk = githubEvidence
-    ? buildGithubEvidenceChunk(githubEvidence)
-    : null;
+  if (githubSearch) warnings.push(...githubSearch.warnings);
   const publicEvidence = [
-    ...(liveGithubChunk ? [liveGithubChunk] : []),
+    ...(githubSearch?.results.filter(isPublicEvidenceChunk) ?? []),
     ...primarySearch.results.filter(isPublicEvidenceChunk),
   ];
 
@@ -90,7 +90,7 @@ export async function buildRagChatContext(
   );
   const guardrailEvidence = guardrailSearch.results.slice(0, guardrailLimit);
   const chunks = dedupeChunks([
-    ...(liveGithubChunk ? [liveGithubChunk] : []),
+    ...(githubSearch?.results ?? []),
     ...primarySearch.results,
     ...guardrailEvidence,
   ]);
@@ -148,47 +148,6 @@ function buildEmptyContext(warnings: string[]): RagChatContext {
       hasTodoEvidence: false,
       warnings,
     },
-  };
-}
-
-function buildGithubEvidenceChunk(
-  evidence: Awaited<ReturnType<typeof getGithubRepositoryEvidence>> & {}
-): RagChunkSearchResult {
-  const languageBreakdown = evidence.languages.length
-    ? evidence.languages
-        .map((language) => `${language.name} ${language.percentage}%`)
-        .join(', ')
-    : 'Unavailable from the GitHub language endpoint right now.';
-  const content = [
-    `GitHub repository: ${evidence.name}`,
-    evidence.description ? `Description: ${evidence.description}` : '',
-    `Repository URL: ${evidence.url}`,
-    evidence.homepage ? `Live URL: ${evidence.homepage}` : '',
-    evidence.createdAt ? `Created: ${evidence.createdAt}` : '',
-    `Languages: ${languageBreakdown}`,
-    evidence.readmeText
-      ? `README evidence:\n${evidence.readmeText}`
-      : 'README evidence: README could not be retrieved from the public repository.',
-  ]
-    .filter(Boolean)
-    .join('\n');
-
-  return {
-    chunk_id: `github-project-live-${evidence.name}`,
-    entity_id: `github:${evidence.name}`,
-    title: `${evidence.name} GitHub README`,
-    section_path: ['GitHub', evidence.name, 'README'],
-    score: 1,
-    contentPreview: content.slice(0, 320),
-    content,
-    metadata: {
-      sourceKind: 'github_project',
-      repository: evidence.name,
-      freshness: 'current',
-      url: evidence.url,
-    },
-    has_todo: false,
-    visibility: 'public',
   };
 }
 

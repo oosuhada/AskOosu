@@ -68,6 +68,22 @@ export type GithubRepositoryEvidence = {
   readmeText: string | null;
 };
 
+export type GithubRepositorySyncManifest = {
+  live: boolean;
+  repositories: Array<{
+    name: string;
+    fullName: string;
+    defaultBranch: string;
+    createdAt: string;
+    updatedAt: string;
+    pushedAt: string;
+  }>;
+};
+
+export type GithubRagRepository = GithubPortfolioRepository & {
+  readmeText: string | null;
+};
+
 export async function getGithubPortfolioRepositories(): Promise<
   GithubPortfolioRepository[]
 > {
@@ -88,6 +104,82 @@ export async function getGithubPortfolioRepositories(): Promise<
     return [...githubPortfolioSnapshot]
       .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
       .slice(0, limit);
+  }
+}
+
+export async function getGithubRepositorySyncManifest(): Promise<GithubRepositorySyncManifest> {
+  const limit = getRepositoryLimit();
+
+  try {
+    const repositories = await fetchGithubJson<GithubRepositoryApi[]>(
+      `https://api.github.com/users/${GITHUB_OWNER}/repos?per_page=100&sort=created&direction=desc&type=owner`
+    );
+    return {
+      live: true,
+      repositories: repositories
+        .filter(isPortfolioCandidate)
+        .sort(compareRepositories)
+        .slice(0, limit)
+        .map((repository) => ({
+          name: repository.name,
+          fullName: repository.full_name,
+          defaultBranch: repository.default_branch,
+          createdAt: repository.created_at,
+          updatedAt: repository.updated_at,
+          pushedAt: repository.pushed_at,
+        })),
+    };
+  } catch (error) {
+    console.warn('Unable to refresh GitHub sync manifest.', error);
+    return {
+      live: false,
+      repositories: [...githubPortfolioSnapshot]
+        .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+        .slice(0, limit)
+        .map((repository) => ({
+          name: repository.name,
+          fullName: repository.fullName,
+          defaultBranch: repository.defaultBranch,
+          createdAt: repository.createdAt,
+          updatedAt: repository.updatedAt,
+          pushedAt: repository.pushedAt,
+        })),
+    };
+  }
+}
+
+export async function getGithubRagRepositories(): Promise<GithubRagRepository[]> {
+  const limit = getRepositoryLimit();
+
+  try {
+    const repositories = await fetchGithubJson<GithubRepositoryApi[]>(
+      `https://api.github.com/users/${GITHUB_OWNER}/repos?per_page=100&sort=created&direction=desc&type=owner`
+    );
+    const candidates = repositories
+      .filter(isPortfolioCandidate)
+      .sort(compareRepositories)
+      .slice(0, limit);
+
+    return Promise.all(candidates.map(enrichRepositoryForRag));
+  } catch (error) {
+    console.warn('Unable to refresh live GitHub RAG repositories.', error);
+    const repositories = [...githubPortfolioSnapshot]
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+      .slice(0, limit);
+
+    return Promise.all(
+      repositories.map(async (repository) => {
+        const readme = await fetchRepositoryReadmeByName(repository.name, [
+          repository.defaultBranch,
+          'main',
+          'master',
+        ]);
+        return {
+          ...repository,
+          readmeText: readme ? normalizeReadmeEvidence(readme) : null,
+        };
+      })
+    );
   }
 }
 
@@ -187,6 +279,40 @@ async function enrichRepository(
           defaultBranch: repository.default_branch,
         })
       : [],
+  };
+}
+
+async function enrichRepositoryForRag(
+  repository: GithubRepositoryApi
+): Promise<GithubRagRepository> {
+  const [languages, readme] = await Promise.all([
+    fetchRepositoryLanguages(repository),
+    fetchRepositoryReadme(repository),
+  ]);
+
+  return {
+    name: repository.name,
+    fullName: repository.full_name,
+    url: repository.html_url,
+    homepage: normalizeHomepage(repository.homepage),
+    description: repository.description,
+    defaultBranch: repository.default_branch,
+    primaryLanguage: repository.language,
+    topics: repository.topics ?? [],
+    stars: repository.stargazers_count,
+    forks: repository.forks_count,
+    createdAt: repository.created_at,
+    updatedAt: repository.updated_at,
+    pushedAt: repository.pushed_at,
+    languages,
+    readmeImages: readme
+      ? extractReadmeImages({
+          markdown: readme,
+          repository: repository.name,
+          defaultBranch: repository.default_branch,
+        })
+      : [],
+    readmeText: readme ? normalizeReadmeEvidence(readme) : null,
   };
 }
 
