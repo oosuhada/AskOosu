@@ -148,6 +148,14 @@ function buildPrewarmedAnswer(
   return buildGrowthAnswer(project, language);
 }
 
+function joinMarkdownLines(lines: Array<string | null | undefined | false>) {
+  return lines
+    .filter((line): line is string => line !== null && line !== undefined && line !== false)
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 function buildOverviewAnswer(project: IndexedGithubProject, language: 'ko' | 'en') {
   const description = getDescription(project, language);
   const languageSummary = formatLanguageSummary(project.metadata, 4);
@@ -157,7 +165,7 @@ function buildOverviewAnswer(project: IndexedGithubProject, language: 'ko' | 'en
   const homepage = getMetadataString(project.metadata, 'homepage');
 
   if (language === 'ko') {
-    return [
+    return joinMarkdownLines([
       `**${project.name}**는 ${description}`,
       '',
       `- **기술 구성**: ${languageSummary || 'GitHub 저장소의 언어 메타데이터를 기준으로 구성되어 있습니다.'}`,
@@ -167,12 +175,10 @@ function buildOverviewAnswer(project: IndexedGithubProject, language: 'ko' | 'en
       ...highlights.map((highlight) => `- **${highlight.title}**: ${highlight.summary}`),
       githubUrl ? `- **GitHub**: ${githubUrl}` : '',
       homepage ? `- **Live**: ${homepage}` : '',
-    ]
-      .filter(Boolean)
-      .join('\n');
+    ]);
   }
 
-  return [
+  return joinMarkdownLines([
     `**${project.name}** ${descriptionEn(project)}`,
     '',
     `- **Language mix**: ${languageSummary || 'Based on the indexed GitHub repository metadata.'}`,
@@ -182,9 +188,7 @@ function buildOverviewAnswer(project: IndexedGithubProject, language: 'ko' | 'en
     ...highlights.map((highlight) => `- **${highlight.title}**: ${highlight.summary}`),
     githubUrl ? `- **GitHub**: ${githubUrl}` : '',
     homepage ? `- **Live**: ${homepage}` : '',
-  ]
-    .filter(Boolean)
-    .join('\n');
+  ]);
 }
 
 function buildReadmeAnswer(project: IndexedGithubProject, language: 'ko' | 'en') {
@@ -192,7 +196,7 @@ function buildReadmeAnswer(project: IndexedGithubProject, language: 'ko' | 'en')
   const languageSummary = formatLanguageSummary(project.metadata, 4);
 
   if (language === 'ko') {
-    return [
+    return joinMarkdownLines([
       `**${project.name}**의 README를 구조적으로 보면 다음 흐름으로 정리할 수 있습니다.`,
       '',
       ...sections.flatMap((section, index) =>
@@ -200,15 +204,13 @@ function buildReadmeAnswer(project: IndexedGithubProject, language: 'ko' | 'en')
       ),
       sections.length === 0
         ? '1. 공개 README 본문이 짧아 저장소 설명과 GitHub 메타데이터를 중심으로 확인할 수 있습니다.'
-        : '',
+      : '',
       '',
       `**주요 기술 구성**: ${languageSummary || 'GitHub 저장소 메타데이터 기준'}`,
-    ]
-      .filter(Boolean)
-      .join('\n');
+    ]);
   }
 
-  return [
+  return joinMarkdownLines([
     `The indexed README for **${project.name}** can be summarized as the following structure.`,
     '',
     ...sections.flatMap((section, index) =>
@@ -216,12 +218,10 @@ function buildReadmeAnswer(project: IndexedGithubProject, language: 'ko' | 'en')
     ),
     sections.length === 0
       ? '1. The public README is brief, so the repository description and GitHub metadata provide most of the available structure.'
-      : '',
+    : '',
     '',
     `**Main language mix**: ${languageSummary || 'Based on the indexed GitHub metadata.'}`,
-  ]
-    .filter(Boolean)
-    .join('\n');
+  ]);
 }
 
 function formatReadmeSectionItem(
@@ -253,7 +253,7 @@ function buildLanguagesAnswer(project: IndexedGithubProject, language: 'ko' | 'e
   const techSections = getReadmeHighlights(project, 3, /tech|stack|architecture|build|install|deploy|구조|기술|설치|배포/i);
 
   if (language === 'ko') {
-    return [
+    return joinMarkdownLines([
       `**${project.name}의 언어 비율**`,
       '',
       ...languages.map(
@@ -265,12 +265,10 @@ function buildLanguagesAnswer(project: IndexedGithubProject, language: 'ko' | 'e
       ...techSections.map((section) => `- **${section.title}**: ${section.summary}`),
       '',
       '언어 비율은 GitHub Linguist 기준이며, 기술 선택 설명은 README와 공개 메타데이터 범위 안에서만 정리했습니다.',
-    ]
-      .filter(Boolean)
-      .join('\n');
+    ]);
   }
 
-  return [
+  return joinMarkdownLines([
     `**Language breakdown for ${project.name}**`,
     '',
     ...languages.map(
@@ -282,9 +280,7 @@ function buildLanguagesAnswer(project: IndexedGithubProject, language: 'ko' | 'e
     ...techSections.map((section) => `- **${section.title}**: ${section.summary}`),
     '',
     'The percentages follow GitHub Linguist byte counts; the technology interpretation is limited to the README and public repository metadata.',
-  ]
-    .filter(Boolean)
-    .join('\n');
+  ]);
 }
 
 function buildGrowthAnswer(project: IndexedGithubProject, language: 'ko' | 'en') {
