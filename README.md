@@ -106,6 +106,7 @@ The GitHub profile is intentionally curated around public evidence:
 - Published MDX posts from `content/blog` automatically appear in the latest-writing section.
 - `/api/portfolio` exposes the same GitHub and blog data as machine-readable JSON.
 - RAG static evidence also includes the refreshed GitHub repository metadata, language percentages, README image URLs, and published blog metadata.
+- The Mac mini production host installs `dev.oosu.askoosu-rag-sync` as a LaunchAgent, which runs `scripts/prod-rag-sync.sh` every hour so AskOosu's Postgres/pgvector knowledge follows the same GitHub and blog updates without a manual portfolio edit.
 
 This keeps the editorial distinction intentional: the top section remains hand-curated, while recent public work and writing stay current automatically.
 
