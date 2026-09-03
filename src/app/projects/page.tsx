@@ -220,7 +220,7 @@ function GithubRepositoryCard({
           <div className="min-w-0">
             <h2 className="truncate text-xl font-bold">{repository.name}</h2>
             <p className="text-muted-foreground mt-1 text-xs">
-              <LocalizedText ko="업데이트" en="Updated" />{' '}
+              <LocalizedText ko="생성" en="Created" />{' '}
               {formatGithubDate(repository.createdAt)}
             </p>
           </div>
