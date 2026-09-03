@@ -14,6 +14,7 @@ import {
   findFaqAnswerById,
   type FaqAnswer,
 } from '@/lib/faq/answers';
+import { hydrateDynamicProjectAnswer } from '@/lib/faq/dynamic-project-answer';
 import type { AnswerVariant } from '@/data/question-surfaces.shared';
 import {
   routeFaqIntent,
@@ -221,7 +222,7 @@ export async function prepareChatOrchestration({
       conversationIntent: effectiveConversationIntent,
     })
   ) {
-    const faqAnswer = faqRoute.answer;
+    const faqAnswer = await hydrateDynamicProjectAnswer(faqRoute.answer);
     const effectiveAnswerVariant = getEffectiveAnswerVariant({
       question,
       messages,
@@ -1109,8 +1110,8 @@ function buildDirectMetadata({
     ? sourceChunkIds.map((chunkId) => ({
         chunk_id: chunkId,
         entity_id: matchedEntityIds[0] ?? null,
-        title: toSourceTitle(answerSource),
-        section_path: [toSourceTitle(answerSource)],
+        title: getSourceTitleForChunk(chunkId, answerSource),
+        section_path: [getSourceTitleForChunk(chunkId, answerSource)],
         score: confidence * 100,
         visibility: 'public',
         freshness: 'current',
@@ -1153,7 +1154,13 @@ function buildDirectMetadata({
     displayQuestion:
       requestContext?.displayQuestion ?? faqAnswer?.displayQuestion,
     answerVariant: requestContext?.answerVariant ?? 'default',
-    badge: getAnswerSourceBadge(answerSource, language),
+    badge:
+      faqAnswer?.intentId === 'project.representative' &&
+      sourceChunkIds.some((chunkId) => chunkId.startsWith('github-project-'))
+        ? language === 'ko'
+          ? 'GitHub + Oosu Wiki 기반'
+          : 'From GitHub + Oosu Wiki'
+        : getAnswerSourceBadge(answerSource, language),
     todoBadge: faqAnswer?.hasTodo ? getTodoBadge(language) : undefined,
     cacheMode: faqAnswer?.cacheMode,
     renderSpec: faqAnswer?.renderSpec,
@@ -1223,6 +1230,15 @@ function toSourceTitle(answerSource: ChatAnswerMetadata['answerSource']) {
   if (answerSource === 'rag_generation') return 'Portfolio data';
   if (answerSource === 'insufficient_evidence') return 'Insufficient evidence';
   return 'Oosu portfolio data';
+}
+
+function getSourceTitleForChunk(
+  chunkId: string,
+  answerSource: ChatAnswerMetadata['answerSource']
+) {
+  if (chunkId.startsWith('github-project-')) return 'GitHub repository';
+  if (chunkId.startsWith('blog-post-')) return 'Oosu Blog';
+  return toSourceTitle(answerSource);
 }
 
 function getAnswerSourceBadge(

@@ -93,6 +93,14 @@ type ProjectItem = {
   image?: string;
   tags: string[];
   href?: string;
+  githubHref?: string;
+  updatedAt?: string;
+  languages: ProjectLanguage[];
+};
+
+type ProjectLanguage = {
+  name: string;
+  percentage: number;
 };
 
 type ProjectActionHighlight = 'questions' | 'open';
@@ -453,6 +461,7 @@ function ProjectShowcaseCards({
     useState<ProjectActionHighlight | null>(null);
   const isMoreProjectsRail =
     block.dataKey === 'projects.more' ||
+    block.dataKey === 'projects.github.latest' ||
     block.title?.toLowerCase().includes('more project');
 
   useEffect(() => {
@@ -534,6 +543,12 @@ function ProjectShowcaseCards({
                   {project.description}
                 </p>
               )}
+              {project.languages.length > 0 && (
+                <ProjectLanguageBreakdown
+                  languages={project.languages}
+                  language={language}
+                />
+              )}
               <div className="flex flex-wrap gap-1.5">
                 {project.tags.map((tag) => (
                   <span
@@ -580,12 +595,68 @@ function ProjectShowcaseCards({
                     <ExternalLink className="h-3.5 w-3.5" />
                   </a>
                 )}
+                {project.githubHref && project.githubHref !== project.href && (
+                  <a
+                    href={project.githubHref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-background/70 hover:bg-accent hover:text-accent-foreground focus-visible:ring-primary/50 inline-flex h-8 max-w-full min-w-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition focus-visible:ring-2 focus-visible:outline-none"
+                  >
+                    <span className="min-w-0 truncate">GitHub</span>
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                )}
               </div>
             </div>
           </article>
         ))}
       </div>
     </section>
+  );
+}
+
+function ProjectLanguageBreakdown({
+  languages,
+  language,
+}: {
+  languages: ProjectLanguage[];
+  language: 'ko' | 'en';
+}) {
+  const visible = languages.filter((item) => item.percentage >= 0.1);
+  if (visible.length === 0) return null;
+
+  return (
+    <div className="space-y-1.5">
+      <div className="text-muted-foreground text-[10px] font-semibold tracking-wide uppercase">
+        {language === 'ko' ? '사용 언어' : 'Languages'}
+      </div>
+      <div
+        className="bg-background/70 flex h-1.5 overflow-hidden rounded-full border"
+        aria-label={visible
+          .map((item) => `${item.name} ${item.percentage}%`)
+          .join(', ')}
+      >
+        {visible.map((item, index) => (
+          <span
+            key={item.name}
+            className="h-full border-r border-background/60 last:border-r-0"
+            style={{
+              width: `${Math.max(item.percentage, 0.5)}%`,
+              backgroundColor: `hsl(${(index * 67 + 195) % 360} 62% 55%)`,
+            }}
+            title={`${item.name} ${item.percentage}%`}
+          />
+        ))}
+      </div>
+      <div className="flex flex-wrap gap-x-2 gap-y-1 text-[10px]">
+        {visible.map((item) => (
+          <span key={item.name} className="text-muted-foreground">
+            <strong className="text-foreground font-semibold">{item.name}</strong>{' '}
+            {item.percentage}%
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -1424,7 +1495,23 @@ function parseProjectItem(value: unknown): ProjectItem | null {
     image: parseString(value.image) ?? undefined,
     tags: parseStringArray(value.tags),
     href: parseString(value.href) ?? undefined,
+    githubHref: parseString(value.githubHref) ?? undefined,
+    updatedAt: parseString(value.updatedAt) ?? undefined,
+    languages: Array.isArray(value.languages)
+      ? value.languages.map(parseProjectLanguage).filter(isDefined)
+      : [],
   };
+}
+
+function parseProjectLanguage(value: unknown): ProjectLanguage | null {
+  if (!isRecord(value)) return null;
+  const name = parseString(value.name);
+  const percentage =
+    typeof value.percentage === 'number' && Number.isFinite(value.percentage)
+      ? value.percentage
+      : null;
+  if (!name || percentage === null) return null;
+  return { name, percentage };
 }
 
 function parseSkillGroup(value: unknown): SkillGroup | null {

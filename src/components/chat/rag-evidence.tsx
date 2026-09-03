@@ -479,7 +479,8 @@ export function RagEvidencePanel({
             {getPublicSourceBadgeText(
               sourceCount,
               displayLanguage,
-              ragMetadata.answerSource
+              ragMetadata.answerSource,
+              ragMetadata.sources
             )}
           </span>
         </Badge>
@@ -1267,7 +1268,8 @@ function getAnswerSourceLabel(metadata: RagMetadata, language: 'ko' | 'en') {
 function getPublicSourceBadgeText(
   count: number,
   language: 'ko' | 'en',
-  answerSource?: string
+  answerSource?: string,
+  sources: RagSource[] = []
 ) {
   if (count === 0) {
     return language === 'ko' ? '근거 부족' : 'Limited evidence';
@@ -1278,6 +1280,11 @@ function getPublicSourceBadgeText(
       return `Visionary Builder Docs · ${count}개 출처`;
     }
     return `Visionary Builder Docs · ${count} source${count === 1 ? '' : 's'}`;
+  }
+
+  if (sources.some((source) => source.chunk_id.startsWith('github-project-'))) {
+    if (language === 'ko') return `GitHub + Oosu Wiki · ${count}개 출처`;
+    return `GitHub + Oosu Wiki · ${count} source${count === 1 ? '' : 's'}`;
   }
 
   if (language === 'ko') return `Oosu Wiki 기반 · ${count}개 출처`;
@@ -1372,6 +1379,10 @@ function formatPublicChunkLabel(chunkId: string, language: 'ko' | 'en') {
 
   if (chunkId.startsWith('project.')) {
     return humanizeSourcePathSegment(chunkId.replace(/^project\./, ''));
+  }
+
+  if (chunkId.startsWith('github-project-')) {
+    return chunkId.replace(/^github-project-/, '');
   }
 
   if (chunkId.startsWith('profile.')) {
