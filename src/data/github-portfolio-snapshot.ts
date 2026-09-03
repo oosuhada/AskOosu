@@ -349,4 +349,26 @@ export const githubPortfolioSnapshot = [
       },
     ],
   },
+  {
+    name: 'retro-mario-clone',
+    fullName: 'oosuhada/retro-mario-clone',
+    url: 'https://github.com/oosuhada/retro-mario-clone',
+    homepage: 'https://retro.oosu.dev/mario/',
+    description:
+      'JavaScript Super Mario Bros. browser clone based on the reruns/mario HTML5 Canvas source.',
+    defaultBranch: 'main',
+    primaryLanguage: 'JavaScript',
+    topics: [],
+    stars: 0,
+    forks: 0,
+    createdAt: '2026-08-26T01:59:21Z',
+    updatedAt: '2026-08-28T08:43:14Z',
+    pushedAt: '2026-09-02T04:50:28Z',
+    languages: [
+      { name: 'JavaScript', bytes: 89418, percentage: 94.7 },
+      { name: 'HTML', bytes: 2977, percentage: 3.2 },
+      { name: 'CSS', bytes: 2043, percentage: 2.2 },
+    ],
+    readmeImages: [],
+  },
 ];
