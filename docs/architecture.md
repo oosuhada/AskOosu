@@ -63,7 +63,8 @@ Model selection is isolated in `src/lib/ai/providers.ts` with a compatibility re
 - API mode: `XAI_API_MODE=responses` by default, or `chat` for the older Chat Completions-style xAI path
 - Groq provider: set `ASKOOSU_AI_PROVIDER=groq`
 - Required for Groq: `GROQ_API_KEYS` or `GROQ_API_KEY`
-- Optional for Groq: `GROQ_MODEL`, `GROQ_BASE_URL`, `GROQ_KEY_FAILURE_THRESHOLD`, `GROQ_KEY_COOLDOWN_MS`, `GROQ_KEY_QUOTA_COOLDOWN_MS`
+- Ordered fallback chain: set `ASKOOSU_FALLBACK_AI_PROVIDERS=groq,openrouter` to try Groq before OpenRouter after the primary provider fails or is cooling down. `ASKOOSU_FALLBACK_AI_PROVIDER` remains supported for legacy single-fallback deployments.
+- Optional for Groq: `GROQ_MODEL`, `GROQ_BASE_URL`, `GROQ_REQUEST_TIMEOUT_MS`, `GROQ_KEY_FAILURE_THRESHOLD`, `GROQ_KEY_COOLDOWN_MS`, `GROQ_KEY_QUOTA_COOLDOWN_MS`
 - Google Vertex provider/fallback: set `ASKOOSU_AI_PROVIDER=google_vertex`, or configure `GOOGLE_VERTEX_API_KEY`/`GOOGLE_APPLICATION_CREDENTIALS`/`GOOGLE_VERTEX_PROJECT` so it can be used when Groq selection is unavailable
 - Optional for Google Vertex: `GOOGLE_VERTEX_MODEL`, `GOOGLE_VERTEX_LOCATION`, `GOOGLE_VERTEX_PROJECT`
 
@@ -144,9 +145,11 @@ XAI_BASE_URL=https://api.x.ai/v1
 
 # Optional Groq key pool mode
 # ASKOOSU_AI_PROVIDER=groq
+GROQ_API_KEY=your_groq_api_key_here
 GROQ_API_KEYS=label:your_groq_api_key_here,label:another_groq_api_key_here
-GROQ_MODEL=llama-3.3-70b-versatile
+GROQ_MODEL=openai/gpt-oss-120b
 GROQ_BASE_URL=https://api.groq.com/openai/v1
+GROQ_REQUEST_TIMEOUT_MS=30000
 GROQ_KEY_FAILURE_THRESHOLD=3
 GROQ_KEY_COOLDOWN_MS=900000
 GROQ_KEY_QUOTA_COOLDOWN_MS=3600000

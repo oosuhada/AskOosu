@@ -9,7 +9,7 @@ import {
 import type { ChatAnswerSource } from '@/lib/chat/types';
 import {
   getChatProviderErrorCode,
-  getFallbackChatModel,
+  getFallbackChatModels,
   isChatModelRateLimitError,
   recordChatModelFailure,
   recordChatModelSuccess,
@@ -18,7 +18,11 @@ import {
 import { logInfo, logWarn, toLogError } from '@/lib/observability/logger';
 
 type GenerateTextOptions = Parameters<typeof generateText>[0];
-type ProviderFallbackReason = 'primary_cooling_down' | 'primary_failed' | null;
+type ProviderFallbackReason =
+  | 'primary_cooling_down'
+  | 'primary_failed'
+  | 'fallback_failed'
+  | null;
 
 export type AiAnswerResult = {
   answer: string;
@@ -50,19 +54,22 @@ export async function generateAnswerWithFallback({
   let attemptIndex = 1;
 
   if (await isProviderCoolingDown(primaryModel.provider, requestId)) {
-    const fallbackModel = await getUsableFallbackModel(primaryModel, requestId);
-    if (fallbackModel) {
-      return generateWithModel({
-        selection: fallbackModel,
-        system,
-        messages,
-        tools,
-        stopWhen,
-        usageMetadata,
-        attemptIndex,
-        fallbackReason: 'primary_cooling_down',
-      });
-    }
+    const fallbackResult = await generateWithFallbackModels({
+      primaryModel,
+      system,
+      messages,
+      tools,
+      stopWhen,
+      usageMetadata,
+      attemptIndex,
+      firstFallbackReason: 'primary_cooling_down',
+    });
+
+    if (fallbackResult) return fallbackResult;
+
+    throw new Error(
+      `Primary provider ${primaryModel.provider} is cooling down and no configured fallback provider is usable.`
+    );
   }
 
   try {
@@ -79,10 +86,49 @@ export async function generateAnswerWithFallback({
   } catch (error) {
     await recordProviderFailure(primaryModel, error, usageMetadata);
 
-    const fallbackModel = await getUsableFallbackModel(primaryModel, requestId);
-    if (!fallbackModel) throw error;
-
     attemptIndex += 1;
+    const fallbackResult = await generateWithFallbackModels({
+      primaryModel,
+      system,
+      messages,
+      tools,
+      stopWhen,
+      usageMetadata,
+      attemptIndex,
+      firstFallbackReason: 'primary_failed',
+    });
+
+    if (fallbackResult) return fallbackResult;
+
+    throw error;
+  }
+}
+
+async function generateWithFallbackModels({
+  primaryModel,
+  system,
+  messages,
+  tools,
+  stopWhen,
+  usageMetadata,
+  attemptIndex,
+  firstFallbackReason,
+}: {
+  primaryModel: ChatModelSelection;
+  system: string;
+  messages: ModelMessage[];
+  tools: GenerateTextOptions['tools'];
+  stopWhen: GenerateTextOptions['stopWhen'];
+  usageMetadata?: Record<string, unknown>;
+  attemptIndex: number;
+  firstFallbackReason: Exclude<ProviderFallbackReason, null>;
+}): Promise<AiAnswerResult | null> {
+  const requestId = getUsageMetadataString(usageMetadata, 'requestId');
+  const fallbackModels = await getUsableFallbackModels(primaryModel, requestId);
+  let fallbackReason = firstFallbackReason;
+  let lastFallbackError: unknown = null;
+
+  for (const fallbackModel of fallbackModels) {
     try {
       return await generateWithModel({
         selection: fallbackModel,
@@ -92,13 +138,19 @@ export async function generateAnswerWithFallback({
         stopWhen,
         usageMetadata,
         attemptIndex,
-        fallbackReason: 'primary_failed',
+        fallbackReason,
       });
     } catch (fallbackError) {
       await recordProviderFailure(fallbackModel, fallbackError, usageMetadata);
-      throw fallbackError;
+      lastFallbackError = fallbackError;
+      attemptIndex += 1;
+      fallbackReason = 'fallback_failed';
     }
   }
+
+  if (lastFallbackError) throw lastFallbackError;
+
+  return null;
 }
 
 async function generateWithModel({
@@ -236,26 +288,31 @@ async function recordProviderFailure(
   ]);
 }
 
-async function getUsableFallbackModel(
+async function getUsableFallbackModels(
   primaryModel: ChatModelSelection,
   requestId?: string
 ) {
-  const fallbackModel = getFallbackChatModel();
-  if (!fallbackModel || fallbackModel.provider === primaryModel.provider) {
-    return null;
+  const fallbackModels = getFallbackChatModels(primaryModel.provider);
+  const usableFallbackModels: ChatModelSelection[] = [];
+
+  for (const fallbackModel of fallbackModels) {
+    if (fallbackModel.provider === primaryModel.provider) continue;
+    if (await canUseFallbackModel(fallbackModel, requestId)) {
+      usableFallbackModels.push(fallbackModel);
+    }
   }
 
-  if (await canUseFallbackModel(fallbackModel, requestId)) return fallbackModel;
-  return null;
+  return usableFallbackModels;
 }
 
 async function canUseFallbackModel(
   selection: ChatModelSelection,
   requestId?: string
 ) {
+  if (await isProviderCoolingDown(selection.provider, requestId)) return false;
+
   if (selection.provider !== 'google_vertex') return true;
   if (!isGoogleAiEnabled()) return false;
-  if (await isProviderCoolingDown(selection.provider, requestId)) return false;
 
   const maxCalls = getPositiveIntegerEnv('GOOGLE_AI_MAX_CALLS_PER_DAY', 100);
   if (maxCalls <= 0) return false;
@@ -324,9 +381,11 @@ function getProviderRequestTimeoutMs(provider: string) {
       ? 'GOOGLE_GEMINI_REQUEST_TIMEOUT_MS'
       : provider === 'google_vertex'
         ? 'GOOGLE_VERTEX_REQUEST_TIMEOUT_MS'
-        : provider === 'openrouter'
-          ? 'OPENROUTER_REQUEST_TIMEOUT_MS'
-          : 'AI_PROVIDER_REQUEST_TIMEOUT_MS';
+        : provider === 'groq'
+          ? 'GROQ_REQUEST_TIMEOUT_MS'
+          : provider === 'openrouter'
+            ? 'OPENROUTER_REQUEST_TIMEOUT_MS'
+            : 'AI_PROVIDER_REQUEST_TIMEOUT_MS';
 
   return getPositiveIntegerEnv(
     providerEnvName,

@@ -1,6 +1,7 @@
 export {
   getChatModel,
   getFallbackChatModel,
+  getFallbackChatModels,
   getChatProviderErrorCode,
   hasChatModelCredentials,
   isChatModelRateLimitError,

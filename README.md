@@ -137,6 +137,11 @@ GITHUB_TOKEN=your_github_token_here
 GITHUB_PORTFOLIO_REPO_LIMIT=12
 NEXT_PUBLIC_ASKOOSU_DEBUG_UI_ENABLED=false
 
+# Optional ordered fallback chain
+# ASKOOSU_AI_PROVIDER=google_gemini
+# ASKOOSU_FALLBACK_AI_PROVIDERS=groq,openrouter
+# ASKOOSU_FALLBACK_AI_PROVIDER= # legacy single fallback
+
 # Optional Grok/xAI mode
 # ASKOOSU_AI_PROVIDER=xai
 XAI_API_KEY=your_xai_api_key_here
@@ -145,8 +150,10 @@ XAI_API_MODE=responses
 
 # Optional Groq key pool mode
 # ASKOOSU_AI_PROVIDER=groq
+GROQ_API_KEY=your_groq_api_key_here
 GROQ_API_KEYS=label:your_groq_api_key_here,label:another_groq_api_key_here
-GROQ_MODEL=llama-3.3-70b-versatile
+GROQ_MODEL=openai/gpt-oss-120b
+GROQ_REQUEST_TIMEOUT_MS=30000
 GROQ_KEY_FAILURE_THRESHOLD=3
 GROQ_KEY_COOLDOWN_MS=900000
 GROQ_KEY_QUOTA_COOLDOWN_MS=3600000

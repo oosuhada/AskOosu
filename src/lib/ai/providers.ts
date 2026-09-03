@@ -53,7 +53,7 @@ declare global {
 
 const DEFAULT_OPENAI_MODEL = 'gpt-4o-mini';
 const DEFAULT_XAI_MODEL = 'grok-4';
-const DEFAULT_GROQ_MODEL = 'llama-3.3-70b-versatile';
+const DEFAULT_GROQ_MODEL = 'openai/gpt-oss-120b';
 const DEFAULT_GOOGLE_GEMINI_MODEL = 'gemini-3.7-flash';
 const DEFAULT_GOOGLE_VERTEX_MODEL = 'gemini-2.5-flash';
 const DEFAULT_GOOGLE_VERTEX_LOCATION = 'us-central1';
@@ -69,38 +69,37 @@ export function getChatModel(): ChatModelSelection {
   return getChatModelForProvider(getChatProviderName());
 }
 
-export function getFallbackChatModel() {
-  const primaryProvider = getChatProviderName();
-  const configuredFallbackProvider = getFallbackChatProviderName();
+export function getFallbackChatModel(primaryProvider = getChatProviderName()) {
+  return getFallbackChatModels(primaryProvider)[0] ?? null;
+}
 
-  if (
-    configuredFallbackProvider &&
-    configuredFallbackProvider !== primaryProvider &&
-    hasProviderCredentials(configuredFallbackProvider)
-  ) {
-    return getChatModelForProvider(configuredFallbackProvider);
+export function getFallbackChatModels(primaryProvider = getChatProviderName()) {
+  const configuredFallbackProviders = getConfiguredFallbackChatProviderNames();
+  const fallbackProviders =
+    configuredFallbackProviders.length > 0
+      ? configuredFallbackProviders
+      : getDefaultFallbackProviderNames(primaryProvider);
+  const seenProviders = new Set<ChatProviderName>([primaryProvider]);
+  const fallbackModels: ChatModelSelection[] = [];
+
+  for (const provider of fallbackProviders) {
+    if (seenProviders.has(provider)) continue;
+    seenProviders.add(provider);
+    if (!hasProviderCredentials(provider)) continue;
+
+    try {
+      fallbackModels.push(getChatModelForProvider(provider));
+    } catch (error) {
+      logWarn('ai.fallback_provider_selection_failed', {
+        route: 'api/chat',
+        provider,
+        errorCode: getChatProviderErrorCode(error),
+        error: errorHandler(error),
+      });
+    }
   }
 
-  if (
-    primaryProvider !== 'google_gemini' &&
-    hasGoogleGeminiCredentials()
-  ) {
-    return getGoogleGeminiChatModel();
-  }
-
-  if (
-    primaryProvider !== 'google_vertex' &&
-    isGoogleAiEnabled() &&
-    hasGoogleVertexCredentials()
-  ) {
-    return getGoogleVertexChatModel();
-  }
-
-  if (primaryProvider !== 'openrouter' && hasOpenRouterCredentials()) {
-    return getOpenRouterChatModel();
-  }
-
-  return null;
+  return fallbackModels;
 }
 
 export function hasChatModelCredentials() {
@@ -349,15 +348,55 @@ function getChatModelForProvider(provider: ChatProviderName): ChatModelSelection
   };
 }
 
-function getFallbackChatProviderName(): ChatProviderName | null {
-  return parseProviderName(process.env.ASKOOSU_FALLBACK_AI_PROVIDER);
+function getConfiguredFallbackChatProviderNames() {
+  const pluralProviders = parseProviderNameList(
+    process.env.ASKOOSU_FALLBACK_AI_PROVIDERS
+  );
+
+  if (pluralProviders.length > 0) return pluralProviders;
+
+  const singleProvider = parseProviderName(
+    process.env.ASKOOSU_FALLBACK_AI_PROVIDER
+  );
+  return singleProvider ? [singleProvider] : [];
+}
+
+function getDefaultFallbackProviderNames(primaryProvider: ChatProviderName) {
+  const providers: ChatProviderName[] = [];
+
+  if (primaryProvider !== 'google_gemini') providers.push('google_gemini');
+  if (primaryProvider !== 'google_vertex' && isGoogleAiEnabled()) {
+    providers.push('google_vertex');
+  }
+  if (primaryProvider !== 'openrouter') providers.push('openrouter');
+
+  return providers;
+}
+
+function parseProviderNameList(value: string | undefined) {
+  if (!value?.trim()) return [];
+
+  return value
+    .split(/[\n,]+/)
+    .map(parseProviderName)
+    .filter((provider): provider is ChatProviderName => Boolean(provider));
 }
 
 function parseProviderName(value: string | undefined): ChatProviderName | null {
-  if (isGoogleVertexProviderName(value)) return 'google_vertex';
-  if (value === 'google_gemini' || value === 'gemini') return 'google_gemini';
-  if (value === 'groq' || value === 'xai' || value === 'openai') return value;
-  if (value === 'openrouter') return 'openrouter';
+  const normalizedValue = value?.trim().toLowerCase();
+
+  if (isGoogleVertexProviderName(normalizedValue)) return 'google_vertex';
+  if (normalizedValue === 'google_gemini' || normalizedValue === 'gemini') {
+    return 'google_gemini';
+  }
+  if (
+    normalizedValue === 'groq' ||
+    normalizedValue === 'xai' ||
+    normalizedValue === 'openai'
+  ) {
+    return normalizedValue;
+  }
+  if (normalizedValue === 'openrouter') return 'openrouter';
   return null;
 }
 
