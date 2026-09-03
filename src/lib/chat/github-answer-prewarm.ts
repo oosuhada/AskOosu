@@ -339,7 +339,7 @@ function selectReadmeChunks(
   limit: number,
   preferredPattern?: RegExp
 ) {
-  const unique = dedupeBySection(project.readmeChunks);
+  const unique = rankReadmeChunks(dedupeBySection(project.readmeChunks));
   if (!preferredPattern) return unique.slice(0, limit);
   const preferred = unique.filter((chunk) =>
     preferredPattern.test(`${chunk.title} ${getMetadataString(chunk.metadata, 'readmeSection')}`)
@@ -361,7 +361,7 @@ function dedupeBySection(chunks: GithubIndexedChunk[]) {
 }
 
 function getReadmeSectionNames(project: IndexedGithubProject) {
-  return dedupeBySection(project.readmeChunks)
+  return rankReadmeChunks(dedupeBySection(project.readmeChunks))
     .map(
       (chunk) =>
         getMetadataString(chunk.metadata, 'readmeSection') ||
@@ -375,6 +375,7 @@ function summarizeChunk(content: string) {
     .replace(/```[\s\S]*?```/g, ' ')
     .replace(/`([^`]+)`/g, '$1')
     .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+    .replace(/<[^>]*>/g, ' ')
     .replace(/https?:\/\/\S+/g, '')
     .replace(/[#>*_|]/g, ' ')
     .replace(/\s+/g, ' ')
@@ -382,6 +383,63 @@ function summarizeChunk(content: string) {
   if (!cleaned) return 'README에 이 섹션의 구현 정보가 정리되어 있습니다.';
   const sentence = cleaned.match(/^.{1,260}?(?:[.!?](?=\s|$)|$)/)?.[0] ?? cleaned;
   return sentence.slice(0, 260).trim();
+}
+
+function rankReadmeChunks(chunks: GithubIndexedChunk[]) {
+  return [...chunks].sort((left, right) => {
+    const scoreDifference =
+      readmeSectionScore(right) - readmeSectionScore(left);
+    if (scoreDifference !== 0) return scoreDifference;
+    return left.chunkId.localeCompare(right.chunkId, undefined, {
+      numeric: true,
+    });
+  });
+}
+
+function readmeSectionScore(chunk: GithubIndexedChunk) {
+  const title = `${getMetadataString(chunk.metadata, 'readmeSection')} ${chunk.title}`.toLowerCase();
+
+  if (/\boverview\b|개요/.test(title)) return 120;
+  if (
+    /core experience|core capabilities|current capabilities|주요 기능|product flow|image analysis pipeline|video analysis pipeline/.test(
+      title
+    )
+  ) {
+    return 115;
+  }
+  if (
+    /architecture|구조|data persistence|server 연동|search and retrieval|semantic action timeline|hierarchical classifier routing/.test(
+      title
+    )
+  ) {
+    return 110;
+  }
+  if (/\bapi\b|주요 라우트|model stack|\bstack\b|ai behavior/.test(title)) {
+    return 105;
+  }
+  if (
+    /solutions implemented|adaptive hls|viewport-aware|cache|performance problem|seek-friendly|product preview|interface/.test(
+      title
+    )
+  ) {
+    return 95;
+  }
+  if (/deployment|build|run|live site|from prompt to production/.test(title)) {
+    return 80;
+  }
+  if (/why i built|why bother|문제의식|receipts/.test(title)) return 70;
+  if (/screenshots|reference|result guide|validation metrics|training/.test(title)) {
+    return 55;
+  }
+  if (
+    /local development|development|environment|install|configure|start|시작하기|설치|프로젝트 실행|privacy|open-set warning/.test(
+      title
+    )
+  ) {
+    return 20;
+  }
+
+  return 60;
 }
 
 function getDescription(project: IndexedGithubProject, language: 'ko' | 'en') {
