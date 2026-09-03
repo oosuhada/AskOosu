@@ -5,6 +5,7 @@ import { HomeJsonLd } from '@/components/seo/json-ld';
 import { TealCyanLottieButtonIcon } from '@/components/chat/teal-cyan-lottie-button-icon';
 import { OosuAvatar } from '@/components/oosu-avatar';
 import { PortfolioSidebar } from '@/components/portfolio-sidebar';
+import { LatestPortfolioActivity } from '@/components/latest-portfolio-activity';
 import { Button } from '@/components/ui/button';
 import WelcomeModal from '@/components/welcome-modal';
 import { useSuggestedQuestions } from '@/hooks/use-suggested-questions';
@@ -254,6 +255,8 @@ function HomeContent() {
         interval={150}
         className="relative z-10 h-32 w-32 sm:h-44 sm:w-44 md:h-64 md:w-64 lg:h-72 lg:w-72"
       />
+
+      <LatestPortfolioActivity />
 
       {/* quick buttons */}
       <motion.div

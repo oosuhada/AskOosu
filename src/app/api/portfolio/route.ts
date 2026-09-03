@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAllPosts } from '@/lib/blog';
 import { getGithubPortfolioRepositories } from '@/lib/github-portfolio';
 
-export const revalidate = 3600;
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const [repositories, posts] = await Promise.all([
