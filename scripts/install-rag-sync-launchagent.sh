@@ -14,6 +14,5 @@ cp "$SOURCE_PLIST" "$TARGET_PLIST"
 launchctl bootout "$DOMAIN/$LABEL" 2>/dev/null || true
 launchctl bootstrap "$DOMAIN" "$TARGET_PLIST"
 launchctl enable "$DOMAIN/$LABEL"
-launchctl kickstart -k "$DOMAIN/$LABEL"
 
 echo "Installed $LABEL with a 3600-second interval."

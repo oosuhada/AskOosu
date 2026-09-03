@@ -16,7 +16,7 @@
   <string>/Users/gabrieljang/Services/askoosu-orbstack</string>
 
   <key>RunAtLoad</key>
-  <true/>
+  <false/>
 
   <key>StartInterval</key>
   <integer>3600</integer>
