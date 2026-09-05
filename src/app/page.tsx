@@ -6,6 +6,7 @@ import { TealCyanLottieButtonIcon } from '@/components/chat/teal-cyan-lottie-but
 import { OosuAvatar } from '@/components/oosu-avatar';
 import { PortfolioSidebar } from '@/components/portfolio-sidebar';
 import { LatestPortfolioActivity } from '@/components/latest-portfolio-activity';
+import { AdaptiveBackdropContent } from '@/components/ui/adaptive-backdrop-content';
 import { Button } from '@/components/ui/button';
 import WelcomeModal from '@/components/welcome-modal';
 import { useSuggestedQuestions } from '@/hooks/use-suggested-questions';
@@ -304,10 +305,10 @@ function HomeContent() {
                     key={question.id}
                     asChild
                     variant="outline"
-                    className={`min-h-12 w-fit max-w-[82vw] shrink-0 cursor-pointer snap-center justify-start gap-2.5 rounded-2xl border px-3.5 py-2.5 text-left whitespace-nowrap backdrop-blur-2xl active:scale-[0.98] md:max-w-[25rem] md:px-4 md:py-3 ${
+                    className={`min-h-12 w-fit max-w-[82vw] shrink-0 cursor-pointer snap-center justify-start gap-2.5 rounded-2xl border px-3.5 py-2.5 text-left whitespace-nowrap backdrop-blur-xl active:scale-[0.98] md:max-w-[25rem] md:px-4 md:py-3 ${
                       isAsked
-                        ? 'bg-background/62 hover:bg-background/70 text-foreground/55 border-foreground/8 shadow-none'
-                        : 'bg-background/72 hover:bg-background/82 text-foreground/90 border-foreground/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
+                        ? 'border-slate-200/60 bg-white/20 shadow-none hover:bg-white/30 dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-white/[0.06]'
+                        : 'bg-background/35 hover:bg-background/60 border-white/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] dark:border-white/15 dark:bg-white/[0.11] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] dark:hover:bg-white/[0.16]'
                     }`}
                   >
                     <Link
@@ -319,19 +320,21 @@ function HomeContent() {
                       }}
                       aria-label={`Ask starter question: ${question.displayQuestion}`}
                     >
-                      <Icon
-                        className="shrink-0"
-                        size={18}
-                        strokeWidth={2}
-                        color={isAsked ? '#CBD5E1' : color}
-                      />
-                      <span
-                        className={`min-w-0 truncate text-sm leading-snug font-medium md:text-base ${
-                          isAsked ? 'text-foreground/55' : 'text-foreground/90'
+                      <AdaptiveBackdropContent
+                        className={`flex min-w-0 items-center gap-2.5 ${
+                          isAsked ? 'opacity-55' : ''
                         }`}
                       >
-                        {question.quickLabel}
-                      </span>
+                        <Icon
+                          className="shrink-0"
+                          size={18}
+                          strokeWidth={2}
+                          color={isAsked ? '#CBD5E1' : color}
+                        />
+                        <span className="min-w-0 truncate text-sm leading-snug font-medium md:text-base">
+                          {question.quickLabel}
+                        </span>
+                      </AdaptiveBackdropContent>
                     </Link>
                   </Button>
                 );
@@ -347,19 +350,21 @@ function HomeContent() {
           }
           aria-controls="home-quick-questions"
           aria-expanded={isQuickQuestionsVisible}
-          className="text-foreground/90 bg-background/60 hover:bg-background/75 border-foreground/10 mt-2 flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold backdrop-blur-2xl transition-colors"
+          className="bg-background/60 hover:bg-background/75 border-foreground/10 mt-2 rounded-full border px-3 py-1 text-xs font-semibold backdrop-blur-2xl transition-colors"
         >
-          {isQuickQuestionsVisible ? (
-            <>
-              <ChevronDown size={14} />
-              {text.hideQuickQuestions}
-            </>
-          ) : (
-            <>
-              <ChevronUp size={14} />
-              {text.showQuickQuestions}
-            </>
-          )}
+          <AdaptiveBackdropContent className="flex items-center gap-1">
+            {isQuickQuestionsVisible ? (
+              <>
+                <ChevronDown size={14} />
+                {text.hideQuickQuestions}
+              </>
+            ) : (
+              <>
+                <ChevronUp size={14} />
+                {text.showQuickQuestions}
+              </>
+            )}
+          </AdaptiveBackdropContent>
         </button>
       </motion.div>
 
