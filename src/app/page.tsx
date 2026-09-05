@@ -307,8 +307,8 @@ function HomeContent() {
                     variant="outline"
                     className={`min-h-12 w-fit max-w-[82vw] shrink-0 cursor-pointer snap-center justify-start gap-2.5 rounded-2xl border px-3.5 py-2.5 text-left whitespace-nowrap backdrop-blur-xl active:scale-[0.98] md:max-w-[25rem] md:px-4 md:py-3 ${
                       isAsked
-                        ? 'border-slate-200/60 bg-white/20 shadow-none hover:bg-white/30 dark:border-white/10 dark:bg-white/[0.04] dark:hover:bg-white/[0.06]'
-                        : 'bg-background/35 hover:bg-background/60 border-white/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] dark:border-white/15 dark:bg-white/[0.11] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] dark:hover:bg-white/[0.16]'
+                        ? 'border-white/30 bg-[rgba(113,113,122,0.10)] shadow-none hover:bg-[rgba(113,113,122,0.14)] dark:border-white/10'
+                        : 'border-white/45 bg-[rgba(113,113,122,0.16)] shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] hover:bg-[rgba(113,113,122,0.21)] dark:border-white/15 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]'
                     }`}
                   >
                     <Link
