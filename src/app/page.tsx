@@ -304,10 +304,10 @@ function HomeContent() {
                     key={question.id}
                     asChild
                     variant="outline"
-                    className={`min-h-12 w-fit max-w-[82vw] shrink-0 cursor-pointer snap-center justify-start gap-2.5 rounded-2xl border px-3.5 py-2.5 text-left whitespace-nowrap backdrop-blur-xl active:scale-[0.98] md:max-w-[25rem] md:px-4 md:py-3 ${
+                    className={`min-h-12 w-fit max-w-[82vw] shrink-0 cursor-pointer snap-center justify-start gap-2.5 rounded-2xl border px-3.5 py-2.5 text-left whitespace-nowrap backdrop-blur-2xl active:scale-[0.98] md:max-w-[25rem] md:px-4 md:py-3 ${
                       isAsked
-                        ? 'border-slate-200/60 bg-white/20 text-slate-400 shadow-none hover:bg-white/30 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-500 dark:hover:bg-white/[0.06]'
-                        : 'bg-background/35 hover:bg-background/60 text-foreground/90 border-white/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] dark:border-white/15 dark:bg-white/[0.11] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] dark:hover:bg-white/[0.16]'
+                        ? 'bg-background/62 hover:bg-background/70 text-foreground/55 border-foreground/8 shadow-none'
+                        : 'bg-background/72 hover:bg-background/82 text-foreground/90 border-foreground/12 shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]'
                     }`}
                   >
                     <Link
@@ -327,9 +327,7 @@ function HomeContent() {
                       />
                       <span
                         className={`min-w-0 truncate text-sm leading-snug font-medium md:text-base ${
-                          isAsked
-                            ? 'text-slate-400 dark:text-slate-500'
-                            : 'text-foreground'
+                          isAsked ? 'text-foreground/55' : 'text-foreground/90'
                         }`}
                       >
                         {question.quickLabel}

@@ -236,12 +236,12 @@ export default function HelperBoost({
                       isDynamicQuestion ? undefined : question
                     );
                   }}
-                  className={`focus-visible:border-ring focus-visible:ring-ring/50 relative inline-flex h-auto w-fit max-w-[82vw] shrink-0 snap-center items-center justify-start gap-2.5 overflow-hidden rounded-2xl border bg-clip-padding px-3.5 py-2.5 text-left whitespace-nowrap backdrop-blur-2xl backdrop-contrast-125 backdrop-saturate-150 transition-all outline-none before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[radial-gradient(circle_at_18%_0%,rgba(255,255,255,0.22),transparent_52%)] before:opacity-60 focus-visible:ring-[3px] md:max-w-[25rem] md:px-4 md:py-3 dark:before:bg-[radial-gradient(circle_at_18%_0%,rgba(255,255,255,0.12),transparent_52%)] ${
+                  className={`focus-visible:border-ring focus-visible:ring-ring/50 relative inline-flex h-auto w-fit max-w-[82vw] shrink-0 snap-center items-center justify-start gap-2.5 overflow-hidden rounded-2xl border bg-clip-padding px-3.5 py-2.5 text-left whitespace-nowrap backdrop-blur-2xl transition-all outline-none focus-visible:ring-[3px] md:max-w-[25rem] md:px-4 md:py-3 ${
                     hasReachedLimit
-                      ? 'border-border/50 cursor-pointer bg-[linear-gradient(135deg,rgba(255,255,255,0.09),rgba(255,255,255,0.02))] opacity-70 active:scale-[0.98] dark:bg-[linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))]'
+                      ? 'bg-background/58 border-foreground/8 text-foreground/50 cursor-pointer opacity-70 active:scale-[0.98]'
                       : isAsked
-                        ? 'cursor-pointer border-slate-200/55 bg-white/20 text-slate-400 shadow-none hover:bg-white/30 active:scale-[0.98] dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-500 dark:hover:bg-white/[0.06]'
-                        : 'text-foreground/90 cursor-pointer border-white/35 bg-[linear-gradient(135deg,rgba(255,255,255,0.16),rgba(255,255,255,0.035))] shadow-[inset_0_1px_0_rgba(255,255,255,0.24),inset_0_-1px_0_rgba(255,255,255,0.07)] hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.22),rgba(255,255,255,0.055))] active:scale-[0.98] dark:border-white/18 dark:bg-[linear-gradient(135deg,rgba(255,255,255,0.075),rgba(255,255,255,0.018))] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.15),inset_0_-1px_0_rgba(255,255,255,0.035)] dark:hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.11),rgba(255,255,255,0.03))]'
+                        ? 'bg-background/62 hover:bg-background/70 text-foreground/55 border-foreground/8 cursor-pointer shadow-none active:scale-[0.98]'
+                        : 'bg-background/72 hover:bg-background/82 text-foreground/90 border-foreground/12 cursor-pointer shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] active:scale-[0.98]'
                   }`}
                   aria-label={
                     isAsked
@@ -258,7 +258,7 @@ export default function HelperBoost({
                     />
                     <span
                       className={`min-w-0 truncate text-sm leading-snug font-medium md:text-base ${
-                        isAsked ? 'text-slate-400 dark:text-slate-500' : ''
+                        isAsked ? 'text-foreground/55' : 'text-foreground/90'
                       }`}
                     >
                       {question.quickLabel}
