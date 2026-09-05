@@ -241,7 +241,7 @@ export default function HelperBoost({
                       ? 'border-border/50 cursor-pointer bg-[linear-gradient(135deg,rgba(255,255,255,0.09),rgba(255,255,255,0.02))] opacity-70 active:scale-[0.98] dark:bg-[linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,255,255,0.01))]'
                       : isAsked
                         ? 'cursor-pointer border-slate-200/55 bg-white/20 text-slate-400 shadow-none hover:bg-white/30 active:scale-[0.98] dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-500 dark:hover:bg-white/[0.06]'
-                      : 'text-foreground/90 cursor-pointer border-white/35 bg-[linear-gradient(135deg,rgba(255,255,255,0.16),rgba(255,255,255,0.035))] shadow-[inset_0_1px_0_rgba(255,255,255,0.24),inset_0_-1px_0_rgba(255,255,255,0.07),0_10px_30px_rgba(15,23,42,0.06)] hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.22),rgba(255,255,255,0.055))] active:scale-[0.98] dark:border-white/18 dark:bg-[linear-gradient(135deg,rgba(255,255,255,0.075),rgba(255,255,255,0.018))] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.15),inset_0_-1px_0_rgba(255,255,255,0.035),0_10px_30px_rgba(0,0,0,0.16)] dark:hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.11),rgba(255,255,255,0.03))]'
+                        : 'text-foreground/90 cursor-pointer border-white/35 bg-[linear-gradient(135deg,rgba(255,255,255,0.16),rgba(255,255,255,0.035))] shadow-[inset_0_1px_0_rgba(255,255,255,0.24),inset_0_-1px_0_rgba(255,255,255,0.07)] hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.22),rgba(255,255,255,0.055))] active:scale-[0.98] dark:border-white/18 dark:bg-[linear-gradient(135deg,rgba(255,255,255,0.075),rgba(255,255,255,0.018))] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.15),inset_0_-1px_0_rgba(255,255,255,0.035)] dark:hover:bg-[linear-gradient(135deg,rgba(255,255,255,0.11),rgba(255,255,255,0.03))]'
                   }`}
                   aria-label={
                     isAsked
@@ -278,7 +278,7 @@ export default function HelperBoost({
       >
         <button
           onClick={() => setIsVisible((currentValue) => !currentValue)}
-          className="text-muted-foreground hover:text-foreground focus-visible:border-ring focus-visible:ring-ring/50 bg-background/20 flex items-center gap-1 rounded-full border border-transparent px-3 py-1 text-xs backdrop-blur-xl transition-colors outline-none focus-visible:ring-[3px] dark:border-white/10 dark:bg-white/[0.06]"
+          className="text-foreground bg-background/60 hover:bg-background/75 focus-visible:border-ring focus-visible:ring-ring/50 border-foreground/10 flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold backdrop-blur-2xl transition-colors outline-none focus-visible:ring-[3px]"
           aria-controls="quick-question-starters"
           aria-expanded={isVisible}
           aria-label={

@@ -307,7 +307,7 @@ function HomeContent() {
                     className={`min-h-12 w-fit max-w-[82vw] shrink-0 cursor-pointer snap-center justify-start gap-2.5 rounded-2xl border px-3.5 py-2.5 text-left whitespace-nowrap backdrop-blur-xl active:scale-[0.98] md:max-w-[25rem] md:px-4 md:py-3 ${
                       isAsked
                         ? 'border-slate-200/60 bg-white/20 text-slate-400 shadow-none hover:bg-white/30 dark:border-white/10 dark:bg-white/[0.04] dark:text-slate-500 dark:hover:bg-white/[0.06]'
-                        : 'bg-background/35 hover:bg-background/60 text-foreground/90 border-white/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.14),0_10px_30px_rgba(15,23,42,0.1)] dark:border-white/15 dark:bg-white/[0.11] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_10px_30px_rgba(0,0,0,0.28)] dark:hover:bg-white/[0.16]'
+                        : 'bg-background/35 hover:bg-background/60 text-foreground/90 border-white/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] dark:border-white/15 dark:bg-white/[0.11] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] dark:hover:bg-white/[0.16]'
                     }`}
                   >
                     <Link
@@ -349,21 +349,19 @@ function HomeContent() {
           }
           aria-controls="home-quick-questions"
           aria-expanded={isQuickQuestionsVisible}
-          className="bg-background/20 mt-2 flex items-center gap-1 rounded-full border border-transparent px-3 py-1 text-xs backdrop-blur-xl transition-colors dark:border-white/10 dark:bg-white/[0.06]"
+          className="text-foreground bg-background/60 hover:bg-background/75 border-foreground/10 mt-2 flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold backdrop-blur-2xl transition-colors"
         >
-          <span className="text-white mix-blend-difference">
-            {isQuickQuestionsVisible ? (
-              <span className="flex items-center gap-1">
-                <ChevronDown size={14} />
-                {text.hideQuickQuestions}
-              </span>
-            ) : (
-              <span className="flex items-center gap-1">
-                <ChevronUp size={14} />
-                {text.showQuickQuestions}
-              </span>
-            )}
-          </span>
+          {isQuickQuestionsVisible ? (
+            <>
+              <ChevronDown size={14} />
+              {text.hideQuickQuestions}
+            </>
+          ) : (
+            <>
+              <ChevronUp size={14} />
+              {text.showQuickQuestions}
+            </>
+          )}
         </button>
       </motion.div>
 
