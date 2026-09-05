@@ -349,7 +349,7 @@ function HomeContent() {
           }
           aria-controls="home-quick-questions"
           aria-expanded={isQuickQuestionsVisible}
-          className="text-foreground bg-background/60 hover:bg-background/75 border-foreground/10 mt-2 flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold backdrop-blur-2xl transition-colors"
+          className="text-foreground/90 bg-background/60 hover:bg-background/75 border-foreground/10 mt-2 flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold backdrop-blur-2xl transition-colors"
         >
           {isQuickQuestionsVisible ? (
             <>

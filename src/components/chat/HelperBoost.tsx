@@ -278,7 +278,7 @@ export default function HelperBoost({
       >
         <button
           onClick={() => setIsVisible((currentValue) => !currentValue)}
-          className="text-foreground bg-background/60 hover:bg-background/75 focus-visible:border-ring focus-visible:ring-ring/50 border-foreground/10 flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold backdrop-blur-2xl transition-colors outline-none focus-visible:ring-[3px]"
+          className="text-foreground/90 bg-background/60 hover:bg-background/75 focus-visible:border-ring focus-visible:ring-ring/50 border-foreground/10 flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold backdrop-blur-2xl transition-colors outline-none focus-visible:ring-[3px]"
           aria-controls="quick-question-starters"
           aria-expanded={isVisible}
           aria-label={
