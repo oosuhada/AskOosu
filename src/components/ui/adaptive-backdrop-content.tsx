@@ -177,14 +177,12 @@ function getContrastStyle(mode: ContrastMode): CSSProperties {
     case 'mixed-light':
       return {
         color: DARK_TEXT,
-        filter:
-          'drop-shadow(0 0 0.65px rgba(255,255,255,0.95)) drop-shadow(0 1px 1.4px rgba(255,255,255,0.78))',
+        filter: 'drop-shadow(0 1.5px 2.6px rgba(255,255,255,0.58))',
       };
     case 'mixed-dark':
       return {
         color: LIGHT_TEXT,
-        filter:
-          'drop-shadow(0 0 0.65px rgba(0,0,0,0.92)) drop-shadow(0 1px 1.4px rgba(0,0,0,0.74))',
+        filter: 'drop-shadow(0 1.5px 2.6px rgba(0,0,0,0.52))',
       };
   }
 }
