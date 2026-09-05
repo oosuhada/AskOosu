@@ -104,7 +104,7 @@ export function LatestPortfolioActivity() {
   if (!data || activities.length === 0) return null;
 
   return (
-    <section className="relative z-10 mt-10 w-full max-w-5xl px-1 pb-40 md:mt-14 md:px-4 md:pb-36">
+    <section className="relative z-10 mt-24 w-full max-w-5xl px-1 pb-40 md:mt-14 md:px-4 md:pb-36">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-muted-foreground text-xs font-semibold tracking-[0.18em] uppercase">

@@ -349,19 +349,21 @@ function HomeContent() {
           }
           aria-controls="home-quick-questions"
           aria-expanded={isQuickQuestionsVisible}
-          className="text-muted-foreground hover:text-foreground bg-background/20 mt-2 flex items-center gap-1 rounded-full border border-transparent px-3 py-1 text-xs backdrop-blur-xl transition-colors dark:border-white/10 dark:bg-white/[0.06]"
+          className="bg-background/20 mt-2 flex items-center gap-1 rounded-full border border-transparent px-3 py-1 text-xs backdrop-blur-xl transition-colors dark:border-white/10 dark:bg-white/[0.06]"
         >
-          {isQuickQuestionsVisible ? (
-            <>
-              <ChevronDown size={14} />
-              {text.hideQuickQuestions}
-            </>
-          ) : (
-            <>
-              <ChevronUp size={14} />
-              {text.showQuickQuestions}
-            </>
-          )}
+          <span className="text-white mix-blend-difference">
+            {isQuickQuestionsVisible ? (
+              <span className="flex items-center gap-1">
+                <ChevronDown size={14} />
+                {text.hideQuickQuestions}
+              </span>
+            ) : (
+              <span className="flex items-center gap-1">
+                <ChevronUp size={14} />
+                {text.showQuickQuestions}
+              </span>
+            )}
+          </span>
         </button>
       </motion.div>
 
