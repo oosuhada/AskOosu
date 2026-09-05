@@ -305,10 +305,10 @@ function HomeContent() {
                     key={question.id}
                     asChild
                     variant="outline"
-                    className={`min-h-12 w-fit max-w-[82vw] shrink-0 cursor-pointer snap-center justify-start gap-2.5 rounded-2xl border px-3.5 py-2.5 text-left whitespace-nowrap backdrop-blur-xl active:scale-[0.98] md:max-w-[25rem] md:px-4 md:py-3 ${
+                    className={`adaptive-quick-surface min-h-12 w-fit max-w-[82vw] shrink-0 cursor-pointer snap-center justify-start gap-2.5 rounded-2xl border px-3.5 py-2.5 text-left whitespace-nowrap backdrop-blur-xl active:scale-[0.98] md:max-w-[25rem] md:px-4 md:py-3 ${
                       isAsked
-                        ? 'border-white/30 bg-[rgba(113,113,122,0.10)] shadow-none hover:bg-[rgba(113,113,122,0.14)] dark:border-white/10'
-                        : 'border-white/45 bg-[rgba(113,113,122,0.16)] shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] hover:bg-[rgba(113,113,122,0.21)] dark:border-white/15 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]'
+                        ? 'border-white/30 shadow-none dark:border-white/10'
+                        : 'border-white/45 shadow-[inset_0_1px_0_rgba(255,255,255,0.14)] dark:border-white/15 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]'
                     }`}
                   >
                     <Link

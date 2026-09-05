@@ -189,6 +189,49 @@ html[lang='en'] .lang-ko {
   background-color: rgba(155, 155, 155, 0.7);
 }
 
+/*
+ * Quick-question glass follows the same backdrop classification as the text.
+ * On very bright content we intentionally push the glass toward a neutral
+ * mid-gray instead of letting white page/image areas wash the button out.
+ */
+.adaptive-quick-surface {
+  background-color: rgba(113, 113, 122, 0.16);
+  transition-property: background-color, border-color, transform;
+  transition-duration: 180ms;
+}
+
+.adaptive-quick-surface:has([data-backdrop-contrast='on-light']) {
+  background-color: rgba(82, 82, 91, 0.3);
+}
+
+.adaptive-quick-surface:has([data-backdrop-contrast='mixed-light']) {
+  background-color: rgba(82, 82, 91, 0.24);
+}
+
+.adaptive-quick-surface:has([data-backdrop-contrast='mixed-dark']) {
+  background-color: rgba(161, 161, 170, 0.16);
+}
+
+.adaptive-quick-surface:has([data-backdrop-contrast='on-dark']) {
+  background-color: rgba(161, 161, 170, 0.12);
+}
+
+.adaptive-quick-surface:hover:has([data-backdrop-contrast='on-light']) {
+  background-color: rgba(82, 82, 91, 0.35);
+}
+
+.adaptive-quick-surface:hover:has([data-backdrop-contrast='mixed-light']) {
+  background-color: rgba(82, 82, 91, 0.29);
+}
+
+.adaptive-quick-surface:hover:has([data-backdrop-contrast='mixed-dark']) {
+  background-color: rgba(161, 161, 170, 0.2);
+}
+
+.adaptive-quick-surface:hover:has([data-backdrop-contrast='on-dark']) {
+  background-color: rgba(161, 161, 170, 0.16);
+}
+
 /* Ensure code blocks can scroll horizontally */
 pre {
   white-space: pre;
