@@ -17,8 +17,6 @@ type BackdropAnalysis = {
   mixed: boolean;
 };
 
-type TextTone = 'light' | 'dark';
-
 const LIGHT_TEXT = 'rgba(244, 244, 245, 0.92)';
 const DARK_TEXT = 'rgba(24, 24, 27, 0.90)';
 
@@ -31,8 +29,6 @@ export function AdaptiveBackdropContent({
 }) {
   const ref = useRef<HTMLSpanElement | null>(null);
   const [mode, setMode] = useState<ContrastMode>('mixed-dark');
-  const [textTone, setTextTone] = useState<TextTone>('light');
-  const [isMixed, setIsMixed] = useState(true);
 
   useEffect(() => {
     const target = ref.current;
@@ -50,8 +46,6 @@ export function AdaptiveBackdropContent({
       }
 
       setMode(analysis.mode);
-      setIsMixed(analysis.mixed);
-      setTextTone(selectTextTone(surface, analysis));
     };
 
     const scheduleUpdate = () => {
@@ -96,9 +90,8 @@ export function AdaptiveBackdropContent({
     <span
       ref={ref}
       data-backdrop-contrast={mode}
-      data-text-tone={textTone}
       className={cn('relative z-10', className)}
-      style={getContrastStyle(textTone, isMixed)}
+      style={getContrastStyle(mode)}
     >
       {children}
     </span>
@@ -156,21 +149,11 @@ function sampleBackdropAtPoint(
   y: number
 ): BackdropSample {
   const elements = document.elementsFromPoint(x, y);
-  const backdrop = elements.find(
-    (element) =>
-      element instanceof HTMLElement &&
-      !target.contains(element) &&
-      !element.contains(target)
-  );
+  for (const candidate of elements) {
+    if (!(candidate instanceof HTMLElement)) continue;
+    if (target.contains(candidate) || candidate.contains(target)) continue;
 
-  if (!(backdrop instanceof HTMLElement)) {
-    return { luminance: null, media: false };
-  }
-
-  let element: HTMLElement | null = backdrop;
-  let depth = 0;
-
-  while (element && depth < 8) {
+    const element = candidate;
     if (
       element instanceof HTMLImageElement ||
       element instanceof HTMLVideoElement ||
@@ -191,61 +174,28 @@ function sampleBackdropAtPoint(
         media: false,
       };
     }
-
-    element = element.parentElement;
-    depth += 1;
   }
 
   return { luminance: null, media: false };
 }
 
-function selectTextTone(
-  surface: HTMLElement | null,
-  analysis: BackdropAnalysis
-): TextTone {
-  if (!surface) {
-    return analysis.averageLuminance >= 0.46 ? 'dark' : 'light';
+function getContrastStyle(mode: ContrastMode): CSSProperties {
+  switch (mode) {
+    case 'on-light':
+      return { color: DARK_TEXT };
+    case 'on-dark':
+      return { color: LIGHT_TEXT };
+    case 'mixed-light':
+      return {
+        color: DARK_TEXT,
+        filter: 'drop-shadow(0 1.5px 2.6px rgba(255,255,255,0.46))',
+      };
+    case 'mixed-dark':
+      return {
+        color: LIGHT_TEXT,
+        filter: 'drop-shadow(0 1.5px 2.6px rgba(0,0,0,0.46))',
+      };
   }
-
-  const surfaceColor = parseRgb(getComputedStyle(surface).backgroundColor);
-  if (!surfaceColor) {
-    return analysis.averageLuminance >= 0.46 ? 'dark' : 'light';
-  }
-
-  const surfaceLuminance = relativeLuminance(
-    surfaceColor.red,
-    surfaceColor.green,
-    surfaceColor.blue
-  );
-  const effectiveLuminance =
-    surfaceLuminance * surfaceColor.alpha +
-    analysis.averageLuminance * (1 - surfaceColor.alpha);
-
-  const darkContrast = contrastRatio(effectiveLuminance, 0.009);
-  const lightContrast = contrastRatio(effectiveLuminance, 0.905);
-
-  return lightContrast > darkContrast ? 'light' : 'dark';
-}
-
-function getContrastStyle(
-  textTone: TextTone,
-  mixed: boolean
-): CSSProperties {
-  if (textTone === 'dark') {
-    return {
-      color: DARK_TEXT,
-      filter: mixed
-        ? 'drop-shadow(0 1.5px 2.6px rgba(255,255,255,0.46))'
-        : undefined,
-    };
-  }
-
-  return {
-    color: LIGHT_TEXT,
-    filter: mixed
-      ? 'drop-shadow(0 1.5px 2.6px rgba(0,0,0,0.46))'
-      : undefined,
-  };
 }
 
 function themeFallback(): ContrastMode {
@@ -287,12 +237,6 @@ function relativeLuminance(red: number, green: number, blue: number) {
   });
 
   return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
-}
-
-function contrastRatio(first: number, second: number) {
-  const lighter = Math.max(first, second);
-  const darker = Math.min(first, second);
-  return (lighter + 0.05) / (darker + 0.05);
 }
 
 function clamp(value: number, minimum: number, maximum: number) {
