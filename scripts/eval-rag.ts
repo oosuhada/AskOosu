@@ -399,6 +399,49 @@ const EMBEDDED_FAILURE_EVAL_CASES: FailureEvalCase[] = [
       'Keep the response short and redirect to portfolio topics.',
   },
   {
+    id: 'public-copy-project-growth-ko',
+    question: '우수님의 대표 프로젝트와 성장 흐름이 어떻게 연결되는지 보여주세요.',
+    language: 'ko',
+    expectedRoute: 'faq_direct',
+    expectedAnswerSource: 'faq_cache',
+    mustInclude: ['AskOosu', 'Aigram', 'Sticks & Stones'],
+    mustNotInclude: [
+      '큐레이션해서 보여',
+      '자동 수집한 최신',
+      '주기적으로 갱신',
+      '카드 미리보기',
+      '더보기 레일',
+      'FAQ ID',
+      'answerVariant',
+    ],
+    notes:
+      'Representative-project copy should explain the work and growth itself, not narrate portfolio rendering or refresh mechanics.',
+    watchFor:
+      'Keep visitor-facing copy focused on projects, responsibilities, and progression.',
+  },
+  {
+    id: 'public-copy-project-growth-en',
+    question:
+      "Could you show Oosu's representative projects and how they connect to his growth?",
+    language: 'en',
+    expectedRoute: 'faq_direct',
+    expectedAnswerSource: 'faq_cache',
+    mustInclude: ['AskOosu', 'Aigram', 'Sticks & Stones'],
+    mustNotInclude: [
+      'curated as the flagship',
+      'live portfolio catalog',
+      'project rail',
+      'refresh cycle',
+      'card preview',
+      'FAQ ID',
+      'answerVariant',
+    ],
+    notes:
+      'English representative-project copy should stay visitor-facing and avoid internal presentation mechanics.',
+    watchFor:
+      'Explain Oosu’s project progression without describing how the site assembles the answer.',
+  },
+  {
     id: 'off-topic-weather-ko',
     question: '오늘 날씨 어때?',
     language: 'ko',

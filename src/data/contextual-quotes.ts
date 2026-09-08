@@ -211,8 +211,8 @@ export const contextualQuotes: ContextualQuote[] = [
   },
   {
     text: {
-      ko: '질문을 잘 분류하는 일은 챗봇 기능이 아니라, 포트폴리오의 신뢰를 지키는 일입니다.',
-      en: 'Classifying questions well is not just a chatbot feature. It protects the trust of the portfolio.',
+      ko: '좋은 질문 경험은 사용자가 원하는 답에 곧바로 닿게 합니다.',
+      en: 'A good question experience helps people reach the answer they actually need.',
     },
     category: 'ux',
   },

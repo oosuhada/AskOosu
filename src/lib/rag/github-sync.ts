@@ -92,7 +92,7 @@ export async function syncGithubRagIfNeeded({ force = false } = {}) {
           answerCount: 0,
           upserted: 0,
           provider: 'manual-prewarm',
-          model: 'assistant-authored-v1',
+          model: 'assistant-authored-v2',
         };
   await saveGithubSyncState({
     fingerprint: manifest.live ? fingerprint : state?.fingerprint ?? fingerprint,

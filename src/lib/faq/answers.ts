@@ -753,9 +753,11 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
     shortAnswer:
       '대표 프로젝트는 AskOosu, Aigram, Sticks & Stones이고, Portfoli-Oh!, Onjung, Nomad Market 같은 프로젝트가 성장 흐름을 보완합니다.',
     defaultAnswer: [
-      '프로젝트부터 보면 꽤 재밌습니다. 우수의 대표 흐름은 AskOosu, Aigram, Sticks & Stones 세 장으로 먼저 잡는 게 가장 선명해요.',
+      '우수의 대표 프로젝트는 AskOosu, Aigram, Sticks & Stones 세 개로 보는 게 가장 선명합니다.',
       '',
-      'AskOosu는 AI Portfolio, Aigram은 Fullstack SNS, Sticks & Stones는 Real Migration으로 보면 됩니다. 카드 안에는 기술 스택, 관련 질문, 공개 링크를 같이 남겨뒀고, 더보기 레일에서는 Portfoli-Oh!, Onjung, Nomad Market, Webtoon AI Translate 같은 이전/확장 프로젝트까지 이어서 탐색할 수 있어요.',
+      'AskOosu는 프론트엔드·백엔드·AI를 하나의 서비스 흐름으로 연결한 현재의 방향을 보여줍니다. Aigram은 Spring Boot와 PostgreSQL까지 직접 다룬 풀스택 SNS 경험이고, Sticks & Stones는 실제 운영 사이트를 WordPress에서 TypeScript/Vite 기반으로 옮긴 마이그레이션 프로젝트입니다.',
+      '',
+      '그 이전의 Portfoli-Oh!, Onjung, Nomad Market, Webtoon AI Translate까지 함께 보면 화면 구현에서 시작해 풀스택, AI, 실제 서비스 운영과 전환까지 범위를 넓혀 온 흐름이 이어집니다.',
     ].join('\n'),
     renderSpec: {
       layout: 'project_showcase',
@@ -827,9 +829,11 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
     shortAnswer:
       'The featured projects are AskOosu, Aigram / Instagram Clone, and Sticks & Stones, with additional projects showing earlier growth and experiments.',
     defaultAnswer: [
-      'Projects are a fun place to start. The clearest first three are AskOosu, Aigram, and Sticks & Stones.',
+      'The clearest three representative projects are AskOosu, Aigram, and Sticks & Stones.',
       '',
-      'AskOosu reads as AI Portfolio, Aigram as Fullstack SNS, and Sticks & Stones as Real Migration. The cards keep the stack tags, related questions, and public links close by, while the more-projects rail lets visitors keep exploring Portfoli-Oh!, Onjung, Nomad Market, Webtoon AI Translate, and smaller experiments.',
+      'AskOosu shows Oosu’s current direction by connecting frontend, backend, and AI in one service flow. Aigram is a fullstack SNS project built with Spring Boot and PostgreSQL, while Sticks & Stones is a real-service migration from WordPress to a TypeScript/Vite stack.',
+      '',
+      'Earlier work such as Portfoli-Oh!, Onjung, Nomad Market, and Webtoon AI Translate makes the progression easier to see: interface work expanded into fullstack ownership, AI features, and the practical work of shipping and operating real services.',
     ].join('\n'),
     renderSpec: {
       layout: 'project_showcase',
@@ -897,9 +901,9 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
     shortAnswer:
       '우수의 현재 핵심 스택은 Next.js, React, TypeScript, Spring Boot, PostgreSQL, Notion API, RAG, Groq이며, Flutter/FastAPI/GSAP 같은 프로젝트 기반 경험도 함께 있습니다.',
     defaultAnswer: [
-      '기술 스택은 단순 목록보다 “어디에 써봤는지”가 더 중요해요. 그래서 AskOosu에서는 기술을 프로젝트 근거와 같이 보여주는 쪽으로 정리했습니다.',
+      '우수의 기술 스택은 “무엇을 안다”보다 “어디에 실제로 써봤는가”로 보는 편이 정확합니다.',
       '',
-      '현재 핵심은 Next.js, React, TypeScript, Tailwind CSS, Spring Boot, PostgreSQL, Notion API, RAG, Groq입니다. AskOosu에서는 Next.js, AI SDK, Groq, Notion RAG, PostgreSQL이 연결되어 있고, Aigram 쪽에서는 Spring Boot와 PostgreSQL이 풀스택 흐름을 보여줍니다. 모든 기술을 같은 숙련도로 과장하지 않고 confident, usable, learning, experimental로 나눠 표시합니다.',
+      '현재 가장 많이 연결해서 쓰는 영역은 Next.js, React, TypeScript, Tailwind CSS, Spring Boot, PostgreSQL, Notion API, RAG, Groq입니다. AskOosu에서는 Next.js와 AI/RAG, PostgreSQL을 하나의 답변 서비스로 연결했고, Aigram에서는 Spring Boot와 PostgreSQL을 포함한 풀스택 흐름을 직접 구현했습니다. Flutter, FastAPI, GSAP 등은 프로젝트 단위로 경험 범위를 넓혀 온 기술입니다.',
     ].join('\n'),
     renderSpec: {
       layout: 'skill_cloud',
@@ -959,9 +963,9 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
     shortAnswer:
       'Oosu’s current core stack is Next.js, React, TypeScript, Spring Boot, PostgreSQL, Notion API, RAG, and Groq, with wider project-proven experience across Flutter, FastAPI, GSAP, and more.',
     defaultAnswer: [
-      'A tech stack is more useful when you can see where it was actually used. AskOosu groups skills by project evidence instead of presenting every keyword at the same level.',
+      'Oosu’s stack is best understood by looking at where each technology has actually been used.',
       '',
-      'The current emphasis is Next.js, React, TypeScript, Tailwind CSS, Spring Boot, PostgreSQL, Notion API, RAG, and Groq. AskOosu connects Next.js, AI SDK, Groq, Notion RAG, and PostgreSQL, while Aigram shows Spring Boot and PostgreSQL in a fullstack SNS flow. The answer separates confident, usable, learning, and experimental levels so the breadth does not sound inflated.',
+      'His current emphasis is Next.js, React, TypeScript, Tailwind CSS, Spring Boot, PostgreSQL, Notion API, RAG, and Groq. AskOosu connects Next.js, AI/RAG, and PostgreSQL in one working service, while Aigram demonstrates Spring Boot and PostgreSQL in a fullstack SNS flow. Flutter, FastAPI, GSAP, and other tools come from project-specific work that broadened the implementation range.',
     ].join('\n'),
     renderSpec: {
       layout: 'skill_cloud',
@@ -1378,9 +1382,9 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
     shortAnswer:
       '우수는 고객 경험, 비즈니스 인사이트, 프론트엔드, 백엔드, AI를 실제 서비스 흐름으로 연결하려는 AI-connected Fullstack Developer입니다.',
     defaultAnswer: [
-      '안녕하세요. 우수는 화면만 예쁘게 만드는 데서 멈추지 않고, API, 데이터, RAG, 배포까지 이어 붙여 실제로 굴러가는 흐름을 만들고 싶어하는 개발자입니다.',
+      '우수는 화면 구현에서 출발했지만, 지금은 API, 데이터, AI, 배포까지 직접 연결해 실제로 굴러가는 서비스를 만드는 쪽으로 성장하고 있는 개발자입니다.',
       '',
-      'AskOosu는 그 성향을 그대로 담은 작은 실험실이에요. 포트폴리오가 스스로 질문을 받고, Wiki 근거를 찾아, 카드와 답변으로 보여주게 만들고 있습니다. 근거는 하단에 조용히 붙여두되, 답변은 너무 AI 티 나지 않게 우수의 말투와 위트를 살리는 방향으로 다듬고 있어요.',
+      '그 전에는 GfK Korea에서 데이터 분석과 고객 문제를 다뤘고, OOSU SALON을 직접 운영하며 제품과 운영 감각을 쌓았습니다. 이후 프론트엔드와 풀스택 개발을 거쳐 AskOosu 같은 AI 기반 제품까지 확장했습니다. 그래서 강점은 한 기술을 깊게 외우는 데만 있기보다, 사용자 문제를 이해하고 필요한 기술을 연결해 서비스 형태로 끝까지 가져가는 데 있습니다.',
     ].join('\n'),
     renderSpec: {
       layout: 'profile_hero',
@@ -1422,9 +1426,9 @@ export const FAQ_ANSWERS: FaqAnswer[] = [
     shortAnswer:
       'Oosu is an AI-connected fullstack developer connecting customer experience, business insight, frontend, backend, and AI into service flows.',
     defaultAnswer: [
-      'Hi, I am Oosu: a developer who does not want to stop at a nice screen. I like connecting UI, APIs, data, RAG, and deployment into something that actually runs.',
+      'Oosu started from interface work and has been expanding toward building complete services that connect UI, APIs, data, AI, and deployment.',
       '',
-      'AskOosu is that tendency turned into a small lab: the portfolio takes questions, checks Wiki evidence, and turns the answer into cards and conversation. The evidence stays quietly at the bottom, while the answer itself should feel more like Oosu than a generic AI voice.',
+      'Before development, he worked with data and customer problems at GfK Korea and later ran OOSU SALON, which gave him direct experience with product decisions and day-to-day operations. He then moved through frontend and fullstack development into AI-connected products such as AskOosu. The common thread is an interest in understanding a user problem, choosing the necessary technologies, and carrying the work through to a usable service.',
     ].join('\n'),
     renderSpec: {
       layout: 'profile_hero',

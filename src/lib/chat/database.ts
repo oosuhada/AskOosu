@@ -1,5 +1,6 @@
 import { getPostgresPool, hasPostgresDatabaseUrl } from '@/lib/db/postgres';
 import type { ChatLanguage } from '@/lib/i18n/detect-language';
+import { detectPromptLeakage } from './output-guardrails';
 import type { AnswerRouteDecision, ChatAnswerSource } from './types';
 import { hashQuestion, truncateMultilineText, truncateText } from './text';
 
@@ -607,6 +608,7 @@ export function shouldCacheAnswer(input: AnswerCacheInput) {
   if (UNSAFE_CACHE_ANSWER_SOURCES.includes(input.answerSource)) return false;
   if (input.routeDecision?.mode === 'safe_fallback') return false;
   if (input.errorCode === PROMPT_LEAK_DETECTED_ERROR_CODE) return false;
+  if (detectPromptLeakage(input.answer)) return false;
 
   return true;
 }

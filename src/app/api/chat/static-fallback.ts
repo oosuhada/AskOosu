@@ -52,20 +52,27 @@ function buildStaticPortfolioAnswer({
   reason: 'model_unavailable' | 'rate_limit';
 }) {
   const normalizedQuery = query.toLowerCase();
+  const language = /[가-힣]/.test(query) ? 'ko' : 'en';
   const fallbackIntro =
-    reason === 'rate_limit'
-      ? '요청이 잠시 많아져서, 포트폴리오에 저장된 확인 가능한 정보로 답변할게요.'
-      : '포트폴리오에 저장된 확인 가능한 정보로 답변할게요.';
+    language === 'ko'
+      ? reason === 'rate_limit'
+        ? '요청이 잠시 많아져서, 지금 확인 가능한 공개 정보만 간단히 안내할게요.'
+        : '지금 확인 가능한 공개 정보만 간단히 안내할게요.'
+      : reason === 'rate_limit'
+        ? 'Requests are temporarily busy, so I’ll answer with the public information that is available right now.'
+        : 'I’ll answer with the public information that is available right now.';
 
   if (matches(normalizedQuery, ['프로젝트', 'project', 'portfolio', '대표'])) {
     return [
       fallbackIntro,
       '',
-      '우수의 대표 프로젝트는 다음과 같아요.',
+      language === 'ko'
+        ? '우수의 대표 프로젝트는 다음과 같습니다.'
+        : 'Oosu’s representative projects include:',
       '',
       ...oosuProjects.slice(0, 5).map((project) => {
         const link = project.links[0]?.url
-          ? `\n  링크: ${project.links[0].url}`
+          ? `\n  ${language === 'ko' ? '링크' : 'Link'}: ${project.links[0].url}`
           : '';
         return `- ${project.title}: ${project.description}${link}`;
       }),
@@ -83,43 +90,63 @@ function buildStaticPortfolioAnswer({
       `- Instagram: ${oosuProfile.instagram}`,
       `- Email: ${oosuProfile.email}`,
       '',
-      'Resume은 한국어/영어 Notion 링크가 준비되면 사이드바에서 활성화될 예정입니다.',
+      language === 'ko'
+        ? '이력서 공개 링크는 준비되는 대로 안내할 예정입니다.'
+        : 'Public resume links will be shared once they are ready.',
     ].join('\n');
   }
 
   if (matches(normalizedQuery, ['스택', '기술', 'stack', 'skill', 'ai'])) {
-    return [
-      fallbackIntro,
-      '',
-      '우수는 React, Next.js, TypeScript, Tailwind CSS 기반의 프론트엔드 경험 위에 Spring Boot, Node.js, PostgreSQL/MySQL, 그리고 AI SDK 기반 LLM 인터페이스를 확장하고 있어요.',
-      '',
-      'AskOosu 자체는 Next.js + AI SDK 6 + xAI Responses 경로 + Notion RAG 구조를 포트폴리오 안에서 증명하는 방향으로 업데이트 중입니다.',
-    ].join('\n');
+    return language === 'ko'
+      ? [
+          fallbackIntro,
+          '',
+          '우수는 React, Next.js, TypeScript, Tailwind CSS 기반의 프론트엔드 경험 위에 Spring Boot, Node.js, PostgreSQL/MySQL, 그리고 AI 기능을 실제 서비스에 연결하는 경험을 넓히고 있습니다.',
+          '',
+          'AskOosu에서는 Next.js, PostgreSQL, RAG, 모델 API를 하나의 대화형 포트폴리오 서비스로 연결했습니다.',
+        ].join('\n')
+      : [
+          fallbackIntro,
+          '',
+          'Oosu builds on frontend experience with React, Next.js, TypeScript, and Tailwind CSS, and has expanded into Spring Boot, Node.js, PostgreSQL/MySQL, and AI-connected product work.',
+          '',
+          'AskOosu connects Next.js, PostgreSQL, RAG, and model APIs in one conversational portfolio service.',
+        ].join('\n');
   }
 
   if (matches(normalizedQuery, ['이력서', 'resume', 'cv'])) {
-    return [
-      'Resume 링크는 아직 준비 중이에요.',
-      '',
-      '나중에 한국어 Notion Resume과 영어 Notion Resume 링크가 준비되면 사이드바의 비활성 Resume 항목을 실제 링크로 전환하면 됩니다.',
-    ].join('\n');
+    return language === 'ko'
+      ? [
+          '공개 이력서 링크는 아직 준비 중입니다.',
+          '',
+          '그동안 프로젝트, 기술 스택, 경력 방향은 여기서 바로 확인할 수 있습니다.',
+        ].join('\n')
+      : [
+          'A public resume link is still being prepared.',
+          '',
+          'In the meantime, I can walk you through Oosu’s projects, stack, and career direction here.',
+        ].join('\n');
   }
 
-  if (retrievedContext) {
-    return [
-      fallbackIntro,
-      '',
-      retrievedContext.replace(/^## Retrieved (Portfolio|Wiki) Context\n/, ''),
-    ].join('\n');
-  }
+  // Never expose raw retrieved context in a visitor-facing fallback. It may
+  // contain internal labels or formatting intended only for model grounding.
+  void retrievedContext;
 
-  return [
-    fallbackIntro,
-    '',
-    `AskOosu는 ${oosuProfile.name}의 대화형 포트폴리오입니다. 프로젝트, 기술 스택, 연락처, Resume 준비 상태를 대화로 탐색하도록 설계되어 있어요.`,
-    '',
-    `GitHub: ${oosuProfile.github}`,
-  ].join('\n');
+  return language === 'ko'
+    ? [
+        fallbackIntro,
+        '',
+        `AskOosu는 ${oosuProfile.name}의 대화형 포트폴리오입니다. 프로젝트, 기술 스택, 경력, 연락 방법을 질문으로 탐색할 수 있습니다.`,
+        '',
+        `GitHub: ${oosuProfile.github}`,
+      ].join('\n')
+    : [
+        fallbackIntro,
+        '',
+        `AskOosu is ${oosuProfile.name}’s conversational portfolio. You can explore projects, skills, career direction, and contact information by asking questions.`,
+        '',
+        `GitHub: ${oosuProfile.github}`,
+      ].join('\n');
 }
 
 function matches(query: string, keywords: string[]) {
