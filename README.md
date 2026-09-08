@@ -52,13 +52,13 @@ AskOosu는 정적인 이력서형 포트폴리오 대신, 방문자가 자연어
 
 AskOosu treats project information as retrievable portfolio evidence. The public portfolio currently highlights a small set of representative projects instead of presenting every learning repository as equal weight.
 
-| Project | Role in Portfolio | Live / Source |
-| --- | --- | --- |
-| AskOosu 2026 | Current AI/RAG portfolio and answer-quality system | [Live](https://oosu.dev) / [GitHub](https://github.com/oosuhada/AskOosu) |
-| Aigram | Fullstack SNS practice with React, Spring Boot, PostgreSQL, search, auth, and media flows | [Live](https://aigram.oosu.dev) |
-| Sticks & Stones Homepage | Real-client website renewal and frontend migration case | [Live](https://stks.oosu.dev) |
-| Portfoli-Oh! 2025 | Vanilla HTML/CSS/JavaScript interaction archive and previous portfolio | [Live](https://portfoli-oh.oosu.dev) / [GitHub](https://github.com/oosuhada/portfoli-oh) |
-| Pylingo / Javalingo | Smaller learning-app references for education UX and study flow | [Pylingo](https://oosuhada.github.io/pylingo/) / [Javalingo](https://oosuhada.github.io/javalingo/) |
+| Project                  | Role in Portfolio                                                                         | Live / Source                                                                                       |
+| ------------------------ | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| AskOosu 2026             | Current AI/RAG portfolio and answer-quality system                                        | [Live](https://oosu.dev) / [GitHub](https://github.com/oosuhada/AskOosu)                            |
+| Aigram                   | Fullstack SNS practice with React, Spring Boot, PostgreSQL, search, auth, and media flows | [Live](https://aigram.oosu.dev)                                                                     |
+| Sticks & Stones Homepage | Real-client website renewal and frontend migration case                                   | [Live](https://stks.oosu.dev)                                                                       |
+| Portfoli-Oh! 2025        | Vanilla HTML/CSS/JavaScript interaction archive and previous portfolio                    | [Live](https://portfoli-oh.oosu.dev) / [GitHub](https://github.com/oosuhada/portfoli-oh)            |
+| Pylingo / Javalingo      | Smaller learning-app references for education UX and study flow                           | [Pylingo](https://oosuhada.github.io/pylingo/) / [Javalingo](https://oosuhada.github.io/javalingo/) |
 
 ![Aigram desktop preview](public/images/projects/aigram-cover-desktop.webp)
 
@@ -99,6 +99,24 @@ Home-server deployment
   |-- PostgreSQL
   |-- Nginx / Cloudflare front door
 ```
+
+## Measured Engineering Evidence
+
+### Retrieval experiment
+
+**Problem.** Exact-word lexical retrieval was brittle on indirect, typo/colloquial, and follow-up portfolio questions.
+
+**Measurement.** A fixed 120-query set (`40 easy / 40 medium / 40 adversarial`, including 20 no-evidence queries) runs against the real PostgreSQL RAG schema and 650 committed public chunks. The benchmark reports Recall@5, MRR@10, nDCG@10, canonical entity top-1, abstention behavior, latency, variance, and 95% bootstrap confidence intervals.
+
+**Change.** The candidate uses the production entity-aware hybrid RRF path. External embeddings are disabled in this experiment, so the result is explicitly **lexical + entity**, not a vector-search claim.
+
+**Result.** On the 2026-09-08 three-repeat run, Recall@5 improved from **0.25 → 0.53** and nDCG@10 from **0.2566 → 0.5424**. No-evidence recall remained **1.00** across 20 cases. Local p50 retrieval latency increased from **30.570 ms → 32.257 ms**. CI also runs a deterministic one-repeat regression gate.
+
+**Limitation.** Medium/adversarial retrieval remains materially below perfect, canonical entity coverage is incomplete, and a vector/embedding leg was not measured in this credential-free run. Full method and subgroup results: [docs/evaluation/portfolio-retrieval-experiment.md](docs/evaluation/portfolio-retrieval-experiment.md).
+
+### Failure visibility and security
+
+Each `/api/chat` request now emits a request-ID-correlated lightweight trace for rate limiting, parsing, orchestration, generation, and output guardrails; RAG emits its own retrieval latency/result-count event. Existing provider failover/cooldown and safe-fallback paths remain visible in the same structured log stream, while prompt/question/source/credential fields are redacted. The architecture-specific attack paths and executable checks are recorded in [docs/THREAT_MODEL.md](docs/THREAT_MODEL.md).
 
 ## GitHub Portfolio Curation
 

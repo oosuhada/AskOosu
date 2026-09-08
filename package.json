@@ -11,6 +11,7 @@
     "lint": "next lint",
     "faq:eval": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/eval-rag.ts --faq-only",
     "rag:eval": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types scripts/eval-rag.ts",
+    "rag:benchmark": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --loader ./tests/alias-loader.mjs scripts/benchmark-portfolio-retrieval.ts",
     "test:unit": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --loader ./tests/alias-loader.mjs --test tests/unit/*.test.ts",
     "test:routing": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --loader ./tests/alias-loader.mjs --test tests/routing/*.test.ts",
     "test:rag": "node --disable-warning=ExperimentalWarning --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --experimental-strip-types --loader ./tests/alias-loader.mjs --test tests/integration/*.test.ts",

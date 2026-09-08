@@ -1,6 +1,7 @@
 import { getRagTopK } from './config';
 import { searchRagChunks, type RagChunkSearchResult } from './search';
 import type { ChatLanguage } from '@/lib/i18n/detect-language';
+import { logInfo } from '@/lib/observability/logger';
 
 const GUARDRAIL_ENTITY_ID = 'policy.guardrail';
 
@@ -40,7 +41,8 @@ export type RagChatContext = {
 
 export async function buildRagChatContext(
   question: string,
-  language?: ChatLanguage
+  language?: ChatLanguage,
+  options: { requestId?: string } = {}
 ): Promise<RagChatContext> {
   const normalizedQuestion = question.trim();
   const warnings: string[] = [];
@@ -51,6 +53,7 @@ export async function buildRagChatContext(
     ]);
   }
 
+  const retrievalStartedAt = performance.now();
   const [primarySearch, guardrailSearch] = await Promise.all([
     searchRagChunks({
       q: normalizedQuestion,
@@ -64,6 +67,16 @@ export async function buildRagChatContext(
       includeContent: true,
     }),
   ]);
+  logInfo('rag.retrieval_completed', {
+    requestId: options.requestId,
+    route: 'api/chat',
+    latencyMs: Number((performance.now() - retrievalStartedAt).toFixed(3)),
+    primaryResultCount: primarySearch.results.length,
+    guardrailResultCount: guardrailSearch.results.length,
+    primarySearchMode: primarySearch.searchMode,
+    primaryWarningCount: primarySearch.warnings.length,
+    guardrailWarningCount: guardrailSearch.warnings.length,
+  });
 
   warnings.push(...primarySearch.warnings, ...guardrailSearch.warnings);
 
@@ -118,13 +131,12 @@ function buildEmptyContext(warnings: string[]): RagChatContext {
   });
 
   return {
-    contextText:
-      [
-        '## Portfolio Evidence',
-        'No matching public Wiki evidence was found for this specific question.',
-        'If this reaches generation, use only stable profile facts and the conversation history. Do not invent missing portfolio evidence.',
-        'For factual claims about Oosu, projects, links, career, private details, or metrics, use only the stable portfolio prompt facts. If the fact is not in the prompt or retrieved evidence, say the Wiki evidence is not enough instead of guessing.',
-      ].join('\n'),
+    contextText: [
+      '## Portfolio Evidence',
+      'No matching public Wiki evidence was found for this specific question.',
+      'If this reaches generation, use only stable profile facts and the conversation history. Do not invent missing portfolio evidence.',
+      'For factual claims about Oosu, projects, links, career, private details, or metrics, use only the stable portfolio prompt facts. If the fact is not in the prompt or retrieved evidence, say the Wiki evidence is not enough instead of guessing.',
+    ].join('\n'),
     metadata: {
       sources: [],
       confidence: confidenceSignals.final,

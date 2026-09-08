@@ -321,7 +321,9 @@ export async function prepareChatOrchestration({
     };
   }
 
-  const ragContext = await buildRagChatContext(routingQuestion, language);
+  const ragContext = await buildRagChatContext(routingQuestion, language, {
+    requestId: requestContext.requestId ?? undefined,
+  });
   const conversationEntityHints = getConversationEntityHints(routingQuestion);
   const faqEvidenceFallback = getFaqEvidenceFallback({
     faqRoute,
@@ -471,7 +473,9 @@ function getFaqEvidenceFallback({
     matchedEntityIds: uniqueValues(
       candidateAnswers.flatMap((answer) => answer.matchedEntityIds)
     ),
-    confidence: Math.max(...candidateAnswers.map((answer) => answer.confidence)),
+    confidence: Math.max(
+      ...candidateAnswers.map((answer) => answer.confidence)
+    ),
   };
 }
 
@@ -596,7 +600,8 @@ function getRepeatedQuestionSignal({
   if (!normalizedQuestion) return null;
 
   const sameQuestionCount = previousUserMessages.filter(
-    (message) => normalizeQuestion(getMessageText(message)) === normalizedQuestion
+    (message) =>
+      normalizeQuestion(getMessageText(message)) === normalizedQuestion
   ).length;
 
   if (sameQuestionCount === 0) return null;
@@ -1357,8 +1362,8 @@ function prefixRepeatedConcernAnswer({
   if (!concern) return answer;
 
   const previousAssistantMessages = getPreviousAssistantMessages(messages);
-  const hasPreviousAnswerForConcern = previousAssistantMessages.some((message) =>
-    assistantMessageAddressesRecruiterConcern(message, concern)
+  const hasPreviousAnswerForConcern = previousAssistantMessages.some(
+    (message) => assistantMessageAddressesRecruiterConcern(message, concern)
   );
 
   if (!hasPreviousAnswerForConcern) return answer;
@@ -1470,8 +1475,7 @@ function isOffTopicRedirectText(text: string) {
 function answerTextMatchesRecruiterConcern(text: string, concern: string) {
   const patterns: Record<string, RegExp> = {
     age: /(상대적으로\s*늦게\s*개발\s*커리어|그\s*시간을\s*공백|나이를\s*방어|older\s+than\s+typical\s+junior|does\s+not\s+see\s+that\s+time\s+as\s+a\s+gap)/i,
-    role:
-      /(AI-connected\s+Fullstack|AI\s*연결\s*풀스택|레이어.*연결|product\/UX|포지셔닝)/i,
+    role: /(AI-connected\s+Fullstack|AI\s*연결\s*풀스택|레이어.*연결|product\/UX|포지셔닝)/i,
     non_cs: /(비전공|non[-\s]?CS|CS\s+degree|learn\s+faster)/i,
     ai_dependency:
       /(AI\s*의존|AI\s*없이|AI\s*코드|review\s+AI-generated|AI-generated\s+code)/i,

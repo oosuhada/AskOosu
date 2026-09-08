@@ -32,7 +32,7 @@ jobs:
       DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/askoosu_test
       ASKOOSU_RAG_STORE: postgres
       ASKOOSU_RAG_RETRIEVAL: lexical
-      NEXT_TELEMETRY_DISABLED: "1"
+      NEXT_TELEMETRY_DISABLED: '1'
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -57,6 +57,12 @@ jobs:
 
       - name: PostgreSQL and pgvector RAG integration tests
         run: corepack pnpm test:rag
+
+      - name: Portfolio retrieval regression benchmark
+        env:
+          ASKOOSU_BENCHMARK_REPEATS: '1'
+          ASKOOSU_BENCHMARK_STRICT: '1'
+        run: corepack pnpm rag:benchmark
 
       - name: Production build
         run: corepack pnpm build
