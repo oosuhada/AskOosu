@@ -50,6 +50,7 @@ import {
   logWarn,
   toLogError,
 } from '@/lib/observability/logger';
+import { createRequestTrace } from '@/lib/observability/request-trace';
 import {
   checkRateLimit,
   checkRateLimitForKey,
@@ -111,17 +112,20 @@ const SAFE_IDENTIFIER_PATTERN = /^[A-Za-z0-9_.:-]+$/;
 export async function POST(req: Request) {
   const requestStartedAt = Date.now();
   const requestId = crypto.randomUUID();
+  const trace = createRequestTrace({ requestId, route: CHAT_ROUTE });
   let messages: UIMessage[] = [];
   let body: ValidatedChatRequestBody | null = null;
   let orchestration: ChatOrchestration | null = null;
   let responseLanguage = getRequestFallbackLanguage(req);
 
   try {
-    const rateLimit = await checkRateLimit(req, {
-      scope: 'api:chat',
-      windowMs: 60 * 1000,
-      max: getPositiveIntegerEnv('ASKOOSU_CHAT_RATE_LIMIT_PER_MINUTE', 60),
-    });
+    const rateLimit = await trace.measure('rate_limit', () =>
+      checkRateLimit(req, {
+        scope: 'api:chat',
+        windowMs: 60 * 1000,
+        max: getPositiveIntegerEnv('ASKOOSU_CHAT_RATE_LIMIT_PER_MINUTE', 60),
+      })
+    );
 
     if (!rateLimit.allowed) {
       logWarn('chat.request_failed', {
@@ -141,33 +145,38 @@ export async function POST(req: Request) {
       });
     }
 
-    body = await readChatRequestBody(req);
-    messages = body.messages;
+    const validatedBody = await trace.measure('request_parse', () =>
+      readChatRequestBody(req)
+    );
+    body = validatedBody;
+    messages = validatedBody.messages;
     responseLanguage = detectLanguage(
       getLatestUserText(messages),
-      body.preferredLanguage
+      validatedBody.preferredLanguage
     );
     logInfo('chat.request_received', {
       requestId,
       route: CHAT_ROUTE,
-      requestByteSize: body.requestByteSize,
+      requestByteSize: validatedBody.requestByteSize,
       messageCount: messages.length,
-      source: body.source,
+      source: validatedBody.source,
       language: responseLanguage,
-      conversationIdPresent: Boolean(body.conversationId),
+      conversationIdPresent: Boolean(validatedBody.conversationId),
       questionLength: getLatestUserText(messages).length,
       questionPreview: getLocalQuestionPreview(getLatestUserText(messages)),
     });
 
-    const sessionRateLimit = body.conversationId
-      ? await checkRateLimitForKey(body.conversationId, {
-          scope: 'api:chat:session',
-          windowMs: 60 * 1000,
-          max: getPositiveIntegerEnv(
-            'ASKOOSU_CHAT_SESSION_RATE_LIMIT_PER_MINUTE',
-            30
-          ),
-        })
+    const sessionRateLimit = validatedBody.conversationId
+      ? await trace.measure('session_rate_limit', () =>
+          checkRateLimitForKey(validatedBody.conversationId!, {
+            scope: 'api:chat:session',
+            windowMs: 60 * 1000,
+            max: getPositiveIntegerEnv(
+              'ASKOOSU_CHAT_SESSION_RATE_LIMIT_PER_MINUTE',
+              30
+            ),
+          })
+        )
       : null;
 
     if (sessionRateLimit && !sessionRateLimit.allowed) {
@@ -188,46 +197,49 @@ export async function POST(req: Request) {
       });
     }
 
-    orchestration = await prepareChatOrchestration({
-      messages,
-      requestId,
-      preferredLanguage: body.preferredLanguage,
-      starterQuestionId: body.starterQuestionId,
-      faqId: body.faqId,
-      intentId: body.intentId,
-      displayQuestion: body.displayQuestion,
-      originalQuickLabel: body.originalQuickLabel,
-      answerVariant: body.answerVariant,
-      renderSpec: body.renderSpec,
-      source: body.source,
-    });
+    const preparedOrchestration = await trace.measure('orchestration', () =>
+      prepareChatOrchestration({
+        messages,
+        requestId,
+        preferredLanguage: validatedBody.preferredLanguage,
+        starterQuestionId: validatedBody.starterQuestionId,
+        faqId: validatedBody.faqId,
+        intentId: validatedBody.intentId,
+        displayQuestion: validatedBody.displayQuestion,
+        originalQuickLabel: validatedBody.originalQuickLabel,
+        answerVariant: validatedBody.answerVariant,
+        renderSpec: validatedBody.renderSpec,
+        source: validatedBody.source,
+      })
+    );
+    orchestration = preparedOrchestration;
 
     logInfo('chat.route_decided', {
       requestId,
       route: CHAT_ROUTE,
       ...getRouteDecisionLogData(
-        orchestration.mode === 'direct'
-          ? orchestration.directAnswer.metadata
-          : orchestration.metadata
+        preparedOrchestration.mode === 'direct'
+          ? preparedOrchestration.directAnswer.metadata
+          : preparedOrchestration.metadata
       ),
     });
 
-    if (orchestration.mode === 'direct') {
-      const directAnswer = orchestration.directAnswer;
+    if (preparedOrchestration.mode === 'direct') {
+      const directAnswer = preparedOrchestration.directAnswer;
       const directMetadata = directAnswer.metadata;
       const isCacheHit =
-        orchestration.routeDecision.mode === 'faq_direct' ||
-        orchestration.routeDecision.mode === 'answer_cache';
+        preparedOrchestration.routeDecision.mode === 'faq_direct' ||
+        preparedOrchestration.routeDecision.mode === 'answer_cache';
       if (isCacheHit) {
         logInfo('chat.cache_hit', {
           requestId,
           route: CHAT_ROUTE,
-          cacheKind: orchestration.routeDecision.mode,
+          cacheKind: preparedOrchestration.routeDecision.mode,
           ...getRouteDecisionLogData(directMetadata),
         });
       }
 
-      if (orchestration.routeDecision.mode === 'safe_fallback') {
+      if (preparedOrchestration.routeDecision.mode === 'safe_fallback') {
         logInfo('chat.fallback_returned', {
           requestId,
           route: CHAT_ROUTE,
@@ -256,7 +268,7 @@ export async function POST(req: Request) {
       scheduleAskEventLog({
         req,
         body,
-        question: orchestration.question,
+        question: preparedOrchestration.question,
         metadata: directMetadata,
         latencyMs: Date.now() - requestStartedAt,
       });
@@ -287,33 +299,37 @@ export async function POST(req: Request) {
     logInfo('chat.generation_started', {
       requestId,
       route: CHAT_ROUTE,
-      ...getRouteDecisionLogData(orchestration.metadata),
+      ...getRouteDecisionLogData(preparedOrchestration.metadata),
       provider: primaryModel.provider,
       model: primaryModel.modelName,
     });
 
-    const generation = await generateAnswerWithFallback({
-      primaryModel,
-      system: [
-        SYSTEM_PROMPT_TEXT,
-        RAG_CHAT_SYSTEM_PROMPT,
-        orchestration.ragContext.contextText,
-      ]
-        .filter(Boolean)
-        .join('\n\n'),
-      messages: promptMessages,
-      tools,
-      stopWhen: stepCountIs(2),
-      usageMetadata: {
-        route: CHAT_ROUTE,
-        ...toUsageMetadata(orchestration.metadata),
-      },
-    });
-    const leakDetected = detectPromptLeakage(generation.answer);
+    const generation = await trace.measure('generation', () =>
+      generateAnswerWithFallback({
+        primaryModel,
+        system: [
+          SYSTEM_PROMPT_TEXT,
+          RAG_CHAT_SYSTEM_PROMPT,
+          preparedOrchestration.ragContext.contextText,
+        ]
+          .filter(Boolean)
+          .join('\n\n'),
+        messages: promptMessages,
+        tools,
+        stopWhen: stepCountIs(2),
+        usageMetadata: {
+          route: CHAT_ROUTE,
+          ...toUsageMetadata(preparedOrchestration.metadata),
+        },
+      })
+    );
+    const leakDetected = trace.measureSync('output_guardrail', () =>
+      detectPromptLeakage(generation.answer)
+    );
     logInfo('chat.generation_completed', {
       requestId,
       route: CHAT_ROUTE,
-      ...getRouteDecisionLogData(orchestration.metadata),
+      ...getRouteDecisionLogData(preparedOrchestration.metadata),
       provider: generation.provider,
       model: generation.model,
       answerSource: generation.answerSource,
@@ -324,19 +340,19 @@ export async function POST(req: Request) {
 
     if (leakDetected) {
       const safeAnswer = buildInsufficientEvidenceAnswer(
-        orchestration.language
+        preparedOrchestration.language
       );
       const confidenceSignals = buildAnswerConfidenceSignals({
         sources: [],
         warnings: [
-          ...orchestration.metadata.warnings,
+          ...preparedOrchestration.metadata.warnings,
           PROMPT_LEAK_DETECTED_ERROR_CODE,
         ],
-        intent: orchestration.metadata.confidenceSignals?.intent ?? 0.5,
+        intent: preparedOrchestration.metadata.confidenceSignals?.intent ?? 0.5,
         usesGroundedSources: false,
       });
       const responseMetadata = {
-        ...orchestration.metadata,
+        ...preparedOrchestration.metadata,
         sources: [],
         matchedEntityIds: [],
         sourceChunkIds: [],
@@ -344,7 +360,7 @@ export async function POST(req: Request) {
         confidenceSignals,
         hasTodoEvidence: false,
         warnings: [
-          ...orchestration.metadata.warnings,
+          ...preparedOrchestration.metadata.warnings,
           PROMPT_LEAK_DETECTED_ERROR_CODE,
         ],
         answerSource: 'insufficient_evidence' as const,
@@ -369,7 +385,7 @@ export async function POST(req: Request) {
       scheduleAskEventLog({
         req,
         body,
-        question: orchestration.question,
+        question: preparedOrchestration.question,
         metadata: responseMetadata,
         latencyMs: Date.now() - requestStartedAt,
       });
@@ -383,13 +399,13 @@ export async function POST(req: Request) {
 
     const generatedAnswer = appendGeneratedContextualQuote({
       answer: generation.answer,
-      metadata: orchestration.metadata,
-      question: orchestration.question,
+      metadata: preparedOrchestration.metadata,
+      question: preparedOrchestration.question,
       messages,
     });
 
     const responseMetadata = {
-      ...orchestration.metadata,
+      ...preparedOrchestration.metadata,
       answerSource: generation.answerSource,
       provider: generation.provider,
       model: generation.model,
@@ -399,8 +415,8 @@ export async function POST(req: Request) {
     };
 
     const cacheInput = {
-      normalizedQuestion: orchestration.normalizedQuestion,
-      language: orchestration.language,
+      normalizedQuestion: preparedOrchestration.normalizedQuestion,
+      language: preparedOrchestration.language,
       answer: generatedAnswer,
       answerSource: generation.answerSource,
       matchedEntityIds: responseMetadata.matchedEntityIds,
@@ -429,7 +445,7 @@ export async function POST(req: Request) {
     scheduleAskEventLog({
       req,
       body,
-      question: orchestration.question,
+      question: preparedOrchestration.question,
       metadata: responseMetadata,
       latencyMs: Date.now() - requestStartedAt,
     });
@@ -495,6 +511,8 @@ export async function POST(req: Request) {
       answer: buildModelUnavailableAnswer(fallbackMetadata.language),
       metadata: fallbackMetadata,
     });
+  } finally {
+    trace.finish();
   }
 }
 
@@ -698,7 +716,9 @@ const chatRequestBodySchema = z
     conversationId: optionalSafeIdentifierSchema(
       MAX_CONVERSATION_ID_LENGTH
     ).optional(),
-    sessionId: optionalSafeIdentifierSchema(MAX_CONVERSATION_ID_LENGTH).optional(),
+    sessionId: optionalSafeIdentifierSchema(
+      MAX_CONVERSATION_ID_LENGTH
+    ).optional(),
     pagePath: optionalTrimmedStringSchema(500).optional(),
     referrer: optionalTrimmedStringSchema(500).optional(),
     utmSource: optionalTrimmedStringSchema(500).optional(),
