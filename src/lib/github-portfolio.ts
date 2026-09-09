@@ -1,7 +1,7 @@
 import { githubPortfolioSnapshot } from '@/data/github-portfolio-snapshot';
 
 const GITHUB_OWNER = 'oosuhada';
-const SELECTED_GITHUB_PORTFOLIO_REPOSITORIES = [
+export const SELECTED_GITHUB_PORTFOLIO_REPOSITORIES = [
   'AskOosu',
   'beneath-the-stack',
   'agentic-ontology-dashboard',
@@ -542,6 +542,10 @@ function compareSelectedPortfolioOrder(
 }
 
 function selectedPortfolioOrder(repositoryName: string) {
+  return getSelectedGithubPortfolioRank(repositoryName);
+}
+
+export function getSelectedGithubPortfolioRank(repositoryName: string) {
   const index = SELECTED_GITHUB_PORTFOLIO_REPOSITORIES.findIndex(
     (name) => name.toLowerCase() === repositoryName.toLowerCase()
   );

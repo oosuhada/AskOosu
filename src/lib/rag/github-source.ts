@@ -1,4 +1,5 @@
 import {
+  getSelectedGithubPortfolioRank,
   getGithubRagRepositories,
   type GithubPortfolioRepository,
 } from '@/lib/github-portfolio';
@@ -145,31 +146,36 @@ export async function getIndexedGithubProjects(
           AND s.source_key LIKE 'github:%'
           AND c.chunk_id LIKE 'github-project-%-overview'
           AND c.visibility = 'public'
-        ORDER BY COALESCE(c.metadata->>'firstCommitAt', c.metadata->>'createdAt') DESC, c.title ASC
-        LIMIT $1
+        ORDER BY c.title ASC
       `,
-      [limit]
+      []
     );
 
     if (result.rows.length === 0) return getSnapshotProjects(limit);
-    return result.rows.map(({ metadata }) => ({
-      name: getMetadataString(metadata, 'repository').split('/').at(-1) ?? '',
-      fullName: getMetadataString(metadata, 'repository'),
-      description: getMetadataNullableString(metadata, 'description'),
-      url: getMetadataString(metadata, 'url'),
-      homepage: getMetadataNullableString(metadata, 'homepage'),
-      defaultBranch: getMetadataString(metadata, 'defaultBranch') || 'main',
-      primaryLanguage: getMetadataNullableString(metadata, 'primaryLanguage'),
-      topics: getMetadataStringArray(metadata, 'topics'),
-      stars: getMetadataNumber(metadata, 'stars'),
-      forks: getMetadataNumber(metadata, 'forks'),
-      createdAt: getMetadataString(metadata, 'createdAt'),
-      firstCommitAt: getMetadataNullableString(metadata, 'firstCommitAt'),
-      updatedAt: getMetadataString(metadata, 'updatedAt'),
-      pushedAt: getMetadataString(metadata, 'pushedAt'),
-      languages: getMetadataArray(metadata, 'languages') as GithubPortfolioRepository['languages'],
-      readmeImages: getMetadataArray(metadata, 'readmeImages') as GithubPortfolioRepository['readmeImages'],
-    }));
+    const projects = result.rows.map(({ metadata }) => ({
+        name: getMetadataString(metadata, 'repository').split('/').at(-1) ?? '',
+        fullName: getMetadataString(metadata, 'repository'),
+        description: getMetadataNullableString(metadata, 'description'),
+        url: getMetadataString(metadata, 'url'),
+        homepage: getMetadataNullableString(metadata, 'homepage'),
+        defaultBranch: getMetadataString(metadata, 'defaultBranch') || 'main',
+        primaryLanguage: getMetadataNullableString(metadata, 'primaryLanguage'),
+        topics: getMetadataStringArray(metadata, 'topics'),
+        stars: getMetadataNumber(metadata, 'stars'),
+        forks: getMetadataNumber(metadata, 'forks'),
+        createdAt: getMetadataString(metadata, 'createdAt'),
+        firstCommitAt: getMetadataNullableString(metadata, 'firstCommitAt'),
+        updatedAt: getMetadataString(metadata, 'updatedAt'),
+        pushedAt: getMetadataString(metadata, 'pushedAt'),
+        languages: getMetadataArray(metadata, 'languages') as GithubPortfolioRepository['languages'],
+        readmeImages: getMetadataArray(metadata, 'readmeImages') as GithubPortfolioRepository['readmeImages'],
+      }))
+      .filter((project) =>
+        getSelectedGithubPortfolioRank(project.name) < Number.MAX_SAFE_INTEGER
+      )
+      .sort(compareSelectedProjects);
+
+    return projects.length > 0 ? projects.slice(0, limit) : getSnapshotProjects(limit);
   } catch (error) {
     console.warn('Unable to read indexed GitHub projects; using snapshot.', error);
     return getSnapshotProjects(limit);
@@ -178,12 +184,22 @@ export async function getIndexedGithubProjects(
 
 function getSnapshotProjects(limit: number) {
   return [...githubPortfolioSnapshot]
-    .sort((left, right) =>
-      (right.firstCommitAt ?? right.createdAt).localeCompare(
-        left.firstCommitAt ?? left.createdAt
-      )
+    .filter((project) =>
+      getSelectedGithubPortfolioRank(project.name) < Number.MAX_SAFE_INTEGER
     )
+    .sort(compareSelectedProjects)
     .slice(0, limit) as GithubPortfolioRepository[];
+}
+
+function compareSelectedProjects(
+  left: Pick<GithubPortfolioRepository, 'name' | 'updatedAt'>,
+  right: Pick<GithubPortfolioRepository, 'name' | 'updatedAt'>
+) {
+  const selectedOrder =
+    getSelectedGithubPortfolioRank(left.name) -
+    getSelectedGithubPortfolioRank(right.name);
+  if (selectedOrder !== 0) return selectedOrder;
+  return right.updatedAt.localeCompare(left.updatedAt);
 }
 
 function getMetadataString(metadata: Record<string, unknown>, key: string) {
