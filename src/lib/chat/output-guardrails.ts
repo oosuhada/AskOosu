@@ -15,8 +15,11 @@ const PROMPT_LEAKAGE_PATTERNS = [
   /현재\s+AskOosu(?:의)?[^\n]{0,80}(?:위키|Wiki|데이터베이스|지식\s*베이스)[^\n]{0,120}(?:등록되어 있지|저장되어 있지|포함되어 있지|확인되지 않)/i,
   /AskOosu(?:'s)?[^\n]{0,80}(?:Wiki|knowledge base|database)[^\n]{0,120}(?:not registered|not stored|does not contain|doesn't contain|is not available)/i,
   /(?:위키|Wiki)\s*(?:자료|근거|문서|데이터)?[^\n]{0,140}(?:포함되어 있지|등록되어 있지|저장되어 있지|확인되지 않|근거가 부족|자료가 부족)/i,
+  /(?:포트폴리오|프로젝트)[^\n]{0,80}(?:문서|자료)[^\n]{0,140}(?:포함되어 있지|등록되어 있지|저장되어 있지|확인되지 않)/i,
+  /README\s*(?:근거|자료|문서)?[^\n]{0,120}(?:포함되어 있지|등록되어 있지|저장되어 있지|확인되지 않|없습니다|없어요)/i,
   /\bWiki\s+(?:evidence|materials?|documents?|data)\b[^\n]{0,140}(?:not enough|not available|missing|does not contain|do not contain|isn't available|is not available)/i,
   /\bno\s+public\s+(?:project\s+or\s+)?README\s+evidence\b/i,
+  /\b(?:no|not enough|insufficient|missing)\b[^\n]{0,120}\bREADME\s+evidence\b/i,
   /\bavailable\s+portfolio\s+records\b/i,
 ];
 
