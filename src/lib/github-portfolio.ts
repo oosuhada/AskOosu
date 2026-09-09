@@ -429,7 +429,7 @@ async function fetchRepositoryReadmeByName(
       const url = `https://raw.githubusercontent.com/${GITHUB_OWNER}/${encodedRepository}/${encodedBranch}/${filename}`;
       try {
         const response = await fetch(url, {
-          next: { revalidate: GITHUB_REVALIDATE_SECONDS },
+          cache: 'no-store',
         });
         if (response.ok) return response.text();
       } catch {
@@ -456,7 +456,7 @@ async function fetchGithubResponse(url: string) {
       'X-GitHub-Api-Version': '2022-11-28',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    next: { revalidate: GITHUB_REVALIDATE_SECONDS },
+    cache: 'no-store',
   });
 
   if (!response.ok) {

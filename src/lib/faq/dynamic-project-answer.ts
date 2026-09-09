@@ -153,20 +153,20 @@ function buildDynamicAnswerText(
 
   if (language === 'ko') {
     return [
-      '우수의 대표 프로젝트를 세 개로 압축하면 AskOosu, Aigram, Sticks & Stones입니다.',
+      'AskOosu의 RAG와 포트폴리오 구조를 처음 잡던 시점의 대표 축을 세 개로 압축하면 AskOosu, Aigram, Sticks & Stones였습니다.',
       '',
       'AskOosu는 프론트엔드·백엔드·AI를 하나의 서비스 흐름으로 묶은 현재의 방향을 보여주고, Aigram은 Spring Boot와 PostgreSQL까지 직접 연결한 풀스택 경험을, Sticks & Stones는 실제 운영 중인 사이트를 새 스택으로 옮긴 마이그레이션 경험을 보여줍니다.',
       '',
-      `선별 GitHub 프로젝트에서는 ${selected.join(', ')} 같은 작업까지 함께 보여줍니다. 한 가지 프레임워크에 머무르기보다 문제에 따라 웹, AI, 성능, 시스템 쪽으로 구현 범위를 넓혀 온 흐름입니다. 전체적으로는 “화면을 만드는 개발”에서 시작해 “서비스 전체를 설계하고 끝까지 운영하는 개발”로 확장해 온 과정에 가깝습니다.`,
+      `지금은 실시간 GitHub 연동으로 확인되는 선별 프로젝트까지 함께 보면 ${selected.join(', ')} 같은 작업이 흐름의 앞쪽에 올라옵니다. 한 가지 프레임워크에 머무르기보다 문제에 따라 웹, AI, 성능, 시스템 쪽으로 구현 범위를 넓혀 온 흐름입니다. 전체적으로는 “화면을 만드는 개발”에서 시작해 “서비스 전체를 설계하고 끝까지 운영하는 개발”로 확장해 온 과정에 가깝습니다.`,
     ].join('\n');
   }
 
   return [
-    'If you reduce Oosu’s portfolio to three representative projects, the clearest set is AskOosu, Aigram, and Sticks & Stones.',
+    'When the AskOosu RAG and portfolio structure was first framed, the clearest three representative anchors were AskOosu, Aigram, and Sticks & Stones.',
     '',
     'AskOosu shows his current direction: connecting frontend, backend, and AI into one product flow. Aigram demonstrates fullstack ownership with Spring Boot and PostgreSQL, while Sticks & Stones shows the practical side of migrating a real service to a new stack.',
     '',
-    `The selected GitHub projects also include work such as ${selected.join(', ')}, extending that trajectory beyond a single framework and into a wider mix of web, AI, performance, and systems problems. The overall pattern is a move from building interfaces toward owning the structure, delivery, and operation of complete products.`,
+    `Current projects surfaced through the live GitHub integration now put work such as ${selected.join(', ')} near the front of the story, extending that trajectory beyond a single framework and into a wider mix of web, AI, performance, and systems problems. The overall pattern is a move from building interfaces toward owning the structure, delivery, and operation of complete products.`,
   ].join('\n');
 }
 

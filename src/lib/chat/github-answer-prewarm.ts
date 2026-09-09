@@ -10,6 +10,62 @@ const PREWARM_PROVIDER = 'manual-prewarm';
 const PREWARM_MODEL = 'assistant-authored-v2';
 const PREWARM_CONFIDENCE = 0.95;
 
+const KOREAN_PROJECT_DESCRIPTIONS: Record<string, string> = {
+  AskOosu:
+    '방문자가 스크롤 대신 질문으로 포트폴리오를 탐색하도록 만든 대화형 포트폴리오입니다. Next.js, PostgreSQL, RAG, 캐시, 스트리밍 답변 UI를 하나의 운영 서비스로 연결합니다.',
+  'beneath-the-stack':
+    '웹 프레임워크 아래의 알고리즘, 메모리, 동시성, 네트워킹, 저장소 내부를 직접 구현하고 측정하는 시스템 학습·검증 프로젝트입니다.',
+  'agentic-ontology-dashboard':
+    '제조 설비 이상을 관측, 예측, 근거, 의사결정, 점검, 정비, 역할별 보고 흐름으로 연결하는 predictive maintenance decision workspace입니다.',
+  'petlens-ai':
+    'ViT 기반 품종 분석과 CLIP 의미 기반 검색을 연결해 반려동물 이미지·영상 분석을 제공하는 멀티모달 AI 웹 서비스입니다.',
+  'mytrip-planner':
+    '여행 일정, 지도, 날씨, 준비물, 투표 흐름을 하나의 사용자 경험으로 묶은 개인 AI 여행 플래너입니다.',
+  'source-archive':
+    'Cloudflare R2, Backblaze B2, HLS, Service Worker를 활용해 대량 영상을 빠르게 탐색하도록 만든 미디어 아카이브입니다.',
+  'text2cypher-factory-rca':
+    '자연어 질문을 읽기 전용 Cypher로 변환해 제조 지식그래프에서 RCA 후보와 근거 경로를 찾는 knowledge graph RAG MVP입니다.',
+  'browser-reliability-runtime':
+    'Playwright/RPA 워크플로우가 실패했을 때 스크린샷, DOM, 접근성 정보, 실행 이력, 고객 정책을 함께 보고 원인을 진단한 뒤 정책에 맞는 복구를 실행·검증하는 브라우저 자동화 안정성 런타임입니다.',
+  'decision-module-runtime':
+    '검증 가능한 DAG, deterministic compute, provenance, snapshot, human approval을 묶은 의사결정 모듈 런타임입니다.',
+  'spatial-project-archive':
+    '원본 파일, 사람의 기억, AI 해석, 관계, 시간축을 분리해 프로젝트 히스토리를 공간적으로 탐색하는 풀스택 아카이브입니다.',
+  Aigram:
+    '피드, 팔로우, 댓글, 백엔드 API 흐름을 직접 구현한 초기 풀스택 SNS 프로젝트입니다.',
+  'sticksandstones.kr':
+    '기존 WordPress 기반 실서비스를 TypeScript/Vite 기반 정적 사이트로 이전한 실제 클라이언트 마이그레이션 사례입니다.',
+  'ai-mot-research-lab':
+    'AI와 기술경영 연구를 위해 논문·근거·인용 그래프·pgvector 검색을 연결한 evidence-first research intelligence 프로젝트입니다.',
+  'fabops-decision-lab':
+    '반도체 수율 이상 상황에서 evidence, CQRS, event-driven architecture, human-in-the-loop 판단 흐름을 실험한 의사결정 플랫폼입니다.',
+  'vlm-reasoning-lab':
+    '합성 데이터와 QLoRA 실험을 통해 VLM reasoning benchmark, ID/OOD 평가, 실패 분석을 검증한 멀티모달 연구 프로젝트입니다.',
+};
+
+const KOREAN_PROJECT_OVERVIEW_HIGHLIGHTS: Record<string, string[]> = {
+  'browser-reliability-runtime': [
+    '**핵심 기능**: 합성 커머스 워크플로우를 일부러 실패시키고, 실패 유형을 진단한 뒤 복구 후보를 실행·검증합니다.',
+    '**진단 근거**: 스크린샷, DOM, 접근성 텍스트, action history, URL, workflow state, 고객 정책을 함께 사용합니다.',
+    '**검증 포인트**: deterministic recovery와 텍스트 전용 LLM 대비 screenshot-aware VLM의 진단 차이를 측정 결과로 남겼습니다.',
+  ],
+  'text2cypher-factory-rca': [
+    '**핵심 기능**: 제조 도메인의 자연어 질문을 읽기 전용 Cypher로 바꾸고 Neo4j 지식그래프에서 근거 경로를 찾습니다.',
+    '**안전 장치**: Cypher 검증, correction/retry, Gold fallback, 쓰기 차단을 통해 LLM이 임의로 조작하지 않도록 설계했습니다.',
+    '**성장 연결**: 이후 agentic ontology dashboard의 grounded report와 evidence workflow 설계로 이어진 선행 MVP입니다.',
+  ],
+  'agentic-ontology-dashboard': [
+    '**핵심 기능**: 설비 이상 관측부터 예측 결과, 근거, 판단, 점검, 정비, 보고까지 하나의 decision case로 묶습니다.',
+    '**제품 관점**: 엔지니어, 운영 관리자, 경영진이 같은 사건을 각자의 언어와 화면으로 이해하도록 역할별 UX를 제공합니다.',
+    '**아키텍처 포인트**: event-driven workflow, audit, idempotency, repository pattern, human-in-the-loop 승인 흐름을 강조합니다.',
+  ],
+  'beneath-the-stack': [
+    '**핵심 기능**: 자료구조, allocator, 동시성, blocking network, storage, durability를 직접 구현하고 테스트합니다.',
+    '**검증 방식**: benchmark, sanitizer, differential test, source reading note, interview defense 문서로 이해를 증명합니다.',
+    '**포트폴리오 의미**: 웹 제품을 만들 때 쓰는 추상화의 아래 계층을 source-level로 방어하기 위한 시스템 capstone입니다.',
+  ],
+};
+
 type GithubIndexedChunk = {
   chunkId: string;
   entityId: string;
@@ -159,8 +215,9 @@ function joinMarkdownLines(lines: Array<string | null | undefined | false>) {
 function buildOverviewAnswer(project: IndexedGithubProject, language: 'ko' | 'en') {
   const description = getDescription(project, language);
   const languageSummary = formatLanguageSummary(project.metadata, 4);
-  const sectionNames = getReadmeSectionNames(project).slice(0, 4);
-  const highlights = getReadmeHighlights(project, 2);
+  const sectionNames = getReadmeSectionNames(project, language).slice(0, 4);
+  const highlights = getReadmeHighlights(project, 2, undefined, language);
+  const koProjectHighlights = getKoreanProjectOverviewHighlights(project);
   const githubUrl = getMetadataString(project.metadata, 'url');
   const homepage = getMetadataString(project.metadata, 'homepage');
 
@@ -169,12 +226,18 @@ function buildOverviewAnswer(project: IndexedGithubProject, language: 'ko' | 'en
       `**${project.name}**는 ${description}`,
       '',
       `- **기술 구성**: ${languageSummary || '공개 저장소에서 확인되는 구현 언어를 기준으로 정리했습니다.'}`,
-      sectionNames.length > 0
-        ? `- **README의 주요 내용**: ${sectionNames.join(', ')}`
-        : '- **README의 주요 내용**: 프로젝트 개요와 구현 정보를 공개 저장소에서 확인할 수 있습니다.',
-      ...highlights.map((highlight) => `- **${highlight.title}**: ${highlight.summary}`),
+      ...(koProjectHighlights.length > 0
+        ? koProjectHighlights.map((highlight) => `- ${highlight}`)
+        : [
+            sectionNames.length > 0
+              ? `- **README 핵심 흐름**: ${sectionNames.join(', ')}`
+              : '- **README 핵심 흐름**: 프로젝트 개요와 구현 정보를 공개 저장소에서 확인할 수 있습니다.',
+            ...highlights.map(
+              (highlight) => `- **${highlight.title}**: ${highlight.summary}`
+            ),
+          ]),
       githubUrl ? `- **GitHub**: ${githubUrl}` : '',
-      homepage ? `- **Live**: ${homepage}` : '',
+      homepage ? `- **라이브**: ${homepage}` : '',
     ]);
   }
 
@@ -192,7 +255,7 @@ function buildOverviewAnswer(project: IndexedGithubProject, language: 'ko' | 'en
 }
 
 function buildReadmeAnswer(project: IndexedGithubProject, language: 'ko' | 'en') {
-  const sections = getReadmeHighlights(project, 5);
+  const sections = getReadmeHighlights(project, 5, undefined, language);
   const languageSummary = formatLanguageSummary(project.metadata, 4);
 
   if (language === 'ko') {
@@ -250,7 +313,12 @@ function formatReadmeSectionItem(
 function buildLanguagesAnswer(project: IndexedGithubProject, language: 'ko' | 'en') {
   const languages = getLanguages(project.metadata).slice(0, 6);
   const topics = getMetadataStringArray(project.metadata, 'topics').slice(0, 6);
-  const techSections = getReadmeHighlights(project, 3, /tech|stack|architecture|build|install|deploy|구조|기술|설치|배포/i);
+  const techSections = getReadmeHighlights(
+    project,
+    3,
+    /tech|stack|architecture|build|install|deploy|구조|기술|설치|배포/i,
+    language
+  );
 
   if (language === 'ko') {
     return joinMarkdownLines([
@@ -288,7 +356,7 @@ function buildGrowthAnswer(project: IndexedGithubProject, language: 'ko' | 'en')
   const languageSummary = formatLanguageSummary(project.metadata, 3);
   const topics = getMetadataStringArray(project.metadata, 'topics').slice(0, 5);
   const homepage = getMetadataString(project.metadata, 'homepage');
-  const readmeSections = getReadmeSectionNames(project);
+  const readmeSections = getReadmeSectionNames(project, language);
 
   if (language === 'ko') {
     return [
@@ -335,16 +403,18 @@ function selectSourceChunkIds(
 function getReadmeHighlights(
   project: IndexedGithubProject,
   limit: number,
-  preferredPattern?: RegExp
+  preferredPattern?: RegExp,
+  language: 'ko' | 'en' = 'en'
 ) {
   return selectReadmeChunks(project, limit, preferredPattern).map((chunk) => {
-    const title =
+    const rawTitle =
       getMetadataString(chunk.metadata, 'readmeSection') ||
       chunk.title.replace(`${project.name} README · `, '');
+    const title = localizeReadmeSectionTitle(rawTitle, language);
 
     return {
       title,
-      summary: summarizeChunk(chunk.content, title),
+      summary: summarizeChunk(chunk.content, rawTitle, language),
     };
   });
 }
@@ -375,17 +445,25 @@ function dedupeBySection(chunks: GithubIndexedChunk[]) {
   });
 }
 
-function getReadmeSectionNames(project: IndexedGithubProject) {
+function getReadmeSectionNames(
+  project: IndexedGithubProject,
+  language: 'ko' | 'en' = 'en'
+) {
   return rankReadmeChunks(dedupeBySection(project.readmeChunks))
-    .map(
-      (chunk) =>
+    .map((chunk) => {
+      const title =
         getMetadataString(chunk.metadata, 'readmeSection') ||
-        chunk.title.replace(`${project.name} README · `, '')
-    )
+        chunk.title.replace(`${project.name} README · `, '');
+      return localizeReadmeSectionTitle(title, language);
+    })
     .filter(Boolean);
 }
 
-function summarizeChunk(content: string, sectionTitle = '') {
+function summarizeChunk(
+  content: string,
+  sectionTitle = '',
+  language: 'ko' | 'en' = 'en'
+) {
   const cleaned = removeLeadingDuplicateSectionTitle(
     content
     .replace(/```[\s\S]*?```/g, ' ')
@@ -398,7 +476,15 @@ function summarizeChunk(content: string, sectionTitle = '') {
       .trim(),
     sectionTitle
   );
-  if (!cleaned) return 'README에 이 섹션의 구현 정보가 정리되어 있습니다.';
+  if (!cleaned) {
+    return language === 'ko'
+      ? 'README에 이 섹션의 구현 정보가 정리되어 있습니다.'
+      : 'The README documents implementation details for this section.';
+  }
+
+  const knownKoreanSummary =
+    language === 'ko' ? summarizeKnownEnglishSection(sectionTitle) : null;
+  if (knownKoreanSummary) return knownKoreanSummary;
 
   if (isListLikeSummary(cleaned)) {
     return cleaned.slice(0, 420).trim();
@@ -441,6 +527,59 @@ function splitSummaryLines(summary: string) {
 
 function isListLikeSummary(summary: string) {
   return /(?:^|\s)\d+\.\s+\S/.test(summary) || /(?:^|\s)[-•]\s+\S/.test(summary);
+}
+
+function getKoreanProjectOverviewHighlights(project: IndexedGithubProject) {
+  return KOREAN_PROJECT_OVERVIEW_HIGHLIGHTS[project.name] ?? [];
+}
+
+function localizeReadmeSectionTitle(title: string, language: 'ko' | 'en') {
+  if (language !== 'ko') return title;
+  const normalized = title.trim().toLowerCase();
+  const mapped: Record<string, string> = {
+    introduction: '프로젝트 소개',
+    overview: '개요',
+    architecture: '아키텍처',
+    'what is implemented': '구현된 기능',
+    'measured highlights': '측정 결과',
+    'browser reliability runtime': '브라우저 안정성 런타임',
+    'synthetic workflows': '합성 워크플로우',
+    'product preview': '제품 미리보기',
+    'product preview / 제품 미리보기': '제품 미리보기',
+    'why i built it / 만든 이유': '만든 이유',
+    'english executive summary': '요약',
+    'what it demonstrates': '검증한 내용',
+    'prototype lineage / 연결된 실험과 후속 구현': '연결된 실험과 후속 구현',
+    'current architecture': '현재 아키텍처',
+    '현재 아키텍처': '현재 아키텍처',
+    'llm과 보고': 'LLM과 보고',
+    '저장소 구조': '저장소 구조',
+    'portfolio evidence preview': '포트폴리오 증거 미리보기',
+  };
+  return mapped[normalized] ?? title;
+}
+
+function summarizeKnownEnglishSection(sectionTitle: string) {
+  const normalized = sectionTitle.trim().toLowerCase();
+  if (normalized === 'measured highlights') {
+    return '결정론적 복구율, 정책 준수율, 텍스트 전용 LLM과 스크린샷 기반 VLM 비교 결과를 측정 지표로 정리합니다.';
+  }
+  if (normalized === 'what is implemented') {
+    return '합성 워크플로우 앱, 실패 변형 엔진, Playwright 실행기, 복구 랭킹, 정책 게이트, trace viewer 등 실제 구현 범위를 정리합니다.';
+  }
+  if (normalized === 'browser reliability runtime') {
+    return '브라우저 자동화가 실패했을 때 실패 원인 진단, 정책 기반 복구 선택, 실행, 검증까지 이어지는 런타임의 목적을 설명합니다.';
+  }
+  if (normalized === 'architecture') {
+    return '입력, 검증, 실행, 저장, 화면 표현이 어떤 계층으로 분리되어 있는지 설명합니다.';
+  }
+  if (normalized === 'what it demonstrates') {
+    return '이 저장소가 보여주는 핵심 기능, 구조, 평가 방식, 제품화 범위를 요약합니다.';
+  }
+  if (normalized === 'english executive summary') {
+    return '프로젝트의 목적, 핵심 기능, 공개 데모, 구현 범위를 요약합니다.';
+  }
+  return null;
 }
 
 function escapeRegExp(value: string) {
@@ -505,11 +644,24 @@ function readmeSectionScore(chunk: GithubIndexedChunk) {
 }
 
 function getDescription(project: IndexedGithubProject, language: 'ko' | 'en') {
+  if (language === 'ko') {
+    const localized = KOREAN_PROJECT_DESCRIPTIONS[project.name];
+    if (localized) return ensureSentence(localized);
+  }
+
   const description = getMetadataString(project.metadata, 'description');
-  if (description) return language === 'ko' ? `${description}.` : description;
+  if (description) return language === 'ko' ? ensureSentence(description) : description;
   return language === 'ko'
     ? '공개 GitHub 저장소에서 목적과 구현 내용을 확인할 수 있는 프로젝트입니다.'
     : 'is documented through its public GitHub repository and README.';
+}
+
+function ensureSentence(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return trimmed;
+  return /[.!?。！？다요음임됨함됨니다]$/.test(trimmed)
+    ? trimmed
+    : `${trimmed}.`;
 }
 
 function descriptionEn(project: IndexedGithubProject) {

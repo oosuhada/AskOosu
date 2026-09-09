@@ -38,7 +38,12 @@ export const githubPortfolioSnapshot = [
       { name: 'Shell', bytes: 3326, percentage: 0.3 },
       { name: 'CMake', bytes: 2029, percentage: 0.2 },
     ],
-    readmeImages: [],
+    readmeImages: [
+      {
+        url: 'https://raw.githubusercontent.com/oosuhada/beneath-the-stack/main/docs/portfolio/beneath-stack-dashboard.png',
+        alt: 'beneath-the-stack dashboard overview',
+      },
+    ],
   },
   {
     name: 'mytrip-planner',
@@ -141,7 +146,20 @@ export const githubPortfolioSnapshot = [
       { name: 'HTML', bytes: 53789, percentage: 69.5 },
       { name: 'JavaScript', bytes: 23586, percentage: 30.5 },
     ],
-    readmeImages: [],
+    readmeImages: [
+      {
+        url: 'https://raw.githubusercontent.com/oosuhada/pear.no/main/docs/media/pear-scroll-demo.webp',
+        alt: 'pear.no README image',
+      },
+      {
+        url: 'https://raw.githubusercontent.com/oosuhada/pear.no/main/docs/media/claude-code-cant-do-this.jpg',
+        alt: 'pear.no README image',
+      },
+      {
+        url: 'https://raw.githubusercontent.com/oosuhada/pear.no/main/docs/media/pear-ai-process.jpg',
+        alt: 'pear.no README image',
+      },
+    ],
   },
   {
     name: 'petlens-ai',
@@ -164,7 +182,20 @@ export const githubPortfolioSnapshot = [
       { name: 'Python', bytes: 71278, percentage: 38.4 },
       { name: 'Shell', bytes: 3536, percentage: 1.9 },
     ],
-    readmeImages: [],
+    readmeImages: [
+      {
+        url: 'https://raw.githubusercontent.com/oosuhada/petlens-ai/main/docs/screenshots/v2/web-01-home.png',
+        alt: 'petlens-ai README image',
+      },
+      {
+        url: 'https://raw.githubusercontent.com/oosuhada/petlens-ai/main/docs/screenshots/v2/web-03-multipet-analysis.png',
+        alt: 'petlens-ai README image',
+      },
+      {
+        url: 'https://raw.githubusercontent.com/oosuhada/petlens-ai/main/docs/screenshots/v2/web-04-analysis-details.png',
+        alt: 'petlens-ai README image',
+      },
+    ],
   },
   {
     name: 'temporal-vlm-runtime',
@@ -187,7 +218,12 @@ export const githubPortfolioSnapshot = [
       { name: 'Python', bytes: 137591, percentage: 3.8 },
       { name: 'Shell', bytes: 10510, percentage: 0.3 },
     ],
-    readmeImages: [],
+    readmeImages: [
+      {
+        url: 'https://raw.githubusercontent.com/oosuhada/text2cypher-factory-rca/main/.github/assets/portfolio/text2cypher-factory-rca-overview.png',
+        alt: 'Text-to-Cypher Factory RCA product overview',
+      },
+    ],
   },
   {
     name: 'browser-reliability-runtime',
@@ -218,7 +254,12 @@ export const githubPortfolioSnapshot = [
       { name: 'TypeScript', bytes: 169439, percentage: 81.7 },
       { name: 'Python', bytes: 37948, percentage: 18.3 },
     ],
-    readmeImages: [],
+    readmeImages: [
+      {
+        url: 'https://raw.githubusercontent.com/oosuhada/browser-reliability-runtime/main/.github/assets/portfolio/browser-reliability-runtime-overview.png',
+        alt: 'Browser Reliability Runtime product overview',
+      },
+    ],
   },
   {
     name: 'spatial-project-archive',
@@ -757,7 +798,12 @@ export const githubPortfolioSnapshot = [
       { name: 'Dockerfile', bytes: 7501, percentage: 0.1 },
       { name: 'JavaScript', bytes: 5271, percentage: 0 },
     ],
-    readmeImages: [],
+    readmeImages: [
+      {
+        url: 'https://raw.githubusercontent.com/oosuhada/agentic-ontology-dashboard/main/.github/assets/portfolio/agentic-ontology-dashboard-overview.png',
+        alt: 'Agentic Ontology Dashboard product overview',
+      },
+    ],
   },
   {
     name: 'text2cypher-factory-rca',
@@ -796,7 +842,12 @@ export const githubPortfolioSnapshot = [
       { name: 'Cypher', bytes: 1655, percentage: 0.1 },
       { name: 'JavaScript', bytes: 495, percentage: 0 },
     ],
-    readmeImages: [],
+    readmeImages: [
+      {
+        url: 'https://raw.githubusercontent.com/oosuhada/text2cypher-factory-rca/main/.github/assets/portfolio/text2cypher-factory-rca-overview.png',
+        alt: 'Text-to-Cypher Factory RCA product overview',
+      },
+    ],
   },
   {
     name: 'decision-module-runtime',
