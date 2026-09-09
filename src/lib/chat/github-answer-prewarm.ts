@@ -46,8 +46,8 @@ const KOREAN_PROJECT_DESCRIPTIONS: Record<string, string> = {
 const KOREAN_PROJECT_OVERVIEW_HIGHLIGHTS: Record<string, string[]> = {
   'browser-reliability-runtime': [
     '**핵심 기능**: 합성 커머스 워크플로우를 일부러 실패시키고, 실패 유형을 진단한 뒤 복구 후보를 실행·검증합니다.',
-    '**진단 근거**: 스크린샷, DOM, 접근성 텍스트, action history, URL, workflow state, 고객 정책을 함께 사용합니다.',
-    '**검증 포인트**: deterministic recovery와 텍스트 전용 LLM 대비 screenshot-aware VLM의 진단 차이를 측정 결과로 남겼습니다.',
+    '**진단 근거**: 스크린샷, DOM, 접근성 텍스트, 실행 이력, URL, 워크플로우 상태, 고객 정책을 함께 사용합니다.',
+    '**검증 포인트**: 결정론적 복구와 텍스트 전용 LLM 대비 스크린샷 기반 VLM의 진단 차이를 측정 결과로 남겼습니다.',
   ],
   'text2cypher-factory-rca': [
     '**핵심 기능**: 제조 도메인의 자연어 질문을 읽기 전용 Cypher로 바꾸고 Neo4j 지식그래프에서 근거 경로를 찾습니다.',
