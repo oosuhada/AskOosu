@@ -476,15 +476,15 @@ function summarizeChunk(
       .trim(),
     sectionTitle
   );
+  const knownKoreanSummary =
+    language === 'ko' ? summarizeKnownEnglishSection(sectionTitle) : null;
+  if (knownKoreanSummary) return knownKoreanSummary;
+
   if (!cleaned) {
     return language === 'ko'
       ? 'README에 이 섹션의 구현 정보가 정리되어 있습니다.'
       : 'The README documents implementation details for this section.';
   }
-
-  const knownKoreanSummary =
-    language === 'ko' ? summarizeKnownEnglishSection(sectionTitle) : null;
-  if (knownKoreanSummary) return knownKoreanSummary;
 
   if (isListLikeSummary(cleaned)) {
     return cleaned.slice(0, 420).trim();
@@ -572,6 +572,12 @@ function summarizeKnownEnglishSection(sectionTitle: string) {
   }
   if (normalized === 'architecture') {
     return '입력, 검증, 실행, 저장, 화면 표현이 어떤 계층으로 분리되어 있는지 설명합니다.';
+  }
+  if (normalized === 'product preview') {
+    return '공개 데모 화면을 통해 사용자가 어떤 제품 흐름을 보게 되는지 보여줍니다.';
+  }
+  if (normalized === 'portfolio evidence preview') {
+    return '포트폴리오에서 빠르게 확인할 수 있는 대표 화면과 검증 근거를 보여줍니다.';
   }
   if (normalized === 'what it demonstrates') {
     return '이 저장소가 보여주는 핵심 기능, 구조, 평가 방식, 제품화 범위를 요약합니다.';
