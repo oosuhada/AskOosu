@@ -348,6 +348,9 @@ async function enrichRepositoryForRag(
 }
 
 async function fetchRepositoryFirstCommitAt(repository: GithubRepositoryApi) {
+  const snapshotFirstCommitAt = getSnapshotFirstCommitAt(repository.name);
+  if (snapshotFirstCommitAt) return snapshotFirstCommitAt;
+
   const url = `https://api.github.com/repos/${GITHUB_OWNER}/${encodeURIComponent(
     repository.name
   )}/commits?sha=${encodeURIComponent(repository.default_branch)}&per_page=1`;
@@ -457,7 +460,9 @@ async function getFirstCommitRankedCandidates(
   const withStartDates = await Promise.all(
     candidates.map(async (repository) => ({
       repository,
-      firstCommitAt: await fetchRepositoryFirstCommitAt(repository),
+      firstCommitAt:
+        getSnapshotFirstCommitAt(repository.name) ??
+        (await fetchRepositoryFirstCommitAt(repository)),
     }))
   );
 
@@ -496,6 +501,15 @@ function compareRepositoryStarts(
   const startedOrder = rightStartedAt.localeCompare(leftStartedAt);
   if (startedOrder !== 0) return startedOrder;
   return right.repository.updated_at.localeCompare(left.repository.updated_at);
+}
+
+function getSnapshotFirstCommitAt(repositoryName: string) {
+  return (
+    githubPortfolioSnapshot.find(
+      (repository) =>
+        repository.name.toLowerCase() === repositoryName.toLowerCase()
+    )?.firstCommitAt ?? null
+  );
 }
 
 function compareEnrichedRepositories(
