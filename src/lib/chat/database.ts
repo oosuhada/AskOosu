@@ -288,6 +288,7 @@ export async function getCachedAnswer({
   );
   const row = result.rows[0];
   if (!row) return null;
+  if (detectPromptLeakage(row.answer)) return null;
 
   return {
     answer: row.answer,
