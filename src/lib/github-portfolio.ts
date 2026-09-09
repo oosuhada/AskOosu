@@ -36,6 +36,11 @@ type GithubCommitApi = {
   };
 };
 
+type GithubRepositoryWithStart = {
+  repository: GithubRepositoryApi;
+  firstCommitAt: string | null;
+};
+
 export type GithubLanguageShare = {
   name: string;
   bytes: number;
@@ -85,6 +90,7 @@ export type GithubRepositorySyncManifest = {
     fullName: string;
     defaultBranch: string;
     createdAt: string;
+    firstCommitAt: string | null;
     updatedAt: string;
     pushedAt: string;
   }>;
@@ -103,13 +109,14 @@ export async function getGithubPortfolioRepositories(): Promise<
     const repositories = await fetchGithubJson<GithubRepositoryApi[]>(
       `https://api.github.com/users/${GITHUB_OWNER}/repos?per_page=100&sort=created&direction=desc&type=owner`
     );
-    const candidates = repositories
-      .filter(isPortfolioCandidate)
-      .sort(compareRepositories)
-      .slice(0, limit);
-
-    const enriched = await Promise.all(candidates.map(enrichRepository));
-    return enriched.sort(compareEnrichedRepositories);
+    const rankedCandidates = await getFirstCommitRankedCandidates(repositories);
+    return Promise.all(
+      rankedCandidates
+        .slice(0, limit)
+        .map((candidate) =>
+          enrichRepository(candidate.repository, candidate.firstCommitAt)
+        )
+    );
   } catch (error) {
     console.warn('Unable to refresh GitHub portfolio repositories.', error);
     return [...githubPortfolioSnapshot]
@@ -125,17 +132,17 @@ export async function getGithubRepositorySyncManifest(): Promise<GithubRepositor
     const repositories = await fetchGithubJson<GithubRepositoryApi[]>(
       `https://api.github.com/users/${GITHUB_OWNER}/repos?per_page=100&sort=created&direction=desc&type=owner`
     );
+    const rankedCandidates = await getFirstCommitRankedCandidates(repositories);
     return {
       live: true,
-      repositories: repositories
-        .filter(isPortfolioCandidate)
-        .sort(compareRepositories)
+      repositories: rankedCandidates
         .slice(0, limit)
-        .map((repository) => ({
+        .map(({ repository, firstCommitAt }) => ({
           name: repository.name,
           fullName: repository.full_name,
           defaultBranch: repository.default_branch,
           createdAt: repository.created_at,
+          firstCommitAt,
           updatedAt: repository.updated_at,
           pushedAt: repository.pushed_at,
         })),
@@ -152,6 +159,7 @@ export async function getGithubRepositorySyncManifest(): Promise<GithubRepositor
           fullName: repository.fullName,
           defaultBranch: repository.defaultBranch,
           createdAt: repository.createdAt,
+          firstCommitAt: repository.firstCommitAt,
           updatedAt: repository.updatedAt,
           pushedAt: repository.pushedAt,
         })),
@@ -166,13 +174,14 @@ export async function getGithubRagRepositories(): Promise<GithubRagRepository[]>
     const repositories = await fetchGithubJson<GithubRepositoryApi[]>(
       `https://api.github.com/users/${GITHUB_OWNER}/repos?per_page=100&sort=created&direction=desc&type=owner`
     );
-    const candidates = repositories
-      .filter(isPortfolioCandidate)
-      .sort(compareRepositories)
-      .slice(0, limit);
-
-    const enriched = await Promise.all(candidates.map(enrichRepositoryForRag));
-    return enriched.sort(compareEnrichedRepositories);
+    const rankedCandidates = await getFirstCommitRankedCandidates(repositories);
+    return Promise.all(
+      rankedCandidates
+        .slice(0, limit)
+        .map((candidate) =>
+          enrichRepositoryForRag(candidate.repository, candidate.firstCommitAt)
+        )
+    );
   } catch (error) {
     console.warn('Unable to refresh live GitHub RAG repositories.', error);
     const repositories = [...githubPortfolioSnapshot]
@@ -266,12 +275,13 @@ export async function getGithubRepositoryEvidence(
 }
 
 async function enrichRepository(
-  repository: GithubRepositoryApi
+  repository: GithubRepositoryApi,
+  knownFirstCommitAt?: string | null
 ): Promise<GithubPortfolioRepository> {
   const [languages, readme, firstCommitAt] = await Promise.all([
     fetchRepositoryLanguages(repository),
     fetchRepositoryReadme(repository),
-    fetchRepositoryFirstCommitAt(repository),
+    knownFirstCommitAt ?? fetchRepositoryFirstCommitAt(repository),
   ]);
 
   return {
@@ -301,12 +311,13 @@ async function enrichRepository(
 }
 
 async function enrichRepositoryForRag(
-  repository: GithubRepositoryApi
+  repository: GithubRepositoryApi,
+  knownFirstCommitAt?: string | null
 ): Promise<GithubRagRepository> {
   const [languages, readme, firstCommitAt] = await Promise.all([
     fetchRepositoryLanguages(repository),
     fetchRepositoryReadme(repository),
-    fetchRepositoryFirstCommitAt(repository),
+    knownFirstCommitAt ?? fetchRepositoryFirstCommitAt(repository),
   ]);
 
   return {
@@ -435,6 +446,24 @@ async function fetchGithubResponse(url: string) {
   return response;
 }
 
+async function getFirstCommitRankedCandidates(
+  repositories: GithubRepositoryApi[]
+): Promise<GithubRepositoryWithStart[]> {
+  const candidates = repositories
+    .filter(isPortfolioCandidate)
+    .sort(compareRepositories)
+    .slice(0, MAX_REPOSITORY_LIMIT);
+
+  const withStartDates = await Promise.all(
+    candidates.map(async (repository) => ({
+      repository,
+      firstCommitAt: await fetchRepositoryFirstCommitAt(repository),
+    }))
+  );
+
+  return withStartDates.sort(compareRepositoryStarts);
+}
+
 function isPortfolioCandidate(repository: GithubRepositoryApi) {
   if (
     repository.private ||
@@ -456,6 +485,17 @@ function compareRepositories(
   const createdOrder = right.created_at.localeCompare(left.created_at);
   if (createdOrder !== 0) return createdOrder;
   return right.updated_at.localeCompare(left.updated_at);
+}
+
+function compareRepositoryStarts(
+  left: GithubRepositoryWithStart,
+  right: GithubRepositoryWithStart
+) {
+  const leftStartedAt = left.firstCommitAt || left.repository.created_at;
+  const rightStartedAt = right.firstCommitAt || right.repository.created_at;
+  const startedOrder = rightStartedAt.localeCompare(leftStartedAt);
+  if (startedOrder !== 0) return startedOrder;
+  return right.repository.updated_at.localeCompare(left.repository.updated_at);
 }
 
 function compareEnrichedRepositories(

@@ -248,6 +248,7 @@ function getChangedRepositoryNames(
     if (!before || !after) return true;
     return (
       before.defaultBranch !== after.defaultBranch ||
+      before.firstCommitAt !== after.firstCommitAt ||
       before.updatedAt !== after.updatedAt ||
       before.pushedAt !== after.pushedAt
     );
@@ -260,6 +261,7 @@ function createManifestFingerprint(manifest: GithubRepositorySyncManifest) {
       manifest.repositories.map((repository) => ({
         name: repository.name,
         defaultBranch: repository.defaultBranch,
+        firstCommitAt: repository.firstCommitAt,
         updatedAt: repository.updatedAt,
         pushedAt: repository.pushedAt,
       }))
