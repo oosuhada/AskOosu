@@ -16,6 +16,8 @@ const PROMPT_LEAKAGE_PATTERNS = [
   /AskOosu(?:'s)?[^\n]{0,80}(?:Wiki|knowledge base|database)[^\n]{0,120}(?:not registered|not stored|does not contain|doesn't contain|is not available)/i,
   /(?:위키|Wiki)\s*(?:자료|근거|문서|데이터)?[^\n]{0,140}(?:포함되어 있지|등록되어 있지|저장되어 있지|확인되지 않|근거가 부족|자료가 부족)/i,
   /\bWiki\s+(?:evidence|materials?|documents?|data)\b[^\n]{0,140}(?:not enough|not available|missing|does not contain|do not contain|isn't available|is not available)/i,
+  /\bno\s+public\s+(?:project\s+or\s+)?README\s+evidence\b/i,
+  /\bavailable\s+portfolio\s+records\b/i,
 ];
 
 export function detectPromptLeakage(answer: string) {
