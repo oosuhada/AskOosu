@@ -1,7 +1,24 @@
 import { githubPortfolioSnapshot } from '@/data/github-portfolio-snapshot';
 
 const GITHUB_OWNER = 'oosuhada';
-const DEFAULT_REPOSITORY_LIMIT = 12;
+const SELECTED_GITHUB_PORTFOLIO_REPOSITORIES = [
+  'AskOosu',
+  'beneath-the-stack',
+  'agentic-ontology-dashboard',
+  'petlens-ai',
+  'mytrip-planner',
+  'source-archive',
+  'text2cypher-factory-rca',
+  'browser-reliability-runtime',
+  'decision-module-runtime',
+  'spatial-project-archive',
+  'Aigram',
+  'sticksandstones.kr',
+  'ai-mot-research-lab',
+  'fabops-decision-lab',
+  'vlm-reasoning-lab',
+] as const;
+const DEFAULT_REPOSITORY_LIMIT = SELECTED_GITHUB_PORTFOLIO_REPOSITORIES.length;
 const MAX_REPOSITORY_LIMIT = 45;
 const GITHUB_REVALIDATE_SECONDS = 60 * 60;
 const MAX_README_EVIDENCE_CHARS = 12_000;
@@ -109,7 +126,7 @@ export async function getGithubPortfolioRepositories(): Promise<
     const repositories = await fetchGithubJson<GithubRepositoryApi[]>(
       `https://api.github.com/users/${GITHUB_OWNER}/repos?per_page=100&sort=created&direction=desc&type=owner`
     );
-    const rankedCandidates = await getFirstCommitRankedCandidates(repositories);
+    const rankedCandidates = await getSelectedPortfolioCandidates(repositories);
     return Promise.all(
       rankedCandidates
         .slice(0, limit)
@@ -120,7 +137,7 @@ export async function getGithubPortfolioRepositories(): Promise<
   } catch (error) {
     console.warn('Unable to refresh GitHub portfolio repositories.', error);
     return [...githubPortfolioSnapshot]
-      .sort(compareEnrichedRepositories)
+      .sort(compareSelectedPortfolioOrder)
       .slice(0, limit);
   }
 }
@@ -132,7 +149,7 @@ export async function getGithubRepositorySyncManifest(): Promise<GithubRepositor
     const repositories = await fetchGithubJson<GithubRepositoryApi[]>(
       `https://api.github.com/users/${GITHUB_OWNER}/repos?per_page=100&sort=created&direction=desc&type=owner`
     );
-    const rankedCandidates = await getFirstCommitRankedCandidates(repositories);
+    const rankedCandidates = await getSelectedPortfolioCandidates(repositories);
     return {
       live: true,
       repositories: rankedCandidates
@@ -152,7 +169,7 @@ export async function getGithubRepositorySyncManifest(): Promise<GithubRepositor
     return {
       live: false,
       repositories: [...githubPortfolioSnapshot]
-        .sort(compareEnrichedRepositories)
+        .sort(compareSelectedPortfolioOrder)
         .slice(0, limit)
         .map((repository) => ({
           name: repository.name,
@@ -174,7 +191,7 @@ export async function getGithubRagRepositories(): Promise<GithubRagRepository[]>
     const repositories = await fetchGithubJson<GithubRepositoryApi[]>(
       `https://api.github.com/users/${GITHUB_OWNER}/repos?per_page=100&sort=created&direction=desc&type=owner`
     );
-    const rankedCandidates = await getFirstCommitRankedCandidates(repositories);
+    const rankedCandidates = await getSelectedPortfolioCandidates(repositories);
     return Promise.all(
       rankedCandidates
         .slice(0, limit)
@@ -185,7 +202,7 @@ export async function getGithubRagRepositories(): Promise<GithubRagRepository[]>
   } catch (error) {
     console.warn('Unable to refresh live GitHub RAG repositories.', error);
     const repositories = [...githubPortfolioSnapshot]
-      .sort(compareEnrichedRepositories)
+      .sort(compareSelectedPortfolioOrder)
       .slice(0, limit);
 
     return Promise.all(
@@ -449,13 +466,17 @@ async function fetchGithubResponse(url: string) {
   return response;
 }
 
-async function getFirstCommitRankedCandidates(
+async function getSelectedPortfolioCandidates(
   repositories: GithubRepositoryApi[]
 ): Promise<GithubRepositoryWithStart[]> {
-  const candidates = repositories
-    .filter(isPortfolioCandidate)
-    .sort(compareRepositories)
-    .slice(0, MAX_REPOSITORY_LIMIT);
+  const repositoriesByName = new Map(
+    repositories
+      .filter(isPortfolioCandidate)
+      .map((repository) => [repository.name.toLowerCase(), repository])
+  );
+  const candidates = SELECTED_GITHUB_PORTFOLIO_REPOSITORIES
+    .map((name) => repositoriesByName.get(name.toLowerCase()))
+    .filter((repository): repository is GithubRepositoryApi => Boolean(repository));
 
   const withStartDates = await Promise.all(
     candidates.map(async (repository) => ({
@@ -466,7 +487,7 @@ async function getFirstCommitRankedCandidates(
     }))
   );
 
-  return withStartDates.sort(compareRepositoryStarts);
+  return withStartDates.sort(compareSelectedCandidateOrder);
 }
 
 function isPortfolioCandidate(repository: GithubRepositoryApi) {
@@ -492,15 +513,14 @@ function compareRepositories(
   return right.updated_at.localeCompare(left.updated_at);
 }
 
-function compareRepositoryStarts(
+function compareSelectedCandidateOrder(
   left: GithubRepositoryWithStart,
   right: GithubRepositoryWithStart
 ) {
-  const leftStartedAt = left.firstCommitAt || left.repository.created_at;
-  const rightStartedAt = right.firstCommitAt || right.repository.created_at;
-  const startedOrder = rightStartedAt.localeCompare(leftStartedAt);
-  if (startedOrder !== 0) return startedOrder;
-  return right.repository.updated_at.localeCompare(left.repository.updated_at);
+  return (
+    selectedPortfolioOrder(left.repository.name) -
+    selectedPortfolioOrder(right.repository.name)
+  );
 }
 
 function getSnapshotFirstCommitAt(repositoryName: string) {
@@ -512,15 +532,20 @@ function getSnapshotFirstCommitAt(repositoryName: string) {
   );
 }
 
-function compareEnrichedRepositories(
-  left: Pick<GithubPortfolioRepository, 'createdAt' | 'firstCommitAt' | 'updatedAt'>,
-  right: Pick<GithubPortfolioRepository, 'createdAt' | 'firstCommitAt' | 'updatedAt'>
+function compareSelectedPortfolioOrder(
+  left: Pick<GithubPortfolioRepository, 'name' | 'updatedAt'>,
+  right: Pick<GithubPortfolioRepository, 'name' | 'updatedAt'>
 ) {
-  const leftStartedAt = left.firstCommitAt || left.createdAt;
-  const rightStartedAt = right.firstCommitAt || right.createdAt;
-  const startedOrder = rightStartedAt.localeCompare(leftStartedAt);
-  if (startedOrder !== 0) return startedOrder;
+  const selectedOrder = selectedPortfolioOrder(left.name) - selectedPortfolioOrder(right.name);
+  if (selectedOrder !== 0) return selectedOrder;
   return right.updatedAt.localeCompare(left.updatedAt);
+}
+
+function selectedPortfolioOrder(repositoryName: string) {
+  const index = SELECTED_GITHUB_PORTFOLIO_REPOSITORIES.findIndex(
+    (name) => name.toLowerCase() === repositoryName.toLowerCase()
+  );
+  return index >= 0 ? index : Number.MAX_SAFE_INTEGER;
 }
 
 function getLastPageUrl(linkHeader: string | null) {

@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const [repositories, posts] = await Promise.all([
-    getIndexedGithubProjects(12),
+    getIndexedGithubProjects(15),
     getAllPosts(),
   ]);
 

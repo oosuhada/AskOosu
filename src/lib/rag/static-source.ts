@@ -20,7 +20,7 @@ Notion source: ${oosuProfile.notionSourceUrl}
   `);
 
   const [githubRepositories, blogPosts] = await Promise.all([
-    getIndexedGithubProjects(12),
+    getIndexedGithubProjects(15),
     getAllPosts(),
   ]);
 

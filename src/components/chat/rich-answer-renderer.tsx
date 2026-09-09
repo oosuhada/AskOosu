@@ -462,6 +462,7 @@ function ProjectShowcaseCards({
   const isMoreProjectsRail =
     block.dataKey === 'projects.more' ||
     block.dataKey === 'projects.github.latest' ||
+    block.dataKey === 'projects.github.selected' ||
     block.title?.toLowerCase().includes('more project');
 
   useEffect(() => {

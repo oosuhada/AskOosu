@@ -42,7 +42,7 @@ const projectDescriptionsKo: Record<string, string> = {
 
 export default async function ProjectsPage() {
   const [githubRepositories, blogPosts] = await Promise.all([
-    getIndexedGithubProjects(12),
+    getIndexedGithubProjects(15),
     getAllPosts(),
   ]);
 
@@ -106,13 +106,13 @@ export default async function ProjectsPage() {
       </TextSection>
 
       <TextSection
-        title={{ ko: 'GitHub 최신 프로젝트', en: 'Latest from GitHub' }}
+        title={{ ko: '선별 GitHub 프로젝트', en: 'Selected GitHub Projects' }}
       >
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <p className="text-muted-foreground max-w-3xl leading-7">
             <LocalizedText
-              ko="공개 GitHub 저장소를 자동으로 읽어 첫 커밋 날짜가 가장 최신인 프로젝트부터 보여줍니다. 각 카드의 언어 비율은 GitHub Linguist 통계의 byte 비율이며, README에 실제 이미지가 있으면 배지 이미지를 제외하고 함께 표시합니다."
-              en="Public GitHub repositories are refreshed automatically and ordered newest-first by first commit date. Language shares use GitHub Linguist byte totals, and meaningful README images are shown when available while badge-style images are filtered out."
+              ko="공개 GitHub 저장소 중 포트폴리오 대표성, 설명 가능성, 기술 범위, 실제 제품/시스템 근거를 기준으로 선별한 프로젝트입니다. 날짜는 프로젝트 맥락을 돕기 위한 첫 커밋 기준이며, 정렬 기준은 단순 최신순이 아니라 큐레이션 순서입니다."
+              en="A curated set of public GitHub repositories selected for portfolio relevance, defensibility, technical range, and product/system evidence. Dates use first-commit evidence for context, but the order is curated rather than purely newest-first."
             />
           </p>
           <a

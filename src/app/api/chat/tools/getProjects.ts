@@ -7,7 +7,7 @@ export const getProjects = tool({
     'Show Oosu Jang portfolio projects, including AskOosu 2026 and Portfoli-Oh! 2025.',
   inputSchema: z.object({}),
   execute: async () => {
-    const repositories = await getIndexedGithubProjects(12);
+    const repositories = await getIndexedGithubProjects(15);
     return {
       summary:
         "Here are Oosu's recent public GitHub projects. AskOosu 2026 remains the current AI-connected portfolio.",

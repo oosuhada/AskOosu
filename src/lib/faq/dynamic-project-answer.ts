@@ -2,36 +2,36 @@ import type { FaqAnswer, FaqMediaRef, FaqVisualBlock } from './answers';
 import type { GithubPortfolioRepository } from '@/lib/github-portfolio';
 import { getIndexedGithubProjects } from '@/lib/rag/github-source';
 
-const MAX_LATEST_PROJECTS = 12;
+const MAX_SELECTED_PROJECTS = 15;
 
 export async function hydrateDynamicProjectAnswer(
   faqAnswer: FaqAnswer
 ): Promise<FaqAnswer> {
   if (faqAnswer.intentId !== 'project.representative') return faqAnswer;
 
-  const repositories = await getIndexedGithubProjects(MAX_LATEST_PROJECTS);
+  const repositories = await getIndexedGithubProjects(MAX_SELECTED_PROJECTS);
   if (repositories.length === 0) return faqAnswer;
 
-  const latestRepositories = repositories.slice(0, MAX_LATEST_PROJECTS);
-  const latestItems = latestRepositories.map((repository) =>
+  const selectedRepositories = repositories.slice(0, MAX_SELECTED_PROJECTS);
+  const selectedItems = selectedRepositories.map((repository) =>
     toDynamicProjectItem(repository, faqAnswer.language)
   );
-  const dynamicMediaRefs = latestRepositories
+  const dynamicMediaRefs = selectedRepositories
     .map(toDynamicMediaRef)
     .filter((media): media is FaqMediaRef => Boolean(media));
   const visualBlocks = replaceLegacyMoreProjects(
     faqAnswer.visualBlocks,
-    latestItems,
+    selectedItems,
     faqAnswer.language
   );
-  const githubSourceChunkIds = latestRepositories.map(
+  const githubSourceChunkIds = selectedRepositories.map(
     (repository) => `github-project-${repository.name}`
   );
-  const matchedEntityIds = latestRepositories.map(
+  const matchedEntityIds = selectedRepositories.map(
     (repository) => `github:${repository.name}`
   );
   const defaultAnswer = buildDynamicAnswerText(
-    latestRepositories,
+    selectedRepositories,
     faqAnswer.language
   );
 
@@ -65,8 +65,8 @@ function replaceLegacyMoreProjects(
 ) {
   const dynamicBlock: FaqVisualBlock = {
     type: 'projectCards',
-    title: language === 'ko' ? '최신 GitHub 프로젝트' : 'Latest GitHub Projects',
-    dataKey: 'projects.github.latest',
+    title: language === 'ko' ? '선별 GitHub 프로젝트' : 'Selected GitHub Projects',
+    dataKey: 'projects.github.selected',
     items,
   };
 
@@ -149,7 +149,7 @@ function buildDynamicAnswerText(
   repositories: GithubPortfolioRepository[],
   language: 'ko' | 'en'
 ) {
-  const newest = repositories.slice(0, 3).map((repository) => repository.name);
+  const selected = repositories.slice(0, 3).map((repository) => repository.name);
 
   if (language === 'ko') {
     return [
@@ -157,7 +157,7 @@ function buildDynamicAnswerText(
       '',
       'AskOosu는 프론트엔드·백엔드·AI를 하나의 서비스 흐름으로 묶은 현재의 방향을 보여주고, Aigram은 Spring Boot와 PostgreSQL까지 직접 연결한 풀스택 경험을, Sticks & Stones는 실제 운영 중인 사이트를 새 스택으로 옮긴 마이그레이션 경험을 보여줍니다.',
       '',
-      `최근에는 ${newest.join(', ')} 같은 프로젝트까지 이어지면서 한 가지 프레임워크에 머무르기보다 문제에 따라 웹, AI, 성능, 시스템 쪽으로 구현 범위를 넓히고 있습니다. 전체 흐름을 보면 “화면을 만드는 개발”에서 시작해 “서비스 전체를 설계하고 끝까지 운영하는 개발”로 확장해 온 과정에 가깝습니다.`,
+      `선별 GitHub 프로젝트에서는 ${selected.join(', ')} 같은 작업까지 함께 보여줍니다. 한 가지 프레임워크에 머무르기보다 문제에 따라 웹, AI, 성능, 시스템 쪽으로 구현 범위를 넓혀 온 흐름입니다. 전체적으로는 “화면을 만드는 개발”에서 시작해 “서비스 전체를 설계하고 끝까지 운영하는 개발”로 확장해 온 과정에 가깝습니다.`,
     ].join('\n');
   }
 
@@ -166,7 +166,7 @@ function buildDynamicAnswerText(
     '',
     'AskOosu shows his current direction: connecting frontend, backend, and AI into one product flow. Aigram demonstrates fullstack ownership with Spring Boot and PostgreSQL, while Sticks & Stones shows the practical side of migrating a real service to a new stack.',
     '',
-    `More recent work such as ${newest.join(', ')} extends that trajectory beyond a single framework and into a wider mix of web, AI, performance, and systems problems. The overall pattern is a move from building interfaces toward owning the structure, delivery, and operation of complete products.`,
+    `The selected GitHub projects also include work such as ${selected.join(', ')}, extending that trajectory beyond a single framework and into a wider mix of web, AI, performance, and systems problems. The overall pattern is a move from building interfaces toward owning the structure, delivery, and operation of complete products.`,
   ].join('\n');
 }
 
