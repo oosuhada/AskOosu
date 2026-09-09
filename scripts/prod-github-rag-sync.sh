@@ -15,6 +15,11 @@ fi
 
 BASE_URL="${ASKOOSU_BASE_URL:-https://oosu.dev}"
 TOKEN="${RAG_SYNC_SECRET:-${ASKOOSU_RAG_ADMIN_TOKEN:-}}"
+SYNC_PATH="/api/rag/github-sync"
+
+if [[ "${ASKOOSU_GITHUB_RAG_SYNC_FORCE:-}" == "1" ]]; then
+  SYNC_PATH="${SYNC_PATH}?force=1"
+fi
 
 if [[ -z "$TOKEN" ]]; then
   echo "RAG_SYNC_SECRET or ASKOOSU_RAG_ADMIN_TOKEN is required." >&2
@@ -22,7 +27,7 @@ if [[ -z "$TOKEN" ]]; then
 fi
 
 curl -fsS \
-  -X POST "$BASE_URL/api/rag/github-sync" \
+  -X POST "$BASE_URL$SYNC_PATH" \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json"
 echo
