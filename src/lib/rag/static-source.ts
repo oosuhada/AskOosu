@@ -67,7 +67,8 @@ Notion source: ${oosuProfile.notionSourceUrl}
             repository.description ?? '',
             `GitHub: ${repository.url}`,
             repository.homepage ? `Live: ${repository.homepage}` : '',
-            `Created: ${repository.createdAt}`,
+            `First commit: ${repository.firstCommitAt ?? repository.createdAt}`,
+            `Repository created: ${repository.createdAt}`,
             `Languages: ${repository.languages
               .map((language) => `${language.name} ${language.percentage}%`)
               .join(', ')}`,
@@ -86,6 +87,7 @@ Notion source: ${oosuProfile.notionSourceUrl}
           sourceKind: 'github_project',
           repository: repository.fullName,
           createdAt: repository.createdAt,
+          firstCommitAt: repository.firstCommitAt,
         },
       })
     ),

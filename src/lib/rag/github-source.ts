@@ -43,6 +43,7 @@ function buildRepositoryChunks(
     stars: repository.stars,
     forks: repository.forks,
     createdAt: repository.createdAt,
+    firstCommitAt: repository.firstCommitAt,
     updatedAt: repository.updatedAt,
     pushedAt: repository.pushedAt,
     freshness: 'current',
@@ -53,7 +54,8 @@ function buildRepositoryChunks(
       repository.description ?? '',
       `GitHub: ${repository.url}`,
       repository.homepage ? `Live: ${repository.homepage}` : '',
-      `Created: ${repository.createdAt}`,
+      `First commit: ${repository.firstCommitAt ?? repository.createdAt}`,
+      `Repository created: ${repository.createdAt}`,
       `Updated: ${repository.updatedAt}`,
       `Languages: ${repository.languages
         .map((language) => `${language.name} ${language.percentage}%`)
@@ -143,7 +145,7 @@ export async function getIndexedGithubProjects(
           AND s.source_key LIKE 'github:%'
           AND c.chunk_id LIKE 'github-project-%-overview'
           AND c.visibility = 'public'
-        ORDER BY c.metadata->>'createdAt' DESC, c.title ASC
+        ORDER BY COALESCE(c.metadata->>'firstCommitAt', c.metadata->>'createdAt') DESC, c.title ASC
         LIMIT $1
       `,
       [limit]
@@ -162,6 +164,7 @@ export async function getIndexedGithubProjects(
       stars: getMetadataNumber(metadata, 'stars'),
       forks: getMetadataNumber(metadata, 'forks'),
       createdAt: getMetadataString(metadata, 'createdAt'),
+      firstCommitAt: getMetadataNullableString(metadata, 'firstCommitAt'),
       updatedAt: getMetadataString(metadata, 'updatedAt'),
       pushedAt: getMetadataString(metadata, 'pushedAt'),
       languages: getMetadataArray(metadata, 'languages') as GithubPortfolioRepository['languages'],
@@ -175,7 +178,11 @@ export async function getIndexedGithubProjects(
 
 function getSnapshotProjects(limit: number) {
   return [...githubPortfolioSnapshot]
-    .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+    .sort((left, right) =>
+      (right.firstCommitAt ?? right.createdAt).localeCompare(
+        left.firstCommitAt ?? left.createdAt
+      )
+    )
     .slice(0, limit) as GithubPortfolioRepository[];
 }
 

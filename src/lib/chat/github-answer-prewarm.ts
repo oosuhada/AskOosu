@@ -131,8 +131,8 @@ async function loadIndexedGithubProjects(repositoryNames?: string[]) {
   }
 
   return projects.sort((left, right) =>
-    getMetadataString(right.metadata, 'createdAt').localeCompare(
-      getMetadataString(left.metadata, 'createdAt')
+    getProjectStartedAt(right.metadata).localeCompare(
+      getProjectStartedAt(left.metadata)
     )
   );
 }
@@ -658,6 +658,13 @@ function inferProjectCategory(project: IndexedGithubProject) {
 function getMetadataString(metadata: Record<string, unknown>, key: string) {
   const value = metadata[key];
   return typeof value === 'string' ? value.trim() : '';
+}
+
+function getProjectStartedAt(metadata: Record<string, unknown>) {
+  return (
+    getMetadataString(metadata, 'firstCommitAt') ||
+    getMetadataString(metadata, 'createdAt')
+  );
 }
 
 function getMetadataStringArray(metadata: Record<string, unknown>, key: string) {

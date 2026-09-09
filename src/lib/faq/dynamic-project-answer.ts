@@ -94,15 +94,18 @@ function toDynamicProjectItem(
   const imageKey = repository.readmeImages[0]
     ? `github.${repository.name}.readme`
     : undefined;
-  const createdDate = repository.createdAt.slice(0, 10);
+  const firstCommitDate = (repository.firstCommitAt ?? repository.createdAt).slice(
+    0,
+    10
+  );
 
   return {
     id: `github:${repository.name}`,
     title: repository.name,
     label:
       language === 'ko'
-        ? `GitHub · ${createdDate} 생성`
-        : `GitHub · Created ${createdDate}`,
+        ? `GitHub · ${firstCommitDate} 첫 커밋`
+        : `GitHub · First commit ${firstCommitDate}`,
     subtitle: repository.homepage
       ? language === 'ko'
         ? '공개 배포 프로젝트'
@@ -113,8 +116,8 @@ function toDynamicProjectItem(
     description:
       repository.description ??
       (language === 'ko'
-        ? 'GitHub에서 자동 수집된 최신 공개 프로젝트입니다.'
-        : 'A recent public project collected automatically from GitHub.'),
+        ? '최근 공개 GitHub 프로젝트입니다.'
+        : 'A recent public GitHub project.'),
     image: imageKey,
     tags: repository.topics.slice(0, 4),
     languages: repository.languages.slice(0, 6).map((item) => ({
@@ -123,7 +126,7 @@ function toDynamicProjectItem(
     })),
     href: repository.homepage ?? repository.url,
     githubHref: repository.url,
-    createdAt: repository.createdAt,
+    createdAt: repository.firstCommitAt ?? repository.createdAt,
   };
 }
 

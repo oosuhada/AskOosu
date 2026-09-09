@@ -111,8 +111,8 @@ export default async function ProjectsPage() {
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
           <p className="text-muted-foreground max-w-3xl leading-7">
             <LocalizedText
-              ko="공개 GitHub 저장소를 자동으로 읽어 생성일이 가장 최신인 프로젝트부터 보여줍니다. 각 카드의 언어 비율은 GitHub Linguist 통계의 byte 비율이며, README에 실제 이미지가 있으면 배지 이미지를 제외하고 함께 표시합니다."
-              en="Public GitHub repositories are refreshed automatically and ordered newest-first by repository creation date. Language shares use GitHub Linguist byte totals, and meaningful README images are shown when available while badge-style images are filtered out."
+              ko="공개 GitHub 저장소를 자동으로 읽어 첫 커밋 날짜가 가장 최신인 프로젝트부터 보여줍니다. 각 카드의 언어 비율은 GitHub Linguist 통계의 byte 비율이며, README에 실제 이미지가 있으면 배지 이미지를 제외하고 함께 표시합니다."
+              en="Public GitHub repositories are refreshed automatically and ordered newest-first by first commit date. Language shares use GitHub Linguist byte totals, and meaningful README images are shown when available while badge-style images are filtered out."
             />
           </p>
           <a
@@ -220,8 +220,10 @@ function GithubRepositoryCard({
           <div className="min-w-0">
             <h2 className="truncate text-xl font-bold">{repository.name}</h2>
             <p className="text-muted-foreground mt-1 text-xs">
-              <LocalizedText ko="생성" en="Created" />{' '}
-              {formatGithubDate(repository.createdAt)}
+              <LocalizedText ko="첫 커밋" en="First commit" />{' '}
+              {formatGithubDate(
+                repository.firstCommitAt ?? repository.createdAt
+              )}
             </p>
           </div>
           <div className="text-muted-foreground flex shrink-0 items-center gap-3 text-xs">

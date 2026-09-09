@@ -17,6 +17,7 @@ export const getProjects = tool({
         url: repository.url,
         homepage: repository.homepage,
         createdAt: repository.createdAt,
+        firstCommitAt: repository.firstCommitAt,
         updatedAt: repository.updatedAt,
         languages: repository.languages,
         readmeImages: repository.readmeImages,

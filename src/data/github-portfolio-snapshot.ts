@@ -1,5 +1,5 @@
 // Last-known-good public GitHub portfolio data.
-// Refreshed on 2026-09-03 with the authenticated `gh` CLI on the MacBook Air.
+// Refreshed on 2026-09-09 with the authenticated `gh` CLI on the MacBook Air.
 // Runtime GitHub data always takes priority; this is used only when GitHub is
 // temporarily unavailable or its anonymous API rate limit is exhausted.
 export const githubPortfolioSnapshot = [
@@ -25,6 +25,7 @@ export const githubPortfolioSnapshot = [
     stars: 0,
     forks: 0,
     createdAt: '2026-09-03T05:19:56Z',
+    firstCommitAt: '2026-09-03T05:31:23Z',
     updatedAt: '2026-09-03T08:21:56Z',
     pushedAt: '2026-09-03T07:51:26Z',
     languages: [
@@ -60,6 +61,7 @@ export const githubPortfolioSnapshot = [
     stars: 0,
     forks: 0,
     createdAt: '2026-08-31T04:48:39Z',
+    firstCommitAt: '2026-08-31T07:52:43Z',
     updatedAt: '2026-09-02T10:26:32Z',
     pushedAt: '2026-09-02T10:25:30Z',
     languages: [
@@ -95,6 +97,7 @@ export const githubPortfolioSnapshot = [
     stars: 0,
     forks: 0,
     createdAt: '2026-08-27T23:23:16Z',
+    firstCommitAt: '2026-08-27T23:23:08Z',
     updatedAt: '2026-08-31T04:45:30Z',
     pushedAt: '2026-09-02T04:58:39Z',
     languages: [
@@ -116,6 +119,7 @@ export const githubPortfolioSnapshot = [
     stars: 1,
     forks: 0,
     createdAt: '2026-08-27T06:09:49Z',
+    firstCommitAt: '2026-08-27T04:55:00Z',
     updatedAt: '2026-08-28T08:41:51Z',
     pushedAt: '2026-09-02T04:58:30Z',
     languages: [
@@ -138,6 +142,7 @@ export const githubPortfolioSnapshot = [
     stars: 0,
     forks: 0,
     createdAt: '2026-08-26T07:48:34Z',
+    firstCommitAt: '2025-06-16T11:52:13Z',
     updatedAt: '2026-08-28T08:42:22Z',
     pushedAt: '2026-09-02T04:51:21Z',
     languages: [
@@ -146,11 +151,11 @@ export const githubPortfolioSnapshot = [
     ],
     readmeImages: [
       {
-        url: 'https://raw.githubusercontent.com/oosuhada/search-observatory/main/github/assets/portfolio/search-observatory-overview.png',
+        url: 'https://raw.githubusercontent.com/oosuhada/search-observatory/main/.github/assets/portfolio/search-observatory-overview.png',
         alt: 'Search Observatory experiment workspace',
       },
       {
-        url: 'https://raw.githubusercontent.com/oosuhada/search-observatory/main/github/assets/portfolio/search-observatory-workspace.png',
+        url: 'https://raw.githubusercontent.com/oosuhada/search-observatory/main/.github/assets/portfolio/search-observatory-workspace.png',
         alt: 'Search Observatory research notebook',
       },
     ],
@@ -168,6 +173,7 @@ export const githubPortfolioSnapshot = [
     stars: 0,
     forks: 0,
     createdAt: '2026-08-26T07:48:28Z',
+    firstCommitAt: '2026-02-15T07:20:13Z',
     updatedAt: '2026-08-28T08:44:59Z',
     pushedAt: '2026-09-02T04:52:52Z',
     languages: [
@@ -193,6 +199,7 @@ export const githubPortfolioSnapshot = [
     stars: 0,
     forks: 0,
     createdAt: '2026-08-26T07:48:23Z',
+    firstCommitAt: '2025-02-01T01:08:22Z',
     updatedAt: '2026-08-28T08:45:54Z',
     pushedAt: '2026-09-02T04:49:53Z',
     languages: [
@@ -211,11 +218,11 @@ export const githubPortfolioSnapshot = [
     ],
     readmeImages: [
       {
-        url: 'https://raw.githubusercontent.com/oosuhada/memory-atlas-client/main/github/assets/portfolio/cherryrecorder-restored-splash.png',
+        url: 'https://raw.githubusercontent.com/oosuhada/memory-atlas-client/main/.github/assets/portfolio/cherryrecorder-restored-splash.png',
         alt: 'CherryRecorder splash',
       },
       {
-        url: 'https://raw.githubusercontent.com/oosuhada/memory-atlas-client/main/github/assets/portfolio/cherryrecorder-restored-map.png',
+        url: 'https://raw.githubusercontent.com/oosuhada/memory-atlas-client/main/.github/assets/portfolio/cherryrecorder-restored-map.png',
         alt: 'CherryRecorder map',
       },
     ],
@@ -232,6 +239,7 @@ export const githubPortfolioSnapshot = [
     stars: 0,
     forks: 0,
     createdAt: '2026-08-26T07:48:09Z',
+    firstCommitAt: '2025-08-11T00:40:21Z',
     updatedAt: '2026-08-28T08:43:47Z',
     pushedAt: '2026-09-02T04:51:57Z',
     languages: [
@@ -255,6 +263,7 @@ export const githubPortfolioSnapshot = [
     stars: 0,
     forks: 0,
     createdAt: '2026-08-26T07:48:00Z',
+    firstCommitAt: '2025-08-04T00:19:21Z',
     updatedAt: '2026-08-28T08:42:28Z',
     pushedAt: '2026-09-02T04:52:10Z',
     languages: [
@@ -263,7 +272,7 @@ export const githubPortfolioSnapshot = [
     ],
     readmeImages: [
       {
-        url: 'https://raw.githubusercontent.com/oosuhada/soundtrack-map-ios/main/github/assets/portfolio/streetdrop-restored-home.png',
+        url: 'https://raw.githubusercontent.com/oosuhada/soundtrack-map-ios/main/.github/assets/portfolio/streetdrop-restored-home.png',
         alt: 'Street Drop app',
       },
     ],
@@ -281,6 +290,7 @@ export const githubPortfolioSnapshot = [
     stars: 0,
     forks: 0,
     createdAt: '2026-08-26T07:47:50Z',
+    firstCommitAt: '2026-02-01T07:20:13Z',
     updatedAt: '2026-08-28T08:41:57Z',
     pushedAt: '2026-09-02T04:53:04Z',
     languages: [
@@ -289,7 +299,7 @@ export const githubPortfolioSnapshot = [
     ],
     readmeImages: [
       {
-        url: 'https://raw.githubusercontent.com/oosuhada/health-reflection-ios/main/github/assets/portfolio/pumping-restored-home.png',
+        url: 'https://raw.githubusercontent.com/oosuhada/health-reflection-ios/main/.github/assets/portfolio/pumping-restored-home.png',
         alt: 'Pumping app',
       },
     ],
@@ -307,6 +317,7 @@ export const githubPortfolioSnapshot = [
     stars: 0,
     forks: 0,
     createdAt: '2026-08-26T07:47:40Z',
+    firstCommitAt: '2025-09-08T00:31:22Z',
     updatedAt: '2026-08-28T08:42:05Z',
     pushedAt: '2026-09-02T04:51:30Z',
     languages: [
@@ -317,7 +328,7 @@ export const githubPortfolioSnapshot = [
     ],
     readmeImages: [
       {
-        url: 'https://raw.githubusercontent.com/oosuhada/sensory-journal/main/github/assets/portfolio/beer-air-home.png',
+        url: 'https://raw.githubusercontent.com/oosuhada/sensory-journal/main/.github/assets/portfolio/beer-air-home.png',
         alt: 'BeerAir home',
       },
     ],
@@ -335,6 +346,7 @@ export const githubPortfolioSnapshot = [
     stars: 0,
     forks: 0,
     createdAt: '2026-08-26T07:45:01Z',
+    firstCommitAt: '2025-09-08T00:31:22Z',
     updatedAt: '2026-08-28T08:41:06Z',
     pushedAt: '2026-09-02T04:51:39Z',
     languages: [
@@ -344,7 +356,7 @@ export const githubPortfolioSnapshot = [
     ],
     readmeImages: [
       {
-        url: 'https://raw.githubusercontent.com/oosuhada/career-evidence-lab/main/github/assets/portfolio/na-lab-home.png',
+        url: 'https://raw.githubusercontent.com/oosuhada/career-evidence-lab/main/.github/assets/portfolio/na-lab-home.png',
         alt: 'Na Lab home',
       },
     ],
@@ -362,6 +374,7 @@ export const githubPortfolioSnapshot = [
     stars: 0,
     forks: 0,
     createdAt: '2026-08-26T01:59:21Z',
+    firstCommitAt: '2025-03-27T11:01:13Z',
     updatedAt: '2026-08-28T08:43:14Z',
     pushedAt: '2026-09-02T04:50:28Z',
     languages: [

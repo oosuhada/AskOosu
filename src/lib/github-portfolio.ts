@@ -28,6 +28,14 @@ type GithubRepositoryApi = {
 
 type GithubLanguagesApi = Record<string, number>;
 
+type GithubCommitApi = {
+  commit: {
+    author: {
+      date: string;
+    };
+  };
+};
+
 export type GithubLanguageShare = {
   name: string;
   bytes: number;
@@ -51,6 +59,7 @@ export type GithubPortfolioRepository = {
   stars: number;
   forks: number;
   createdAt: string;
+  firstCommitAt: string | null;
   updatedAt: string;
   pushedAt: string;
   languages: GithubLanguageShare[];
@@ -64,6 +73,7 @@ export type GithubRepositoryEvidence = {
   description: string | null;
   defaultBranch: string;
   createdAt: string | null;
+  firstCommitAt: string | null;
   languages: GithubLanguageShare[];
   readmeText: string | null;
 };
@@ -98,11 +108,12 @@ export async function getGithubPortfolioRepositories(): Promise<
       .sort(compareRepositories)
       .slice(0, limit);
 
-    return Promise.all(candidates.map(enrichRepository));
+    const enriched = await Promise.all(candidates.map(enrichRepository));
+    return enriched.sort(compareEnrichedRepositories);
   } catch (error) {
     console.warn('Unable to refresh GitHub portfolio repositories.', error);
     return [...githubPortfolioSnapshot]
-      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+      .sort(compareEnrichedRepositories)
       .slice(0, limit);
   }
 }
@@ -134,7 +145,7 @@ export async function getGithubRepositorySyncManifest(): Promise<GithubRepositor
     return {
       live: false,
       repositories: [...githubPortfolioSnapshot]
-        .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+        .sort(compareEnrichedRepositories)
         .slice(0, limit)
         .map((repository) => ({
           name: repository.name,
@@ -160,11 +171,12 @@ export async function getGithubRagRepositories(): Promise<GithubRagRepository[]>
       .sort(compareRepositories)
       .slice(0, limit);
 
-    return Promise.all(candidates.map(enrichRepositoryForRag));
+    const enriched = await Promise.all(candidates.map(enrichRepositoryForRag));
+    return enriched.sort(compareEnrichedRepositories);
   } catch (error) {
     console.warn('Unable to refresh live GitHub RAG repositories.', error);
     const repositories = [...githubPortfolioSnapshot]
-      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+      .sort(compareEnrichedRepositories)
       .slice(0, limit);
 
     return Promise.all(
@@ -213,6 +225,9 @@ export async function getGithubRepositoryEvidence(
     'main',
     'master',
   ]);
+  const firstCommitAt = repository
+    ? await fetchRepositoryFirstCommitAt(repository)
+    : snapshot?.firstCommitAt ?? null;
 
   let languages = snapshot?.languages ?? [];
   if (repository) {
@@ -244,6 +259,7 @@ export async function getGithubRepositoryEvidence(
     description: repository?.description ?? snapshot?.description ?? null,
     defaultBranch,
     createdAt: repository?.created_at ?? snapshot?.createdAt ?? null,
+    firstCommitAt,
     languages,
     readmeText: readme ? normalizeReadmeEvidence(readme) : null,
   };
@@ -252,9 +268,10 @@ export async function getGithubRepositoryEvidence(
 async function enrichRepository(
   repository: GithubRepositoryApi
 ): Promise<GithubPortfolioRepository> {
-  const [languages, readme] = await Promise.all([
+  const [languages, readme, firstCommitAt] = await Promise.all([
     fetchRepositoryLanguages(repository),
     fetchRepositoryReadme(repository),
+    fetchRepositoryFirstCommitAt(repository),
   ]);
 
   return {
@@ -269,6 +286,7 @@ async function enrichRepository(
     stars: repository.stargazers_count,
     forks: repository.forks_count,
     createdAt: repository.created_at,
+    firstCommitAt,
     updatedAt: repository.updated_at,
     pushedAt: repository.pushed_at,
     languages,
@@ -285,9 +303,10 @@ async function enrichRepository(
 async function enrichRepositoryForRag(
   repository: GithubRepositoryApi
 ): Promise<GithubRagRepository> {
-  const [languages, readme] = await Promise.all([
+  const [languages, readme, firstCommitAt] = await Promise.all([
     fetchRepositoryLanguages(repository),
     fetchRepositoryReadme(repository),
+    fetchRepositoryFirstCommitAt(repository),
   ]);
 
   return {
@@ -302,6 +321,7 @@ async function enrichRepositoryForRag(
     stars: repository.stargazers_count,
     forks: repository.forks_count,
     createdAt: repository.created_at,
+    firstCommitAt,
     updatedAt: repository.updated_at,
     pushedAt: repository.pushed_at,
     languages,
@@ -314,6 +334,29 @@ async function enrichRepositoryForRag(
       : [],
     readmeText: readme ? normalizeReadmeEvidence(readme) : null,
   };
+}
+
+async function fetchRepositoryFirstCommitAt(repository: GithubRepositoryApi) {
+  const url = `https://api.github.com/repos/${GITHUB_OWNER}/${encodeURIComponent(
+    repository.name
+  )}/commits?sha=${encodeURIComponent(repository.default_branch)}&per_page=1`;
+
+  try {
+    const response = await fetchGithubResponse(url);
+    const firstPage = (await response.json()) as GithubCommitApi[];
+    const lastPageUrl = getLastPageUrl(response.headers.get('link'));
+    if (!lastPageUrl) return firstPage[0]?.commit.author.date ?? repository.created_at;
+
+    const lastPageResponse = await fetchGithubResponse(lastPageUrl);
+    const lastPage = (await lastPageResponse.json()) as GithubCommitApi[];
+    return lastPage.at(-1)?.commit.author.date ?? repository.created_at;
+  } catch (error) {
+    console.warn(
+      `Unable to load first commit for ${repository.full_name}.`,
+      error
+    );
+    return repository.created_at;
+  }
 }
 
 async function fetchRepositoryLanguages(repository: GithubRepositoryApi) {
@@ -368,6 +411,11 @@ async function fetchRepositoryReadmeByName(
 }
 
 async function fetchGithubJson<T>(url: string): Promise<T> {
+  const response = await fetchGithubResponse(url);
+  return (await response.json()) as T;
+}
+
+async function fetchGithubResponse(url: string) {
   const token = (
     process.env.GITHUB_API_TOKEN ?? process.env.GITHUB_TOKEN
   )?.trim();
@@ -384,7 +432,7 @@ async function fetchGithubJson<T>(url: string): Promise<T> {
     throw new Error(`GitHub API ${response.status} for ${url}`);
   }
 
-  return (await response.json()) as T;
+  return response;
 }
 
 function isPortfolioCandidate(repository: GithubRepositoryApi) {
@@ -408,6 +456,26 @@ function compareRepositories(
   const createdOrder = right.created_at.localeCompare(left.created_at);
   if (createdOrder !== 0) return createdOrder;
   return right.updated_at.localeCompare(left.updated_at);
+}
+
+function compareEnrichedRepositories(
+  left: Pick<GithubPortfolioRepository, 'createdAt' | 'firstCommitAt' | 'updatedAt'>,
+  right: Pick<GithubPortfolioRepository, 'createdAt' | 'firstCommitAt' | 'updatedAt'>
+) {
+  const leftStartedAt = left.firstCommitAt || left.createdAt;
+  const rightStartedAt = right.firstCommitAt || right.createdAt;
+  const startedOrder = rightStartedAt.localeCompare(leftStartedAt);
+  if (startedOrder !== 0) return startedOrder;
+  return right.updatedAt.localeCompare(left.updatedAt);
+}
+
+function getLastPageUrl(linkHeader: string | null) {
+  if (!linkHeader) return null;
+  const lastLink = linkHeader
+    .split(',')
+    .map((part) => part.trim())
+    .find((part) => /rel="last"/.test(part));
+  return lastLink?.match(/<([^>]+)>/)?.[1] ?? null;
 }
 
 function getRepositoryLimit() {
